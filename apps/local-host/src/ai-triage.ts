@@ -132,6 +132,8 @@ const RETAIN = 100000;
 const GLOBAL_QUEUE_LIMIT = 20064;
 const GLOBAL_RETAIN = 500000;
 const DAY = 86_400_000;
+/** Provider answers that halt all dispatch instead of failing each queued conversation. */
+const haltCodes = new Set(["AI_AUTH_FAILED", "AI_QUOTA_EXCEEDED"]);
 const idOK = (value: unknown): value is string =>
   typeof value === "string" && /^[^\s\x00-\x1f\x7f]{1,512}$/.test(value);
 const commandOK = (value: unknown): value is string =>
@@ -353,6 +355,12 @@ export function createAiTriageService({
    */
   let providerFailures = 0,
     cooldownUntil = 0;
+  /**
+   * Provider-wide halt for failures that waiting will not fix: rejected credentials or an
+   * exhausted quota. Unlike the cooldown it has no timer; it holds every dispatch until a
+   * restart (how a new key or endpoint loads), a settings save, or an explicit job resume.
+   */
+  let providerHalt: string | null = null;
   // Whole milliseconds: queue due times live in a STRICT INTEGER column.
   const jitter = (milliseconds: number) => Math.round(milliseconds * (0.8 + Math.random() * 0.4));
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -494,6 +502,7 @@ export function createAiTriageService({
     "AI_MODEL_NOT_ALLOWED",
     "AI_RATE_LIMITED",
     "AI_AUTH_FAILED",
+    "AI_QUOTA_EXCEEDED",
     "AI_PROVIDER_UNAVAILABLE",
     "AI_HTTP_FAILED",
     "AI_RESPONSE_LIMIT",
@@ -830,6 +839,57 @@ export function createAiTriageService({
       "UPDATE local_ai_job_items SET status=? WHERE owner=? AND source=? AND thread=? AND status='pending'",
     ).run(success ? "completed" : "failed", owner, source, thread);
     for (const row of jobs) refreshJob(owner, row.job);
+  }
+  /**
+   * Starts a provider halt and pauses every running job with its code, so the UI offers Resume.
+   * A job already holding a code (a full queue) keeps it; the halt still stops its dispatch.
+   */
+  function halt(code: string) {
+    providerHalt = code;
+    transaction(() => {
+      for (const row of db
+        .query<JobRow, []>(
+          "SELECT * FROM local_ai_jobs WHERE json_extract(data,'$.status')='running' AND json_extract(data,'$.problemCode') IS NULL",
+        )
+        .all()) {
+        const job: AiHistoryJob = JSON.parse(row.data);
+        job.status = "paused";
+        job.problemCode = code;
+        saveJob(row, job);
+        // As a manual pause does: requests already in flight for the job cannot apply.
+        db.query("UPDATE local_ai_queue SET status='queued' WHERE owner=? AND job=?").run(
+          row.owner,
+          row.id,
+        );
+      }
+    });
+  }
+  /** Ends a provider halt and resumes the jobs it paused that are still current. */
+  function resumeHalted() {
+    providerHalt = null;
+    const resumed = transaction(() =>
+      db
+        .query<JobRow, []>(
+          "SELECT * FROM local_ai_jobs WHERE json_extract(data,'$.status')='paused'",
+        )
+        .all()
+        .filter((row) => {
+          const job: AiHistoryJob = JSON.parse(row.data),
+            current = settingsRow(row.owner);
+          if (
+            !haltCodes.has(job.problemCode ?? "") ||
+            current?.generation !== row.generation ||
+            !JSON.parse(current.data).enabled
+          )
+            return false;
+          job.status = "running";
+          job.problemCode = null;
+          saveJob(row, job);
+          return true;
+        }),
+    );
+    for (const row of resumed) if (!row.enumerated) startInventory(row.owner, row.id);
+    pump();
   }
   async function scope(owner: string, value = settings(owner), source?: string): Promise<Scope> {
     const boxes = (await inbox.mailboxes(owner)).filter(
@@ -1885,7 +1945,8 @@ export function createAiTriageService({
       pumping ||
       !configuration ||
       active.size >= (configuration.concurrency ?? 2) ||
-      now() < cooldownUntil
+      now() < cooldownUntil ||
+      providerHalt !== null
     )
       return;
     pumping = true;
@@ -2338,6 +2399,28 @@ export function createAiTriageService({
           ),
       );
     } else if (result.outcome !== "aborted") providerFailures = 0;
+    const haltCode = result.code && haltCodes.has(result.code) ? result.code : null;
+    if (haltCode) {
+      halt(haltCode);
+      finishAttempt(queue.owner, attempt, result);
+      // The provider refused the account, not this conversation: unless newer work replaced
+      // it, it waits for the halt to end, keeping its attempt count.
+      transaction(() => {
+        const requeued = db
+          .query(
+            "UPDATE local_ai_queue SET status='queued',due=? WHERE owner=? AND source=? AND thread=? AND generation=? AND fingerprint=?",
+          )
+          .run(now(), queue.owner, queue.source, queue.thread, queue.generation, queue.fingerprint);
+        const row = decisionRow(queue.owner, queue.source, queue.thread);
+        if (!requeued.changes || !row) return;
+        const decision: AiDecision = JSON.parse(row.data);
+        decision.state = "pending";
+        decision.holdUntil = null;
+        decision.problemCode = haltCode;
+        publish(queue.owner, decision, row.fingerprint, row.sender);
+      });
+      return;
+    }
     let current: Context | null = null;
     if (permitted(queue) && !controller.signal.aborted) {
       try {
@@ -2727,6 +2810,8 @@ export function createAiTriageService({
           "SELECT owner FROM local_ai_settings WHERE json_extract(data,'$.enabled')=1 LIMIT 256",
         )
         .all();
+      // A restart is how a changed key or endpoint loads, so retry what a provider halt paused.
+      resumeHalted();
       for (const { owner } of owners) {
         queuePolicyRescore(owner);
         watch(owner);
@@ -2780,7 +2865,8 @@ export function createAiTriageService({
         provider: configuration ? publicAiProvider(configuration) : null,
         problemCode: configuration
           ? configuration.models.some((model) => model.id === value.model)
-            ? (recoveryRow(owner)?.problem ??
+            ? (providerHalt ??
+              recoveryRow(owner)?.problem ??
               rescoreRow(owner)?.problem ??
               db
                 .query<CoverageRow, [string]>(
@@ -2943,6 +3029,8 @@ export function createAiTriageService({
         if (value.enabled) {
           watch(owner);
           schedule(owner);
+          // A settings save is the user's cue to try the provider again after a halt.
+          resumeHalted();
         } else {
           subscriptions.get(owner)?.();
           subscriptions.delete(owner);
@@ -3072,8 +3160,11 @@ export function createAiTriageService({
         )
           fail("AI_JOB_STALE", 409);
         job.status = action === "pause" ? "paused" : action === "resume" ? "running" : "cancelled";
-        if (action === "resume" && !row.enumerated) job.problemCode = null;
+        if (action === "resume" && (!row.enumerated || haltCodes.has(job.problemCode ?? "")))
+          job.problemCode = null;
         saveJob(row, job);
+        // An explicit resume retries the provider for every job a halt paused.
+        if (action === "resume") resumeHalted();
         if (action !== "resume") {
           for (const running of active.values())
             if (running.owner === owner && running.job === id) running.controller.abort();

@@ -25,6 +25,7 @@ const problemLabels: Record<string, string> = {
   AI_TIMEOUT: "Provider response timed out",
   AI_RATE_LIMITED: "Provider rate limit reached",
   AI_AUTH_FAILED: "Provider credentials were rejected",
+  AI_QUOTA_EXCEEDED: "Provider quota or credit is used up",
   AI_PROVIDER_UNAVAILABLE: "Provider is temporarily unavailable",
   AI_INSUFFICIENT_CONTEXT: "Not enough usable email context",
 };

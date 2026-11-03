@@ -28388,6 +28388,19 @@ describe("AI triage inference and local scoring", () => {
         }),
       ).toMatchObject({ outcome: "error", code, retryable: true, retryAfterMs });
     }
+    // An exhausted balance, or a 429 the provider says not to retry, will not clear by waiting.
+    for (const [status, headers] of [
+      [402, {}],
+      [429, { "x-should-retry": "false", "retry-after": "2" }],
+    ] as const) {
+      expect(
+        await inferAiTriage(input, configuration, {
+          model: "fixture-model",
+          signal: new AbortController().signal,
+          fetcher: (async () => new Response(null, { status, headers })) as unknown as typeof fetch,
+        }),
+      ).toMatchObject({ code: "AI_QUOTA_EXCEEDED", retryable: false, retryAfterMs: null });
+    }
     const transportError = await inferAiTriage(input, configuration, {
       model: "fixture-model",
       signal: new AbortController().signal,
@@ -33394,6 +33407,87 @@ describe("AI triage service", () => {
       failed: 1,
     });
   });
+
+  test("rejected credentials pause the whole job after one request, keep every conversation queued, and resume only on an explicit retry or settings save", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    await h.seed(
+      "alice",
+      "ai-rejected",
+      Array.from({ length: 6 }, (_, index) => native(`rejected-${index}`)),
+    );
+    let calls = 0,
+      rejected = true;
+    const service = createAiTriageService({
+      database,
+      inbox: h.inbox,
+      configuration,
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        return rejected ? new Response(BODY_SECRET, { status: 401 }) : Response.json(response);
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      await service.close();
+      database.close();
+    });
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    await service.process("alice", { id: "ai-rejected-history", scope: "inbox", limit: 100 });
+    const halted = async (requests: number, label: string) => {
+      await bounded(
+        (async () => {
+          while ((await service.state("alice")).jobs[0]?.status !== "paused") await Bun.sleep(10);
+        })(),
+        label,
+      );
+      expect(calls).toBe(requests);
+      const state = await service.state("alice");
+      expect(state.problemCode).toBe("AI_AUTH_FAILED");
+      expect(state.jobs[0]).toMatchObject({
+        status: "paused",
+        problemCode: "AI_AUTH_FAILED",
+        queued: 6,
+        completed: 0,
+        failed: 0,
+      });
+      expect(state.queue).toEqual({ pending: 6, processing: 0, failed: 0 });
+      expect(
+        database
+          .query<{ attempts: number }, []>("SELECT attempts FROM local_ai_queue")
+          .all()
+          .map((row) => row.attempts),
+      ).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(
+        (await service.results("alice")).decisions.some((item) => item.state === "failed"),
+      ).toBe(false);
+    };
+    await halted(1, "first rejected request");
+    // No timer retries rejected credentials, however long the clock runs.
+    h.clock.value += 3_600_000;
+    await Bun.sleep(1100);
+    await halted(1, "rejected credentials after an hour");
+    // Retrying with the same bad key costs one request, not one per conversation.
+    await service.control("alice", "ai-rejected-history", "resume");
+    await halted(2, "retried rejected request");
+    rejected = false;
+    await service.configure("alice", (await service.state("alice")).settings);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).jobs[0]?.status !== "completed") await Bun.sleep(10);
+      })(),
+      "sorting after the settings save",
+    );
+    expect((await service.state("alice")).jobs[0]).toMatchObject({
+      completed: 6,
+      failed: 0,
+      problemCode: null,
+    });
+    expect((await service.state("alice")).problemCode).toBeNull();
+    expect(calls).toBe(8);
+  }, 15000);
 
   test("in-flight pause and cancel stop application without inventing free usage and an explicit new job can resume work", async () => {
     const h = await fixture(),

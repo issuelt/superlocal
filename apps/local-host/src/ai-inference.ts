@@ -659,13 +659,19 @@ function retryDelay(headers: Headers): number | null {
 /**
  * Fixed code for a non-2xx response; the body is never read because gateways echo prompts
  * and credentials there. 408, 429 and 5xx are transient, as the OpenAI SDKs treat them.
+ * A 402, or a 429 the provider marks `x-should-retry: false` (the header those SDKs obey),
+ * is an exhausted quota or balance that waiting will not fix.
  */
 function httpFailure(response: Response) {
   const status = response.status;
-  const retryable = status === 408 || status === 429 || status >= 500;
+  const quota =
+    status === 402 ||
+    (status === 429 && response.headers.get("x-should-retry")?.trim().toLowerCase() === "false");
+  const retryable = !quota && (status === 408 || status === 429 || status >= 500);
   return {
-    code:
-      status === 429
+    code: quota
+      ? "AI_QUOTA_EXCEEDED"
+      : status === 429
         ? "AI_RATE_LIMITED"
         : status === 408
           ? "AI_TIMEOUT"
