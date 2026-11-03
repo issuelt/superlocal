@@ -17500,8 +17500,10 @@ describe("blob privacy and draft editing", () => {
       native("relative", {
         bodyHtml: `<p>Relative URLs resolve against the app origin inside the email frame.</p>
           <img src="/v1/policy" alt="api"><img src="logo.png" alt="bare"><img src="cid:logo@example.test" alt="logo">
+          <img src="https:/v1/policy" alt="scheme-only">
           <a href="/v1/openapi.json">api</a><a href="#top">top</a><a href="?q=1">query</a>
-          <a href="cid:logo@example.test">logo</a><a href="https://example.test/a">site</a><a href="mailto:a@example.test">mail</a>`,
+          <a href="cid:logo@example.test">logo</a><a href="https://example.test/a">site</a><a href="mailto:a@example.test">mail</a>
+          <a href="https:/v1/openapi.json">scheme-only</a><a href="https:host/config">scheme-host</a>`,
         attachments: [inline],
       }),
     ]);
@@ -17514,7 +17516,9 @@ describe("blob privacy and draft editing", () => {
         DomUtils.findAll((node) => node.name === name, parseDocument(html).children).map(
           (node): string | null => node.attribs[attribute] ?? null,
         );
-      expect(urls("img", "src")).toEqual([null, null, blob]);
+      expect(urls("img", "src")).toEqual([null, null, blob, null]);
+      // Scheme-only http(s) forms are relative to an https app address, so they're made absolute.
+      expect(urls("img", "data-openmail-src")).toEqual([null, null, null, "https://v1/policy"]);
       expect(urls("a", "href")).toEqual([
         null,
         null,
@@ -17522,6 +17526,8 @@ describe("blob privacy and draft editing", () => {
         blob,
         "https://example.test/a",
         "mailto:a@example.test",
+        "https://v1/openapi.json",
+        "https://host/config",
       ]);
     }
   });
