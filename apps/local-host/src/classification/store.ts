@@ -236,8 +236,13 @@ export function createDataset(path: string) {
       const readCohort = db.query<{ id: string; origin: string; source: string; thread: string; sender: string | null; input_json: string }, [string]>("SELECT e.id,e.origin,e.source,e.thread,json_extract(e.original_json,'$.from.email') sender,e.input_json FROM jobs j JOIN examples e ON e.id=j.example WHERE j.run=? ORDER BY e.id")
       const cohort = readCohort.all(run), developmentSenders = new Set<string>()
       const parents = new Map<string, string>(), senders = new Map<string, string>()
+      // Removes URLs and addresses. An address starts only at the start of a local-part run
+      // (lookbehind), and back-to-back addresses are one chain with an atomic domain (the
+      // lookahead + backreference), so this is linear but yields the same text after the
+      // whitespace collapse as the plain `[local]+@[\w.-]+` alternative. Keep that equivalence:
+      // template groups decide frozen split assignment.
       const normalizeTemplate = (value: string) => value.normalize('NFKC').toLowerCase()
-        .replace(/https?:\/\/\S+|www\.\S+|[\w.!#$%&'*+/=?^`{|}~-]+@[\w.-]+/gu, ' ')
+        .replace(/https?:\/\/\S+|www\.\S+|(?<![\w.!#$%&'*+/=?^`{|}~-])(?:[\w.!#$%&'*+/=?^`{|}~-]+@(?=([\w.-]+))\1)+/gu, ' ')
         .replace(/\p{N}+/gu, '0').replace(/\s+/g, ' ').trim()
       const find = (key: string): string => { const parent = parents.get(key); if (!parent) { parents.set(key, key); return key }; if (parent === key) return key; const root = find(parent); parents.set(key, root); return root }
       const unite = (a: string, b: string) => { const x = find(a), y = find(b); if (x !== y) parents.set(x < y ? y : x, x < y ? x : y) }
