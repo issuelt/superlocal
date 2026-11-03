@@ -30,7 +30,7 @@ import * as WindowDTO from '../../../apps/shared/inbox-window'
 import { classifyAttention } from '../../../apps/shared/mail-attention'
 import { normalizeSplits } from '../../../apps/shared/splits'
 import { mailFacts } from '../src/mail-facts'
-import { createDataset, inventory, openMailSource } from '../../../apps/local-host/src/classification/store'
+import { createDataset, inventory, normalizeTemplate, openMailSource } from '../../../apps/local-host/src/classification/store'
 import { labelRun, trainExport, refineFile } from '../../../apps/local-host/src/classification/cli'
 import { classifyEmail, InferenceError } from '../../../apps/local-host/src/classification/inference'
 import { sourceFactKeys, taxonomy, validateClassification, type Classification, type ClassificationInput } from '../../../apps/local-host/src/classification/schema'
@@ -89,6 +89,29 @@ function anchorWallClock() {
 }
 
 describe('offline classification dataset', () => {
+  test('template normalization keeps the original split-group text for addresses, URLs and long tokens', () => {
+    // Literals were produced by the original `[local]+@[\w.-]+` implementation (d3725bc).
+    // Split groups hash this text, so any change here would move existing examples' groups.
+    const cases: Array<[input: string, expected: string]> = [
+      // Ordinary addresses, including digits that would otherwise fold to 0.
+      ['Reply to Ana.Ng+News@Example.test or ops_2@mail.example.test by Friday', 'reply to or by friday'],
+      ['Contact desk-7@example.test for ticket 4821', 'contact for ticket 0'],
+      // Back-to-back addresses: a match never extends into a following `@` or local-part symbol.
+      ['Chain a@b.c@d then x@y/z@w.test and p@q+r@s.test end', 'chain @d then and end'],
+      ['Glued first@example.test,second@example.test;third@example.test', 'glued , ;'],
+      // URL/address overlaps: whichever alternative starts first wins.
+      ['See https://example.test/a@b and www.example.test/x@y then mail@example.test/path', 'see and then /path'],
+      ['Prefix xhttp://example.test@q and user@example.test/https://example.test/z', 'prefix x and /'],
+      // Token boundaries: punctuation, a trailing dot, non-ASCII and NFKC digits before the local part, a bare `@`.
+      ['(team@example.test), <lead@example.test>; "quoted@example.test" tail@example.test.', '( ), < >; " "'],
+      ['Café Ünïcode@Example.test ①②@example.test 😀a@b.test end@', 'café ünï 😀 end@'],
+      // Long tokens with no `@` survive intact (and must stay linear).
+      [`Token ${'x'.repeat(5000)} end`, `token ${'x'.repeat(5000)} end`],
+      [`Blob ${'ab9_'.repeat(1500)}.test without at`, `blob ${'ab0_'.repeat(1500)}.test without at`],
+    ]
+    for (const [input, expected] of cases) expect(normalizeTemplate(input)).toBe(expected)
+  })
+
   test('per-label policies preserve source eligibility, reject model substitutions and require independent groups', () => {
     const actions = Object.keys(taxonomy.actions) as Classification['actions']
     const rows: PolicyRow[] = Array.from({ length: 80 }, (_, index) => ({ exampleId: `policy-${index}`, splitGroup: `group-${index % 8}`,
