@@ -18750,6 +18750,67 @@ describe("source-scoped sending identities", () => {
     }
   });
 
+  // Guards the delta page that examines DELTA_SCAN unselected changes: it must stay empty, say
+  // hasMore and still advance its cursor, or the SDK would stop early or reject the repeat.
+  test("offline mock delta pages continue past a full scan of unselected changes", async () => {
+    const store = new MockMailStore(":memory:");
+    try {
+      const mailbox = store.createMailbox({
+        owner: "alice",
+        seedKey: "delta-scan",
+        name: "Fictional mailbox",
+        email: "reader@example.test",
+        aliases: [],
+        color: "#123456",
+      });
+      const definition = createMockProviderDefinition(store);
+      const h = await fixture({ providers: [definition] });
+      const account = await h.inbox.connect("alice", {
+        providerId: definition.id,
+        credentials: { databaseId: store.identity, storeId: mailbox.id },
+      });
+      const scope = { owner: "alice", storeId: mailbox.id, accountId: account.id };
+      store.linkSource(scope, account.connectionId!);
+      const provider = await definition.create({
+        databaseId: store.identity,
+        storeId: mailbox.id,
+        accountId: account.id,
+        userId: "alice",
+      });
+      const receive = (subject: string, folder?: string) =>
+        store.receive(scope, {
+          from: participant("sender@example.test"),
+          subject,
+          text: subject,
+          folder,
+        });
+      let fence = await provider.sync(null);
+      expect(fence.hasMore).toBe(false);
+      for (let index = 0; index < 1001; index++) receive(`Fictional archived ${index}`, "archive");
+      const arrived = receive("Fictional inbox arrival");
+      const pages: Array<Awaited<ReturnType<typeof provider.sync>>> = [];
+      let previous = JSON.stringify(fence.cursor);
+      do {
+        pages.push((fence = await provider.sync(fence.cursor)));
+        expect(JSON.stringify(fence.cursor)).not.toBe(previous);
+        previous = JSON.stringify(fence.cursor);
+      } while (fence.hasMore);
+      expect(pages[0]).toMatchObject({
+        messages: [],
+        deletedMessageIds: [],
+        removedMessageIds: [],
+        hasMore: true,
+      });
+      // Exactly the inbox arrival, once: no archive-only message leaks into an Inbox delta.
+      expect(pages.flatMap((page) => page.messages.map((message) => message.id))).toEqual([
+        arrived.id,
+      ]);
+      expect(await provider.sync(fence.cursor)).toMatchObject({ messages: [], hasMore: false });
+    } finally {
+      store.close();
+    }
+  });
+
   test("a provider without account email derives the single sender at creation and identity refresh", async () => {
     const sole = { email: "verified@example.test", isPrimary: true, isDefault: true };
     for (const initiallyEmpty of [false, true]) {
