@@ -17504,7 +17504,8 @@ describe("blob privacy and draft editing", () => {
           <a href="/v1/openapi.json">api</a><a href="#top">top</a><a href="?q=1">query</a>
           <a href="cid:logo@example.test">logo</a><a href="https://example.test/a">site</a><a href="mailto:a@example.test">mail</a>
           <a href="https:/v1/openapi.json">scheme-only</a><a href="https:host/config">scheme-host</a>
-          <a href="https://example.test/n" title="https://trusted.example.test"><span title="https://trusted.example.test">nested</span></a>`,
+          <a href="https://example.test/n" title="https://trusted.example.test"><span title="https://trusted.example.test">nested</span></a>
+          <a href="https://bank.example.test@evil.example.test/login">https://bank.example.test</a>`,
         attachments: [inline],
       }),
     ]);
@@ -17530,6 +17531,7 @@ describe("blob privacy and draft editing", () => {
         "https://v1/openapi.json",
         "https://host/config",
         "https://example.test/n",
+        "https://bank.example.test@evil.example.test/login",
       ]);
       // Outside links show their real destination on hover; the message's own blobs don't need it.
       // Sender titles are dropped everywhere, so a nested one can't replace the destination.
@@ -17543,6 +17545,8 @@ describe("blob privacy and draft editing", () => {
         "https://v1/openapi.json",
         "https://host/config",
         "https://example.test/n",
+        // Userinfo that poses as the host is dropped from the label; the link still works.
+        "https://evil.example.test/login",
       ]);
       expect(urls("span", "title")).toEqual([null]);
     }

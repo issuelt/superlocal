@@ -29,6 +29,15 @@ const absoluteHttpUrl = (value: string) => {
     return undefined;
   }
 };
+// The hover label for a link's destination. `https://bank.example@evil.example/` really goes to
+// evil.example, so http(s) labels drop the userinfo that could pose as the host.
+const destinationLabel = (href: string) => {
+  if (!HTTP_SCHEME.test(href)) return href;
+  const url = new URL(href);
+  url.username = "";
+  url.password = "";
+  return url.href;
+};
 const MAX_EMAIL_STYLE_INPUT_BYTES = 256 * 1024;
 const MAX_EMAIL_STYLE_OUTPUT_BYTES = 128 * 1024;
 const MAX_EMAIL_STYLE_RULES = 512;
@@ -1078,7 +1087,7 @@ function sanitizeEmailMarkup(
           attribs: {
             ...attributes,
             ...(safeHref === undefined ? {} : { href: safeHref }),
-            ...(outside ? { title: safeHref } : {}),
+            ...(outside ? { title: destinationLabel(safeHref) } : {}),
             rel: "noopener noreferrer",
             target: "_blank",
           },
