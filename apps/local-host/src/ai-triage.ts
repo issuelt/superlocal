@@ -3228,7 +3228,10 @@ export function createAiTriageService({
     async lookup(owner: string, keys: AiThreadKey[]): Promise<AiDecisionPage> {
       if (!Array.isArray(keys) || keys.length > 100) fail("AI_LOOKUP_LIMIT");
       const decisions: AiDecision[] = [],
-        seen = new Set<string>();
+        seen = new Set<string>(),
+        current = settings(owner),
+        // One page of keys shares a few sources; resolve each source's scope once per lookup.
+        sourceBoxes = new Map<string, Promise<Set<string>>>();
       for (const item of keys) {
         validateKey(item);
         const id = key(owner, item.sourceId, item.threadId);
@@ -3239,9 +3242,15 @@ export function createAiTriageService({
         const value: AiDecision = JSON.parse(row.data);
         if (value.sourceId !== item.sourceId || value.threadId !== item.threadId) continue;
         try {
-          const selected = await scope(owner, settings(owner), item.sourceId);
-          if (await visible(owner, value, new Set(selected.boxes.map((box) => box.id))))
-            decisions.push(projected(owner, value));
+          let boxes = sourceBoxes.get(item.sourceId);
+          if (!boxes)
+            sourceBoxes.set(
+              item.sourceId,
+              (boxes = scope(owner, current, item.sourceId).then(
+                (selected) => new Set(selected.boxes.map((box) => box.id)),
+              )),
+            );
+          if (await visible(owner, value, await boxes)) decisions.push(projected(owner, value));
         } catch (error) {
           if (!(error instanceof InboxError) || error.status !== 404) throw error;
         }

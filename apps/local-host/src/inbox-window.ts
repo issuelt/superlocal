@@ -47,7 +47,7 @@ import {
   senderHostname,
   type SenderHistoryMessage,
 } from "../../web/src/sender-context";
-import type { Mail, Preferences } from "../../web/src/data";
+import type { Preferences } from "../../web/src/data";
 import type { AiTriageState, AiDecision } from "../../shared/ai-triage";
 import type { createInboxViewPreferencesStore } from "./inbox-preferences";
 import type { createSplitPreferencesStore } from "./split-preferences";
@@ -64,6 +64,8 @@ const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
 const wait = (ms = 0) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 // Counting walks every conversation of a view, so it runs in short synchronous
 // slices that defer to interactive requests (bounded, so it still progresses).
+/** Conversations per SDK read while preparing a window page (see preparePage). */
+const PAGE_SLICE = 25;
 const COUNT_PAGE = 25,
   COUNT_PAGES = 20,
   COUNT_YIELD_MS = 250,
@@ -1998,11 +2000,16 @@ export function createInboxWindowService(deps: Dependencies) {
         baseline: { ...read! },
         direction,
       } satisfies PageCursor);
-    while (budget.pages > 0 && rows.length < maximum && !stopped) {
-      budget.pages--;
+    for (let first = true; budget.pages > 0 && rows.length < maximum && !stopped; first = false) {
+      // A sparse view (e.g. Important) scans several hundred conversations. Read them in short
+      // slices and yield between slices, so a Done/body request waits for one slice, not the
+      // whole scan. The budget still counts 100-conversation pages, and continuation slices
+      // keep the first slice's state fence, so the baseline check below is unchanged.
+      if (!first) await wait();
+      budget.pages -= PAGE_SLICE / 100;
       const page = await inbox.mailboxConversations(owner, {
         mailboxIds: scope.boxes.map((box) => box.id),
-        limit: 100,
+        limit: PAGE_SLICE,
         direction,
         query: queryFilter,
         ...(position ? { cursor: position } : {}),
@@ -2944,12 +2951,15 @@ export function createInboxWindowService(deps: Dependencies) {
       observe(scope, null, scope.row.id);
       return requested.map((id) => ({ id, status: "absent" }));
     }
-    for (let offset = 0; offset < keys.length && budget.pages > 0; offset += 50) {
-      const wanted = keys.slice(offset, offset + 50),
+    // Same slicing as preparePage: a due wake re-reads every resident row, so yield between
+    // short keyed reads. The budget still counts one page per 50 keys.
+    for (let offset = 0; offset < keys.length && budget.pages > 0; offset += PAGE_SLICE) {
+      if (offset) await wait();
+      const wanted = keys.slice(offset, offset + PAGE_SLICE),
         items = new Map<string, MailboxConversation>();
       let cursor: string | undefined, read: ReadBaseline;
       do {
-        budget.pages--;
+        budget.pages -= PAGE_SLICE / 50;
         const page = await inbox.mailboxConversations(owner, {
           mailboxIds: scope.boxes.map((box) => box.id),
           keys: wanted,

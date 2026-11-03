@@ -348,10 +348,6 @@ function normalizeInlineImageHtml(
   return changed ? normalized : html;
 }
 
-export function recoverInlineMessageImages(html: string, attachments: Attachment[] = []): string {
-  return normalizeInlineImageHtml(html, attachments);
-}
-
 function gmailFolder(labels: string[]): MailFolder {
   if (labels.includes("TRASH")) return "trash";
   if (labels.includes("SPAM")) return "spam";

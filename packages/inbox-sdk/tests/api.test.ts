@@ -18690,6 +18690,127 @@ describe("source-scoped sending identities", () => {
     }
   });
 
+  test("offline mock delta pages read their own changes, with exits fenced to the interval start", async () => {
+    const store = new MockMailStore(":memory:");
+    try {
+      const mailbox = store.createMailbox({
+        owner: "alice",
+        seedKey: "delta-pages",
+        name: "Fictional mailbox",
+        email: "reader@example.test",
+        aliases: [],
+        color: "#123456",
+      });
+      const definition = createMockProviderDefinition(store);
+      const h = await fixture({ providers: [definition] });
+      const account = await h.inbox.connect("alice", {
+        providerId: definition.id,
+        credentials: { databaseId: store.identity, storeId: mailbox.id },
+      });
+      const scope = { owner: "alice", storeId: mailbox.id, accountId: account.id };
+      store.linkSource(scope, account.connectionId!);
+      const provider = await definition.create({
+        databaseId: store.identity,
+        storeId: mailbox.id,
+        accountId: account.id,
+        userId: "alice",
+      });
+      const receive = (subject: string) =>
+        store.receive(scope, { from: participant("sender@example.test"), subject, text: subject });
+      const existing = Array.from({ length: 4 }, (_, index) => receive(`Fictional old ${index}`));
+      let fence = await provider.sync(null);
+      expect(fence.hasMore).toBe(false);
+      store.mutate(scope, existing[0]!.id, { folder: "archive" });
+      const arrived = [receive("Fictional new 0"), receive("Fictional new 1")];
+      store.mutate(scope, existing[1]!.id, { isStarred: true });
+      // The exit's latest version is outside Inbox too; only `before` at the fence reveals it.
+      store.mutate(scope, existing[0]!.id, { isRead: true });
+      store.mutate(scope, existing[2]!.id, { deletePermanently: true });
+      const changes = spyOn(store, "changes");
+      const pages: Array<Awaited<ReturnType<typeof provider.sync>>> = [];
+      try {
+        do pages.push((fence = await provider.sync(fence.cursor, { limit: 2 })));
+        while (fence.hasMore);
+        // Each page reads at most limit + 1 net changes; none materializes the whole interval.
+        expect(changes.mock.calls.map((call) => call[4])).toEqual(pages.map(() => 3));
+      } finally {
+        changes.mockRestore();
+      }
+      expect(pages.map((page) => page.messages.length + page.deletedMessageIds.length)).toEqual([
+        2, 2, 1,
+      ]);
+      expect(new Set(pages.flatMap((page) => page.messages.map((message) => message.id)))).toEqual(
+        new Set([arrived[0]!.id, arrived[1]!.id, existing[1]!.id, existing[0]!.id]),
+      );
+      expect(pages.flatMap((page) => page.removedMessageIds)).toEqual([existing[0]!.id]);
+      expect(pages.flatMap((page) => page.deletedMessageIds)).toEqual([existing[2]!.id]);
+      expect(await provider.sync(fence.cursor)).toMatchObject({ messages: [], hasMore: false });
+    } finally {
+      store.close();
+    }
+  });
+
+  // Guards the delta page that examines DELTA_SCAN unselected changes: it must stay empty, say
+  // hasMore and still advance its cursor, or the SDK would stop early or reject the repeat.
+  test("offline mock delta pages continue past a full scan of unselected changes", async () => {
+    const store = new MockMailStore(":memory:");
+    try {
+      const mailbox = store.createMailbox({
+        owner: "alice",
+        seedKey: "delta-scan",
+        name: "Fictional mailbox",
+        email: "reader@example.test",
+        aliases: [],
+        color: "#123456",
+      });
+      const definition = createMockProviderDefinition(store);
+      const h = await fixture({ providers: [definition] });
+      const account = await h.inbox.connect("alice", {
+        providerId: definition.id,
+        credentials: { databaseId: store.identity, storeId: mailbox.id },
+      });
+      const scope = { owner: "alice", storeId: mailbox.id, accountId: account.id };
+      store.linkSource(scope, account.connectionId!);
+      const provider = await definition.create({
+        databaseId: store.identity,
+        storeId: mailbox.id,
+        accountId: account.id,
+        userId: "alice",
+      });
+      const receive = (subject: string, folder?: string) =>
+        store.receive(scope, {
+          from: participant("sender@example.test"),
+          subject,
+          text: subject,
+          folder,
+        });
+      let fence = await provider.sync(null);
+      expect(fence.hasMore).toBe(false);
+      for (let index = 0; index < 1001; index++) receive(`Fictional archived ${index}`, "archive");
+      const arrived = receive("Fictional inbox arrival");
+      const pages: Array<Awaited<ReturnType<typeof provider.sync>>> = [];
+      let previous = JSON.stringify(fence.cursor);
+      do {
+        pages.push((fence = await provider.sync(fence.cursor)));
+        expect(JSON.stringify(fence.cursor)).not.toBe(previous);
+        previous = JSON.stringify(fence.cursor);
+      } while (fence.hasMore);
+      expect(pages[0]).toMatchObject({
+        messages: [],
+        deletedMessageIds: [],
+        removedMessageIds: [],
+        hasMore: true,
+      });
+      // Exactly the inbox arrival, once: no archive-only message leaks into an Inbox delta.
+      expect(pages.flatMap((page) => page.messages.map((message) => message.id))).toEqual([
+        arrived.id,
+      ]);
+      expect(await provider.sync(fence.cursor)).toMatchObject({ messages: [], hasMore: false });
+    } finally {
+      store.close();
+    }
+  });
+
   test("a provider without account email derives the single sender at creation and identity refresh", async () => {
     const sole = { email: "verified@example.test", isPrimary: true, isDefault: true };
     for (const initiallyEmpty of [false, true]) {

@@ -70,9 +70,12 @@ type PageCursor = {
   selection: string;
   mode: "snapshot" | "delta";
   ceiling: number;
+  /** Snapshot mode: rows already returned. Delta mode: last examined seq in (after, ceiling], or 0. */
   offset: number;
   after: number;
 };
+/** Net changes examined per delta page, so a long history interval spans pages instead of one block. */
+const DELTA_SCAN = 1000;
 
 function cursorError(): never {
   throw new ProviderCursorExpiredError(
@@ -246,7 +249,10 @@ export class MockInboxProvider implements InboxProvider {
       ) ||
       cursor.ceiling > this.store.highWater(this.scope) ||
       cursor.after > cursor.ceiling ||
-      (cursor.mode === "snapshot" && cursor.after !== 0)
+      (cursor.mode === "snapshot" && cursor.after !== 0) ||
+      (cursor.mode === "delta" &&
+        cursor.offset !== 0 &&
+        (cursor.offset <= cursor.after || cursor.offset > cursor.ceiling))
     )
       cursorError();
     return cursor;
@@ -455,18 +461,38 @@ export class MockInboxProvider implements InboxProvider {
     // A continuation has a fixed upper fence. Once drained, the next request opens a new interval.
     if (cursor.after === cursor.ceiling && cursor.offset === 0)
       cursor = { ...cursor, ceiling: this.store.highWater(this.scope) };
-    const changes = this.store
-      .changes(this.scope, cursor.after, cursor.ceiling)
-      .filter(
-        (change) =>
+    // Walk net changes from the last examined seq, keeping at most `size` that touch the selection.
+    // The interval stays fixed across pages, so each change's `before` is still as of `after`.
+    const selected: ReturnType<MockMailStore["changes"]> = [];
+    let position = cursor.offset || cursor.after,
+      examined = 0,
+      hasMore = false;
+    for (let exhausted = false; !exhausted && !hasMore;) {
+      const batch = this.store.changes(
+        this.scope,
+        cursor.after,
+        cursor.ceiling,
+        position,
+        size + 1,
+      );
+      exhausted = batch.length <= size;
+      for (const change of batch) {
+        if (selected.length === size || examined === DELTA_SCAN) {
+          hasMore = true;
+          break;
+        }
+        examined++;
+        position = change.seq;
+        if (
           this.matches(change.after, selection) ||
           this.matches(change.before, selection) ||
           (change.after === null &&
             change.before !== null &&
-            this.matchesMailbox(change.before, selection)),
-      );
-    if (cursor.offset > changes.length) cursorError();
-    const selected = changes.slice(cursor.offset, cursor.offset + size);
+            this.matchesMailbox(change.before, selection))
+        )
+          selected.push(change);
+      }
+    }
     const messages = selected.flatMap((change) =>
       change.after ? [this.store.project(this.scope, change.after)] : [],
     );
@@ -486,10 +512,8 @@ export class MockInboxProvider implements InboxProvider {
             .map((change) => change.id);
     // Rehydrate a folder exit too: the SDK can record the actual destination (e.g. Trash),
     // not merely its fallback of Archive when processing a folder-removal tombstone.
-    const offset = cursor.offset + selected.length;
-    const hasMore = offset < changes.length;
     const next = this.syncCursor(
-      hasMore ? { ...cursor, offset } : { ...cursor, after: cursor.ceiling, offset: 0 },
+      hasMore ? { ...cursor, offset: position } : { ...cursor, after: cursor.ceiling, offset: 0 },
       selection,
     );
     return {

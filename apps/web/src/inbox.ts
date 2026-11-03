@@ -252,6 +252,23 @@ export type InboxUndo = (() => Promise<void>) & {
 class InboxRecoveryStorageError extends InboxActionError {}
 export class InboxRecoveryRejected extends InboxActionError {}
 const recoveryBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+const entryBytes = new WeakMap<object, number>();
+/**
+ * UTF-8 size of `JSON.stringify([...values])`, from per-entry sizes cached by identity. Window
+ * rows, projections and details are replaced rather than mutated, so a cached size stays exact
+ * and a window update only serializes the entries it changed.
+ */
+function jsonListBytes(values: Iterable<object>): number {
+  let total = 2,
+    count = 0;
+  for (const value of values) {
+    let size = entryBytes.get(value);
+    if (size === undefined) entryBytes.set(value, (size = recoveryBytes(value)));
+    total += size;
+    count++;
+  }
+  return total + Math.max(0, count - 1);
+}
 /** Strict field validation also prevents accidentally persisting a Mail graph. */
 export function validInboxCommandRecovery(value: unknown): value is InboxCommandRecovery {
   const object = (v: any, keys: string[]) =>
@@ -657,8 +674,15 @@ function draftHtml(value: string): string {
   return template.innerHTML;
 }
 
-/** Day-level group heading: "September 4th", plus the year once it differs from today's. */
-export function dayGroup(time: Date, today = new Date()) {
+/**
+ * Day-level group heading: "September 4th", plus the year once it differs from today's.
+ * Pass one `month` formatter per pass; building it is far costlier than formatting.
+ */
+export function dayGroup(
+  time: Date,
+  today = new Date(),
+  month = new Intl.DateTimeFormat([], { month: "long" }),
+) {
   const day = time.getDate(),
     rest = day % 100;
   const suffix =
@@ -671,8 +695,7 @@ export function dayGroup(time: Date, today = new Date()) {
           : day % 10 === 3
             ? "rd"
             : "th";
-  const month = time.toLocaleDateString([], { month: "long" });
-  return `${month} ${day}${suffix}${time.getFullYear() === today.getFullYear() ? "" : `, ${time.getFullYear()}`}`;
+  return `${month.format(time)} ${day}${suffix}${time.getFullYear() === today.getFullYear() ? "" : `, ${time.getFullYear()}`}`;
 }
 
 function displayTimes() {
@@ -686,7 +709,9 @@ function displayTimes() {
   const yesterdayLabel = yesterday.toDateString();
   const clock = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
   const date = new Intl.DateTimeFormat([], { month: "short", day: "numeric" });
-  const values = new Map<string, { date: string; group: string }>();
+  const month = new Intl.DateTimeFormat([], { month: "long" });
+  const values = new Map<string, { date: string; group: string }>(),
+    groups = new Map<string, string>();
   const locale = clock.resolvedOptions();
   return {
     key: `${locale.locale}\0${locale.timeZone}\0${todayLabel}`,
@@ -696,10 +721,17 @@ function displayTimes() {
       const time = new Date(value),
         day = time.toDateString(),
         sameDay = day === todayLabel;
-      const formatted = {
-        date: sameDay ? clock.format(time) : date.format(time),
-        group: sameDay ? "Today" : day === yesterdayLabel ? "Yesterday" : dayGroup(time, today),
-      };
+      let group = groups.get(day);
+      if (group === undefined)
+        groups.set(
+          day,
+          (group = sameDay
+            ? "Today"
+            : day === yesterdayLabel
+              ? "Yesterday"
+              : dayGroup(time, today, month)),
+        );
+      const formatted = { date: sameDay ? clock.format(time) : date.format(time), group };
       values.set(value, formatted);
       return formatted;
     },
@@ -957,7 +989,7 @@ export class InboxStore {
       localRemoved: new Map(this.windowLocalRemoved),
       removalFences: new Map(this.windowRemovalFences),
       replayCheckpoint: this.windowReplayCheckpoint,
-      bytes: new TextEncoder().encode(JSON.stringify([...rows.values()])).length * 2,
+      bytes: jsonListBytes(rows.values()) * 2,
     });
     while (this.retainedViews.size > RETAINED_VIEW_LIMIT)
       this.retainedViews.delete(this.retainedViews.keys().next().value!);
@@ -1019,9 +1051,9 @@ export class InboxStore {
     // Wait for first paint. Each server pass is bounded; continue a progressing
     // count instead of abandoning larger inboxes. Navigation cancels the fill.
     const idle = new Promise<void>((resolve) => {
-      typeof requestIdleCallback === "function"
-        ? requestIdleCallback(() => resolve(), { timeout: 2000 })
-        : setTimeout(resolve, 300);
+      if (typeof requestIdleCallback === "function")
+        requestIdleCallback(() => resolve(), { timeout: 2000 });
+      else setTimeout(resolve, 300);
     });
     const job = {
       queryId,
@@ -1306,10 +1338,10 @@ export class InboxStore {
     for (const row of this.windowRows.values())
       if (!resident.has(row.key)) resident.set(row.key, row.mail);
     return (
-      size([...this.windowRows.values()]) +
-      size([...resident.values()]) +
-      size([...this.windowDetails.values()]) +
-      size([...this.details.values()]) +
+      jsonListBytes(this.windowRows.values()) * 2 +
+      jsonListBytes(resident.values()) * 2 +
+      jsonListBytes(this.windowDetails.values()) * 2 +
+      jsonListBytes(this.details.values()) * 2 +
       size([...this.threadMessagePins].map(([id, pins]) => [id, [...pins]])) +
       [...this.windowPinnedBytes.values()].reduce((sum, value) => sum + value, 0) +
       [...this.retainedViews.values()].reduce((sum, view) => sum + view.bytes, 0)
@@ -2663,7 +2695,7 @@ export class InboxStore {
       return this.state.accounts.find((account) => account.id === boxId);
     const message = messageId
       ? mail?.messages.find((message) => message.id === messageId)
-      : mail?.messages.filter((message) => !message.pending).at(-1);
+      : mail?.messages.findLast((message) => !message.pending);
     const ids = message?.memberships?.length
       ? message.memberships.map((state) => state.mailboxId)
       : (mail?.mailboxIds ?? this.unifiedMailboxIds());
@@ -2884,7 +2916,9 @@ export class InboxStore {
             signal: options.signal,
           });
           if (!response.ok)
-            throw new Error("Sign in through the host application before opening this inbox.");
+            throw new Error("Sign in through the host application before opening this inbox.", {
+              cause: error,
+            });
           this.client.clearCache();
         }
         if (generation !== this.generation) return;
@@ -5094,8 +5128,7 @@ export class InboxStore {
     )
       throw new Error("The selected message no longer belongs to this conversation.");
     const parent =
-      input.sourceMessageId ??
-      input.mail?.messages.filter((message) => !message.pending).at(-1)?.id;
+      input.sourceMessageId ?? input.mail?.messages.findLast((message) => !message.pending)?.id;
     if (input.mail?.messages.find((message) => message.id === parent)?.pending)
       throw new Error("Wait for the queued message to finish sending before replying to it.");
     const implicitReply = !!parent && (input.mode === "reply" || input.mode === "replyAll");
@@ -5183,7 +5216,7 @@ export class InboxStore {
     const issue = this.state.issues.find((issue) => issue.key === `draft:${draft.id}`);
     this.editDraft(draft);
     const raw = await this.flushDraft(draft.id);
-    const previous = this.references.filter((ref) => ref.draftId === draft.id).at(-1);
+    const previous = this.references.findLast((ref) => ref.draftId === draft.id);
     const previousStatus = previous && this.operations.get(previous.id)?.status;
     if (previousStatus === "cancelled" || previousStatus === "failed")
       this.submissions.delete(draft.id);
@@ -7277,6 +7310,7 @@ export class InboxStore {
                   if (incomplete)
                     throw new Error(
                       "The action did not finish, and some changes could not be restored. Refresh the inbox before retrying.",
+                      { cause: error },
                     );
                   throw error;
                 }
@@ -7344,6 +7378,7 @@ export class InboxStore {
         if (incomplete)
           throw new Error(
             "Label changes did not finish, and some changes could not be restored. Refresh before retrying.",
+            { cause: error },
           );
         throw error;
       }
@@ -7452,7 +7487,9 @@ export class InboxStore {
             signal: this.controller.signal,
           });
           if (!response.ok)
-            throw new Error("Sign in through the host application before opening this inbox.");
+            throw new Error("Sign in through the host application before opening this inbox.", {
+              cause: error,
+            });
           this.client.clearCache();
           await this.readUpdates(true);
         } catch (next) {

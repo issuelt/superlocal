@@ -23,7 +23,7 @@ const labelHues: Record<string, number> = {
 };
 
 /** Stable hue per label so the same label reads the same color everywhere. */
-export function labelHue(label: string) {
+function labelHue(label: string) {
   const key = label.trim().toLowerCase();
   if (key in labelHues) return labelHues[key];
   let hash = 0;

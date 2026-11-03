@@ -43,7 +43,6 @@ import {
   type Inbox,
   type InboxOptions,
   type Label,
-  type Message,
   type MessageSummary,
   type MutationInput,
   type Operation,
@@ -58,7 +57,6 @@ import {
   type ConnectionIdentity,
   type Mailbox,
   type MailboxCandidate,
-  type MailboxInput,
   type MailboxMembership,
   type MailboxMessageSummary,
   type MailboxQuery,
@@ -292,6 +290,10 @@ export function createInbox(options: InboxOptions): Inbox {
   const path = typeof options.database === "string" ? options.database : ":memory:";
   if (ownsDatabase && path !== ":memory:")
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  // db.query() caches prepared statements in a per-database LRU whose size is this process-wide
+  // static (20 by default). One mailbox page cycles through more distinct statements than that, so
+  // every call re-prepared its SQL. The raised bound still caps dynamically generated SQL.
+  Database.MAX_QUERY_CACHE_SIZE = Math.max(Database.MAX_QUERY_CACHE_SIZE, 512);
   const db =
     options.database instanceof Database ? options.database : new Database(path, { create: true });
   if (ownsDatabase && path !== ":memory:") chmodSync(path, 0o600);
@@ -598,6 +600,7 @@ export function createInbox(options: InboxOptions): Inbox {
     reader.closeSent = true;
     reader.worker.ref();
     try {
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage takes no targetOrigin; a second argument is the transfer list.
       reader.worker.postMessage({ type: "close" });
     } catch {
       failCorrespondence(reader, closedRead());
@@ -618,14 +621,16 @@ export function createInbox(options: InboxOptions): Inbox {
     reader.active = true;
     reader.worker.ref();
     try {
-      reader.worker.postMessage({
+      const message = {
         type: "read",
         id: job.id,
         filename: correspondenceFilename,
         owner: job.owner,
         sql: job.sql,
         params: job.params,
-      });
+      };
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage takes no targetOrigin; a second argument is the transfer list.
+      reader.worker.postMessage(message);
     } catch {
       failCorrespondence(reader, unavailableRead());
     }
