@@ -252,6 +252,23 @@ export type InboxUndo = (() => Promise<void>) & {
 class InboxRecoveryStorageError extends InboxActionError {}
 export class InboxRecoveryRejected extends InboxActionError {}
 const recoveryBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+const entryBytes = new WeakMap<object, number>();
+/**
+ * UTF-8 size of `JSON.stringify([...values])`, from per-entry sizes cached by identity. Window
+ * rows, projections and details are replaced rather than mutated, so a cached size stays exact
+ * and a window update only serializes the entries it changed.
+ */
+function jsonListBytes(values: Iterable<object>): number {
+  let total = 2,
+    count = 0;
+  for (const value of values) {
+    let size = entryBytes.get(value);
+    if (size === undefined) entryBytes.set(value, (size = recoveryBytes(value)));
+    total += size;
+    count++;
+  }
+  return total + Math.max(0, count - 1);
+}
 /** Strict field validation also prevents accidentally persisting a Mail graph. */
 export function validInboxCommandRecovery(value: unknown): value is InboxCommandRecovery {
   const object = (v: any, keys: string[]) =>
@@ -957,7 +974,7 @@ export class InboxStore {
       localRemoved: new Map(this.windowLocalRemoved),
       removalFences: new Map(this.windowRemovalFences),
       replayCheckpoint: this.windowReplayCheckpoint,
-      bytes: new TextEncoder().encode(JSON.stringify([...rows.values()])).length * 2,
+      bytes: jsonListBytes(rows.values()) * 2,
     });
     while (this.retainedViews.size > RETAINED_VIEW_LIMIT)
       this.retainedViews.delete(this.retainedViews.keys().next().value!);
@@ -1306,10 +1323,10 @@ export class InboxStore {
     for (const row of this.windowRows.values())
       if (!resident.has(row.key)) resident.set(row.key, row.mail);
     return (
-      size([...this.windowRows.values()]) +
-      size([...resident.values()]) +
-      size([...this.windowDetails.values()]) +
-      size([...this.details.values()]) +
+      jsonListBytes(this.windowRows.values()) * 2 +
+      jsonListBytes(resident.values()) * 2 +
+      jsonListBytes(this.windowDetails.values()) * 2 +
+      jsonListBytes(this.details.values()) * 2 +
       size([...this.threadMessagePins].map(([id, pins]) => [id, [...pins]])) +
       [...this.windowPinnedBytes.values()].reduce((sum, value) => sum + value, 0) +
       [...this.retainedViews.values()].reduce((sum, view) => sum + view.bytes, 0)
