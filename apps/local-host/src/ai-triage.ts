@@ -236,7 +236,8 @@ export function createAiTriageService({ database: db, inbox, configuration, conf
     value.revision = seq
     activity(owner, value.sourceId, value.threadId, reason ?? (value.state === 'pending' ? 'queued' : value.state), value, eventReason)
     db.query('INSERT INTO local_ai_decisions VALUES (?,?,?,?,?,?,?) ON CONFLICT(owner,source,thread) DO UPDATE SET data=excluded.data,fingerprint=excluded.fingerprint,sender=excluded.sender,seq=excluded.seq').run(owner, value.sourceId, value.threadId, JSON.stringify(value), fingerprint, sender, seq)
-    db.query('DELETE FROM local_ai_message_refs WHERE owner=? AND source=? AND thread=? AND message NOT IN (SELECT value FROM json_each(?))').run(owner, value.sourceId, value.threadId, JSON.stringify(value.messageIds))
+    // Without the hint SQLite scans the owner's whole covering primary key, making each publish O(refs).
+    db.query('DELETE FROM local_ai_message_refs INDEXED BY local_ai_message_refs_thread WHERE owner=? AND source=? AND thread=? AND message NOT IN (SELECT value FROM json_each(?))').run(owner, value.sourceId, value.threadId, JSON.stringify(value.messageIds))
     for (const message of value.messageIds) db.query("INSERT OR IGNORE INTO local_ai_message_refs(owner,message,source,thread,fingerprint) VALUES (?,?,?,?,'')").run(owner, message, value.sourceId, value.threadId)
     for (const message of messages ?? []) db.query('UPDATE local_ai_message_refs SET fingerprint=? WHERE owner=? AND message=? AND source=? AND thread=?').run(digest(semantic(message)), owner, message.id, value.sourceId, value.threadId)
     if (fresh) db.query('UPDATE local_ai_counts SET decisions=decisions+1 WHERE owner=?').run(owner)
