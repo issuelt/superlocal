@@ -1,4 +1,4 @@
-import type { AiTriageState } from "../../shared/ai-triage";
+import { aiHaltCodes, type AiTriageState } from "../../shared/ai-triage";
 
 /** Sidebar line for AI sorting in progress: a backlog run with determinate progress, or new arrivals being assessed. Hidden when idle. */
 export default function AiSortingStatus({
@@ -12,14 +12,21 @@ export default function AiSortingStatus({
   const job = state.jobs.find((item) => item.status === "running" || item.status === "paused");
   const working = state.queue.pending + state.queue.processing;
   if (!job && working === 0) return null;
+  // A provider halt holds new arrivals too, so nothing is being assessed until the user acts.
+  const halted = aiHaltCodes.has(state.problemCode ?? "");
   const done = job ? job.completed + job.failed : 0;
   const total = job ? Math.max(job.queued, done) : 0;
-  const label = job
-    ? job.status === "paused"
+  const label =
+    job?.status === "paused" || halted
       ? "Sorting paused"
-      : "Sorting older mail"
-    : `Assessing ${working.toLocaleString()} conversation${working === 1 ? "" : "s"}`;
-  const text = job ? `${done.toLocaleString()} of ${total ? total.toLocaleString() : "…"}` : "";
+      : job
+        ? "Sorting older mail"
+        : `Assessing ${working.toLocaleString()} conversation${working === 1 ? "" : "s"}`;
+  const text = job
+    ? `${done.toLocaleString()} of ${total ? total.toLocaleString() : "…"}`
+    : halted
+      ? `${working.toLocaleString()} waiting`
+      : "";
   return (
     <section
       className="mail-sync-status ai-sorting-status"
@@ -46,7 +53,7 @@ export default function AiSortingStatus({
           />
         ) : (
           <div
-            className={`mail-sync-progress${job?.status === "paused" ? "" : " is-active"}`}
+            className={`mail-sync-progress${job?.status === "paused" || halted ? "" : " is-active"}`}
             role="progressbar"
             aria-label={label}
           >

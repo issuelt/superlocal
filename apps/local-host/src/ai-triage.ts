@@ -12,6 +12,7 @@ import {
   aiUrgencies,
   aiRisks,
   aiActivityReasons,
+  aiHaltCodes,
   type AiActivityReason,
   type AiAssessment,
   type AiDecision,
@@ -132,8 +133,6 @@ const RETAIN = 100000;
 const GLOBAL_QUEUE_LIMIT = 20064;
 const GLOBAL_RETAIN = 500000;
 const DAY = 86_400_000;
-/** Provider answers that halt all dispatch instead of failing each queued conversation. */
-const haltCodes = new Set(["AI_AUTH_FAILED", "AI_QUOTA_EXCEEDED"]);
 const idOK = (value: unknown): value is string =>
   typeof value === "string" && /^[^\s\x00-\x1f\x7f]{1,512}$/.test(value);
 const commandOK = (value: unknown): value is string =>
@@ -897,7 +896,7 @@ export function createAiTriageService({
           const job: AiHistoryJob = JSON.parse(row.data),
             current = settingsRow(row.owner);
           if (
-            !haltCodes.has(job.problemCode ?? "") ||
+            !aiHaltCodes.has(job.problemCode ?? "") ||
             current?.generation !== row.generation ||
             !JSON.parse(current.data).enabled
           )
@@ -2424,7 +2423,7 @@ export function createAiTriageService({
           ),
       );
     } else if (result.outcome !== "aborted") providerFailures = 0;
-    const haltCode = result.code && haltCodes.has(result.code) ? result.code : null;
+    const haltCode = result.code && aiHaltCodes.has(result.code) ? result.code : null;
     if (haltCode) {
       halt(haltCode);
       finishAttempt(queue.owner, attempt, result);
@@ -3170,7 +3169,7 @@ export function createAiTriageService({
         )
           fail("AI_JOB_STALE", 409);
         job.status = action === "pause" ? "paused" : action === "resume" ? "running" : "cancelled";
-        if (action === "resume" && (!row.enumerated || haltCodes.has(job.problemCode ?? "")))
+        if (action === "resume" && (!row.enumerated || aiHaltCodes.has(job.problemCode ?? "")))
           job.problemCode = null;
         saveJob(row, job);
         // An explicit resume retries the provider for every job a halt paused.

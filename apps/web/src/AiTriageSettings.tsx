@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  aiHaltCodes,
   type AiDecision,
   type AiSettings,
   type AiTriageActions,
@@ -440,7 +441,10 @@ export default function AiTriageSettings({
       )}
       {level !== "off" && (working > 0 || state.queue.failed > 0) && (
         <p className="settings-note" role="status">
-          {working > 0 && `Assessing ${number(working)} conversation${working === 1 ? "" : "s"}…`}
+          {working > 0 &&
+            (aiHaltCodes.has(state.problemCode ?? "")
+              ? `${number(working)} conversation${working === 1 ? "" : "s"} waiting.`
+              : `Assessing ${number(working)} conversation${working === 1 ? "" : "s"}…`)}
           {working > 0 && state.queue.failed > 0 && " "}
           {state.queue.failed > 0 &&
             `${number(state.queue.failed)} could not be assessed and follow the normal rules.`}
