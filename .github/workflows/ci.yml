@@ -40,6 +40,7 @@ jobs:
           bun --no-env-file run typecheck:mock
 
       - name: Build
+        id: build
         run: |
           bun --no-env-file run build
           bun --no-env-file run build:web
@@ -47,19 +48,20 @@ jobs:
       - name: Test web
         run: bun --no-env-file run test:web
 
+      # The suites are independent, so a web failure still reports API results.
       - name: Test API
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: bun --no-env-file run test:api
         env:
           INBOX_TEST_LIVE: "false"
 
-  # The codebase predates these checks and still has findings, so this job
-  # reports without failing CI. Remove continue-on-error after the repo-wide
-  # format and lint pass.
+  # The codebase predates these checks and still has findings, so each step
+  # reports its findings without failing the job. Remove continue-on-error
+  # after the repo-wide format and lint pass.
   lint:
     name: Lint, format and knip
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -76,13 +78,13 @@ jobs:
       - run: bun --no-env-file install --frozen-lockfile
 
       - name: Lint
-        if: ${{ !cancelled() }}
+        continue-on-error: true
         run: bun --no-env-file run lint
 
       - name: Format
-        if: ${{ !cancelled() }}
+        continue-on-error: true
         run: bun --no-env-file run fmt:check
 
       - name: Unused code
-        if: ${{ !cancelled() }}
+        continue-on-error: true
         run: bun --no-env-file run knip

@@ -1,41 +1,46 @@
 // Runs the fast checks for this branch's changes, side by side: format and lint
 // of the changed files, knip, typecheck of the affected workspaces and their
-// dependents, and the test suites those workspaces own. Adapted from t3code's
+// dependents, and the test suites that exercise them. Adapted from t3code's
 // scripts/check-changed.ts.
 //
 //   bun --no-env-file run check:changed          compare against the merge base with origin/main
 //   bun --no-env-file run check:changed <ref>    compare against the merge base with <ref>
 //
-// Uncommitted and untracked files count. Exits non-zero when any step fails.
+// Uncommitted, untracked and deleted files count. Exits non-zero when any step fails.
+import { existsSync } from "node:fs";
 import { $ } from "bun";
 
-type Workspace = "sdk" | "web" | "host" | "mock";
+const bunRun = (...args: ReadonlyArray<string>) => ["bun", "--no-env-file", "run", ...args];
 
-// Path prefix -> workspaces whose typecheck or tests can change with it.
-// inbox-sdk feeds every app; apps/shared is imported by web and local-host.
-const AFFECTS: ReadonlyArray<readonly [prefix: string, workspaces: ReadonlyArray<Workspace>]> = [
-  ["packages/inbox-sdk/", ["sdk", "web", "host", "mock"]],
-  ["apps/mock-api/", ["mock", "host"]],
-  ["apps/shared/", ["web", "host"]],
-  ["apps/web/", ["web"]],
-  ["apps/local-host/", ["host"]],
+// Typechecks run side by side; test suites run one at a time after them,
+// because their timing-sensitive cases time out on a loaded machine.
+const CHECKS = {
+  sdk: { kind: "typecheck", cmd: bunRun("--cwd", "packages/inbox-sdk", "typecheck") },
+  web: { kind: "typecheck", cmd: bunRun("--cwd", "apps/web", "tsc", "--noEmit", "-p", ".") },
+  host: { kind: "typecheck", cmd: bunRun("--cwd", "apps/local-host", "typecheck") },
+  mock: { kind: "typecheck", cmd: bunRun("--cwd", "apps/mock-api", "typecheck") },
+  "test:api": { kind: "test", cmd: bunRun("test:api") },
+  "test:web": { kind: "test", cmd: bunRun("test:web") },
+} as const;
+
+type Check = keyof typeof CHECKS;
+const EVERYTHING: ReadonlyArray<Check> = ["sdk", "web", "host", "mock", "test:api", "test:web"];
+
+// Path prefix -> checks that can change with it. inbox-sdk feeds every app;
+// apps/shared is imported by web and local-host. Both suites import local-host,
+// mock-api and shared code, and test:web also imports the SDK.
+const AFFECTS: ReadonlyArray<readonly [prefix: string, checks: ReadonlyArray<Check>]> = [
+  ["packages/inbox-sdk/", EVERYTHING],
+  ["apps/mock-api/", ["mock", "host", "test:api", "test:web"]],
+  ["apps/shared/", ["web", "host", "test:api", "test:web"]],
+  ["apps/local-host/", ["host", "test:api", "test:web"]],
+  ["apps/web/", ["web", "test:web"]],
   // apps/local-host's tsconfig also typechecks the root scripts.
   ["scripts/", ["host"]],
-  ["package.json", ["sdk", "web", "host", "mock"]],
-  ["bun.lock", ["sdk", "web", "host", "mock"]],
+  ["tsconfig.base.json", ["sdk", "web", "host", "mock"]],
+  ["package.json", EVERYTHING],
+  ["bun.lock", EVERYTHING],
 ];
-
-const TYPECHECK: Record<Workspace, ReadonlyArray<string>> = {
-  sdk: ["bun", "--no-env-file", "run", "--cwd", "packages/inbox-sdk", "typecheck"],
-  web: ["bun", "--no-env-file", "run", "--cwd", "apps/web", "tsc", "--noEmit", "-p", "."],
-  host: ["bun", "--no-env-file", "run", "--cwd", "apps/local-host", "typecheck"],
-  mock: ["bun", "--no-env-file", "run", "--cwd", "apps/mock-api", "typecheck"],
-};
-
-const TESTS: Partial<Record<Workspace, ReadonlyArray<string>>> = {
-  sdk: ["bun", "--no-env-file", "run", "test:api"],
-  web: ["bun", "--no-env-file", "run", "test:web"],
-};
 
 const LINTABLE = /\.(?:[cm]?[jt]sx?)$/u;
 
@@ -45,7 +50,7 @@ const base = Bun.argv[2] ?? "origin/main";
 const mergeBase = (await $`git merge-base HEAD ${base}`.text()).trim();
 const changed = [
   ...new Set([
-    ...lines(await $`git diff --name-only --diff-filter=ACMR ${mergeBase}`.text()),
+    ...lines(await $`git diff --name-only --diff-filter=ACMRD ${mergeBase}`.text()),
     ...lines(await $`git ls-files --others --exclude-standard`.text()),
   ]),
 ].toSorted();
@@ -55,13 +60,16 @@ if (changed.length === 0) {
   process.exit(0);
 }
 
-const affected = new Set<Workspace>();
+const affected = new Set<Check>();
 for (const file of changed) {
-  for (const [prefix, workspaces] of AFFECTS) {
-    if (file === prefix || file.startsWith(prefix)) workspaces.forEach((w) => affected.add(w));
+  for (const [prefix, checks] of AFFECTS) {
+    if (file === prefix || file.startsWith(prefix)) checks.forEach((c) => affected.add(c));
   }
 }
+// Deleted files still pick checks and knip, but format and lint need files on disk.
+const present = changed.filter((file) => existsSync(file));
 const code = changed.filter((file) => LINTABLE.test(file));
+const presentCode = code.filter((file) => present.includes(file));
 
 // `report` turns a step's stdout into the problems that count; empty means it
 // passed, whatever the exit code.
@@ -92,14 +100,19 @@ const knipInChangedFiles = (stdout: string) => {
     .join("\n");
 };
 
-// Static checks run side by side; test suites run one at a time after them,
-// because their timing-sensitive cases time out on a loaded machine.
-const steps: Array<Step> = [
-  { name: "fmt", cmd: ["oxfmt", "--check", "--no-error-on-unmatched-pattern", ...changed] },
-];
+const steps: Array<Step> = [];
 const tests: Array<Step> = [];
-if (code.length > 0) {
-  steps.push({ name: "lint", cmd: ["oxlint", "--report-unused-disable-directives", ...code] });
+if (present.length > 0) {
+  steps.push({
+    name: "fmt",
+    cmd: ["oxfmt", "--check", "--no-error-on-unmatched-pattern", ...present],
+  });
+}
+if (presentCode.length > 0) {
+  steps.push({
+    name: "lint",
+    cmd: ["oxlint", "--report-unused-disable-directives", ...presentCode],
+  });
 }
 if (code.length > 0 || changed.some((file) => file.endsWith("package.json"))) {
   steps.push({
@@ -108,10 +121,10 @@ if (code.length > 0 || changed.some((file) => file.endsWith("package.json"))) {
     report: knipInChangedFiles,
   });
 }
-for (const workspace of affected) {
-  steps.push({ name: `typecheck:${workspace}`, cmd: TYPECHECK[workspace] });
-  const test = TESTS[workspace];
-  if (test) tests.push({ name: `test:${workspace}`, cmd: test });
+for (const check of affected) {
+  const { kind, cmd } = CHECKS[check];
+  if (kind === "test") tests.push({ name: check, cmd });
+  else steps.push({ name: `typecheck:${check}`, cmd });
 }
 
 console.log(
