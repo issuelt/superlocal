@@ -55,9 +55,9 @@ jobs:
         env:
           INBOX_TEST_LIVE: "false"
 
-  # The codebase predates these checks and still has findings, so each step
-  # reports its findings without failing the job. Remove continue-on-error
-  # after the repo-wide format and lint pass.
+  # Format is enforced. Lint and knip still have findings that predate them, so
+  # those steps report without failing the job; remove their continue-on-error
+  # once the findings are fixed.
   lint:
     name: Lint, format and knip
     runs-on: ubuntu-24.04
@@ -82,7 +82,6 @@ jobs:
         run: bun --no-env-file run lint
 
       - name: Format
-        continue-on-error: true
         run: bun --no-env-file run fmt:check
 
       - name: Unused code

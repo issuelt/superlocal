@@ -1,0 +1,5 @@
+# Formatting-only commits that `git blame` should skip. GitHub reads this file
+# automatically; locally run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+# style: format the repository with oxfmt
+f8df2b4e1b112255b865e47737b356d5d821b725
