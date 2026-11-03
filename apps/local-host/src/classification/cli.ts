@@ -73,6 +73,7 @@ function refinementWriter(root: string): Database {
       (error as { code?: string }).code === "SQLITE_BUSY"
         ? "REFINEMENT_WRITER_ACTIVE"
         : "REFINEMENT_WRITER_FAILED",
+      { cause: error },
     );
   }
 }

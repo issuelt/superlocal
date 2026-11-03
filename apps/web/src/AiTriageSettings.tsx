@@ -95,7 +95,11 @@ function Usage({ usage }: { usage: AiUsageSummary }) {
   );
 }
 
-export function AiTriageSettings({ actions, mailboxes, onEditStateChange }: AiTriageSettingsProps) {
+export default function AiTriageSettings({
+  actions,
+  mailboxes,
+  onEditStateChange,
+}: AiTriageSettingsProps) {
   const [state, setState] = useState<AiTriageState | null>(null);
   const [draft, setDraft] = useState<AiSettings | null>(null);
   const [interests, setInterests] = useState("");
@@ -1234,6 +1238,7 @@ export function AiTriageSettings({ actions, mailboxes, onEditStateChange }: AiTr
                                       <dt>Evidence references</dt>
                                       <dd>
                                         {item.assessment.evidence.map((e, index) => (
+                                          // oxlint-disable-next-line react/no-array-index-key -- read-only receipt; refs and fields may repeat
                                           <span className="ai-secondary" key={index}>
                                             {e.messageRef} · {aiLabel(e.field)}
                                           </span>
@@ -1248,6 +1253,7 @@ export function AiTriageSettings({ actions, mailboxes, onEditStateChange }: AiTr
                                     </>
                                   )}
                                   {item.contributions?.map((part, index) => (
+                                    // oxlint-disable-next-line react/no-array-index-key -- read-only receipt; never reordered or edited
                                     <div className="ai-key-pair" key={index}>
                                       <dt>{aiLabel(part.name)}</dt>
                                       <dd>
@@ -1313,5 +1319,3 @@ export function AiTriageSettings({ actions, mailboxes, onEditStateChange }: AiTr
     </div>
   );
 }
-
-export default AiTriageSettings;

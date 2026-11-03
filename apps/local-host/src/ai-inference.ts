@@ -397,7 +397,7 @@ Give at most 8 concise neutral topics, 8 actions, 12 evidence entries, and a rea
 /** Prompt revision for the rules block; part of the decision hash so prompt changes re-infer rule-bearing decisions. */
 export const AI_RULES_PROMPT_VERSION = "rules-2";
 /** User-taught rules are prepended as the highest-precedence classification policy. They never change the schema, safety rules, or evidence requirements. */
-export function renderAiRules(rules: readonly string[]): string {
+function renderAiRules(rules: readonly string[]): string {
   const lines = rules
     .map((rule) => rule.replace(/\s+/g, " ").trim())
     .filter(Boolean)
