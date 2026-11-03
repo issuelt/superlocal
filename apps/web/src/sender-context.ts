@@ -36,7 +36,7 @@ export type SenderContact = {
 export type SenderWeek = { start: number; received: number; sent: number };
 const WEEK = 7 * 24 * 60 * 60_000;
 const addressKey = (value: string) => value.trim().toLowerCase();
-export const senderThreadKey = (source: string, thread: string) => `${source}\0${thread}`;
+const senderThreadKey = (source: string, thread: string) => `${source}\0${thread}`;
 
 type HistoryEntry = {
   message: SenderHistoryMessage;

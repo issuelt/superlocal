@@ -115,7 +115,7 @@ const inlineToggles: Record<string, [string, boolean]> = {
   "Show Sender Full Names": ["showSenderFullNames", false],
 };
 
-export function Settings({
+function Settings({
   preferences,
   onChange,
   onClose,

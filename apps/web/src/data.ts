@@ -226,17 +226,7 @@ export const defaultPreferences: Preferences = {
   timeFormat: "12 hour",
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
 };
-export const contacts = [
-  { name: "Alex Morgan", email: "alex@example.com" },
-  { name: "Jamie Chen", email: "jamie@example.com" },
-  { name: "Sam Rivera", email: "sam@example.com" },
-  { name: "Taylor Brooks", email: "taylor@example.com" },
-  { name: "Mira", email: accounts[0] },
-  { name: "Jordan Lee", email: "jordan@example.com" },
-  { name: "Basecamp", email: "hello@basecamp.example" },
-  { name: "Mail Me Later", email: "hello@mailmelater.example" },
-];
-export const recentSeeds = [
+const recentSeeds = [
   ["Alex Morgan", "3 hrs ago", "Prototype feedback", ""],
   ["Jamie Chen", "Thu 5:44 PM", "Preview environment", "Last 7 days"],
   ["Sam Rivera", "Thu 8:53 AM", "Weekly planning", ""],
@@ -527,56 +517,6 @@ export function seedMail(): Mail[] {
   }
   return result;
 }
-export const seedDrafts: Draft[] = [
-  {
-    id: "draft-one",
-    account: accounts[0],
-    mode: "new",
-    to: "alex@example.com",
-    cc: "",
-    bcc: "",
-    subject: "A few thoughts on the next iteration",
-    body: "<p>Hey Alex,</p><p>I spent some time with the latest build. A few small things stood out:</p>",
-    attachments: [],
-    updated: 1788258000000,
-  },
-  {
-    id: "draft-two",
-    account: accounts[0],
-    mode: "new",
-    to: "jamie@example.com",
-    cc: "",
-    bcc: "",
-    subject: "Friday catch-up",
-    body: "<p>Are you free for a quick catch-up on Friday?</p>",
-    attachments: [],
-    updated: 1788248000000,
-  },
-  {
-    id: "draft-three",
-    account: accounts[0],
-    mode: "new",
-    to: "",
-    cc: "",
-    bcc: "",
-    subject: "September project notes",
-    body: "<p>A few things to keep in mind for September.</p>",
-    attachments: [],
-    updated: 1788148000000,
-  },
-  {
-    id: "draft-four",
-    account: accounts[0],
-    mode: "new",
-    to: "sam@example.com",
-    cc: "",
-    bcc: "",
-    subject: "Re: Preview is ready",
-    body: "<p>Thanks Sam! This is looking really good.</p>",
-    attachments: [],
-    updated: 1788048000000,
-  },
-];
 export function displayDate(value: string) {
   if (!/^\d{4}-\d\d-\d\dT/.test(value)) return value;
   const date = new Date(value);

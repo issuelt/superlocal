@@ -42,11 +42,7 @@ export type ConversationTriageProps = {
   onFeedback?: (input: AiFeedbackInput) => Promise<AiDecision>;
 };
 
-export function ConversationTriage({
-  decision,
-  mode = "preview",
-  onFeedback,
-}: ConversationTriageProps) {
+function ConversationTriage({ decision, mode = "preview", onFeedback }: ConversationTriageProps) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState<AiDecision>();

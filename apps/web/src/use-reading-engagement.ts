@@ -253,5 +253,3 @@ export function useReadingEngagement({
   // This accepts only its event target, never key contents, and verifies reader scope.
   return (target: EventTarget | null) => runtime.current?.activity(target);
 }
-
-export default useReadingEngagement;

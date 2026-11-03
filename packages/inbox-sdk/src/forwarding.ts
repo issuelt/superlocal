@@ -139,7 +139,7 @@ function stripInboundBanner(html: string, sender: string): string | null {
 }
 
 /** Strip only the verified public Inbound automation suffix, never quoted content/comments. */
-export function forwardingContent(
+function forwardingContent(
   body: ForwardingBody,
   sender: string,
 ): { text: string; html: string } | null {

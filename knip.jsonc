@@ -7,6 +7,8 @@
       // apps/shared has no manifest; the apps import it by relative path.
       "entry": ["scripts/*.ts", "apps/shared/*.ts"],
       "project": ["scripts/**/*.ts", "apps/shared/**/*.ts"],
+      // scripts/dev.ts resolves apps/web's own vite through createRequire(apps/web/package.json).
+      "ignoreDependencies": ["vite"],
     },
     "packages/inbox-sdk": {
       // core.ts starts the correspondence worker by path through Bun.resolveSync.
