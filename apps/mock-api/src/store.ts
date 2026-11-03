@@ -560,26 +560,34 @@ export class MockMailStore {
       });
   }
 
+  /**
+   * Net changes in the fixed interval (after, through]: each message's latest version there, in seq
+   * order, with `before` as of `after`. `from` (a seq inside the interval) resumes after rows already
+   * returned and `limit` bounds the page, so a sync page costs its own rows, not the whole interval.
+   */
   changes(
     scope: StoreScope,
     after: number,
     through: number,
+    from = after,
+    limit = -1,
   ): Array<{ seq: number; id: string; before: StoredMessage | null; after: StoredMessage | null }> {
     this.assertScope(scope);
     this.checkSequence(scope, after);
     this.checkSequence(scope, through);
-    if (after > through)
+    if (after > through || !Number.isSafeInteger(from) || from < after || from > through)
       throw new ProviderCursorExpiredError(PROVIDER_ID, "Invalid mock history interval.", {
         status: 400,
       });
     const rows = this.db
-      .query<
-        VersionRow,
-        [string, string, number, number]
-      >(`SELECT v.seq,v.id,v.data FROM mock_versions v JOIN (
-      SELECT id,MAX(seq) seq FROM mock_versions WHERE owner=? AND store_id=? AND seq>? AND seq<=? GROUP BY id
-    ) last ON last.seq=v.seq ORDER BY v.seq`)
-      .all(scope.owner, scope.storeId, after, through);
+      .query<VersionRow, [string, string, number, number, number, number]>(
+        `SELECT v.seq,v.id,v.data FROM mock_versions v INDEXED BY mock_version_changes
+      WHERE v.owner=? AND v.store_id=? AND v.seq>? AND v.seq<=? AND NOT EXISTS(
+        SELECT 1 FROM mock_versions w INDEXED BY mock_version_snapshot
+        WHERE w.owner=v.owner AND w.store_id=v.store_id AND w.id=v.id AND w.seq>v.seq AND w.seq<=?
+      ) ORDER BY v.seq LIMIT ?`,
+      )
+      .all(scope.owner, scope.storeId, from, through, through, limit);
     return rows.map((row) => {
       const previous = this.db
         .query<CurrentRow, [string, string, string, number]>(
