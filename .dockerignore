@@ -5,6 +5,7 @@
 !.dockerignore
 !package.json
 !bun.lock
+!tsconfig.base.json
 !scripts/
 !scripts/dev.ts
 !apps/
