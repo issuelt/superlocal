@@ -174,8 +174,10 @@ function emailDocument(html: string, styles: string, fontSize: string) {
   doc.documentElement.dataset.inboxDocument = id;
   const policy = doc.createElement("meta");
   policy.httpEquiv = "Content-Security-Policy";
+  // The SDK proxies remote images through same-origin media URLs, so the frame itself
+  // never needs another host: a missed URL fails here instead of reaching the sender.
   policy.content =
-    "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: http: data:; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+    "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
   const charset = doc.createElement("meta");
   charset.setAttribute("charset", "utf-8");
   const referrer = doc.createElement("meta");
