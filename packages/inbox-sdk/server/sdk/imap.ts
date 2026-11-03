@@ -164,7 +164,7 @@ function bodyNodes(
   const children = (part.childNodes ?? []).map((child) => bodyNodes(child, type));
   // Alternatives are representations of the same content, not extra body paragraphs.
   return part.type.toLowerCase() === "multipart/alternative"
-    ? (children.filter((parts) => parts.length).at(-1) ?? [])
+    ? (children.findLast((parts) => parts.length) ?? [])
     : children.flat();
 }
 
@@ -636,7 +636,6 @@ export class ImapProvider implements InboxProvider {
     message: FetchMessageObject,
     mailbox: string,
     uidValidity: string,
-    folderHint?: MailFolder,
   ): Promise<MailMessage> {
     const id = messageId(this.accountId, mailbox, uidValidity, message.uid);
     const parts = flattenParts(message.bodyStructure, true);
@@ -721,14 +720,13 @@ export class ImapProvider implements InboxProvider {
     uids: number[],
     mailbox: string,
     uidValidity: string,
-    folder?: MailFolder,
   ): Promise<MailMessage[]> {
     if (!uids.length) return [];
     const fetched = await client.fetchAll(uids, FETCH_QUERY, { uid: true });
     const messages: MailMessage[] = [];
     let bytes = 0;
     for (const message of fetched) {
-      const normalized = await this.normalize(client, message, mailbox, uidValidity, folder);
+      const normalized = await this.normalize(client, message, mailbox, uidValidity);
       bytes += Buffer.byteLength(normalized.bodyText) + Buffer.byteLength(normalized.bodyHtml);
       if (bytes > MAX_BATCH_BODY_BYTES)
         throw new ProviderError(
@@ -863,7 +861,7 @@ export class ImapProvider implements InboxProvider {
       const available = matching.filter((uid) => uid < before);
       const limit = clampLimit(options.limit, 25, 25);
       const selected = available.slice(0, limit);
-      const items = await this.fetchMessages(client, selected, path, uidValidity, folder);
+      const items = await this.fetchMessages(client, selected, path, uidValidity);
       return {
         items,
         nextCursor:
@@ -953,9 +951,10 @@ export class ImapProvider implements InboxProvider {
         items.push(
           requireThread(
             "imap",
-            (await this.fetchMessages(client, members, path, uidValidity, folder)).map(
-              (message) => ({ ...message, threadId }),
-            ),
+            (await this.fetchMessages(client, members, path, uidValidity)).map((message) => ({
+              ...message,
+              threadId,
+            })),
             threadId,
           ),
         );
@@ -1235,7 +1234,7 @@ export class ImapProvider implements InboxProvider {
             "imap",
             "UIDVALIDITY changed during synchronization",
           );
-        return this.fetchMessages(client, [uid], path, uidValidity, folder);
+        return this.fetchMessages(client, [uid], path, uidValidity);
       });
       for (const message of fetched) {
         bytes += Buffer.byteLength(message.bodyText) + Buffer.byteLength(message.bodyHtml);
@@ -1665,7 +1664,7 @@ export class ImapProvider implements InboxProvider {
         const message = await client.fetchOne(String(uid), FETCH_QUERY, { uid: true });
         if (!message)
           throw new ProviderNotFoundError("imap", `Moved message was not found in ${destination}`);
-        return this.normalize(client, message, destination, uidValidity, destinationFolder);
+        return this.normalize(client, message, destination, uidValidity);
       });
     } catch {
       throw new ProviderMutationError("imap", undefined, true);

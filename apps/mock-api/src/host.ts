@@ -48,7 +48,7 @@ function safeProblem(
 }
 
 async function prepareSources(inbox: Inbox, store: MockMailStore): Promise<void> {
-  let connections = await inbox.connections(MOCK_OWNER);
+  const connections = await inbox.connections(MOCK_OWNER);
   const stores = store.mailboxes(MOCK_OWNER);
   if (
     connections.some(
@@ -86,7 +86,7 @@ async function prepareSources(inbox: Inbox, store: MockMailStore): Promise<void>
         },
         identity,
       );
-      connections = [...connections, connection];
+      connections.push(connection);
     }
     if (
       connection.sourceIds.length !== 1 ||

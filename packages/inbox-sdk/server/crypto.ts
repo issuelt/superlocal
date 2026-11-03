@@ -198,21 +198,3 @@ export function createCredentialCrypto(environment: NodeJS.ProcessEnv = process.
     },
   };
 }
-
-let credentialCrypto: ReturnType<typeof createCredentialCrypto> | undefined;
-
-export function encryptCredential(plaintext: string, userId: string, accountId: string): string {
-  return (credentialCrypto ??= createCredentialCrypto()).encryptCredential(
-    plaintext,
-    userId,
-    accountId,
-  );
-}
-
-export function decryptCredential(ciphertext: string, userId: string, accountId: string): string {
-  return (credentialCrypto ??= createCredentialCrypto()).decryptCredential(
-    ciphertext,
-    userId,
-    accountId,
-  );
-}

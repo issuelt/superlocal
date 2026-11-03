@@ -47,7 +47,7 @@ import {
   senderHostname,
   type SenderHistoryMessage,
 } from "../../web/src/sender-context";
-import type { Mail, Preferences } from "../../web/src/data";
+import type { Preferences } from "../../web/src/data";
 import type { AiTriageState, AiDecision } from "../../shared/ai-triage";
 import type { createInboxViewPreferencesStore } from "./inbox-preferences";
 import type { createSplitPreferencesStore } from "./split-preferences";

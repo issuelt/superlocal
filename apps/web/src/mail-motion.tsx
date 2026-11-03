@@ -232,7 +232,7 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
     if (finishFrame.current !== null) cancelAnimationFrame(finishFrame.current);
     finishFrame.current = null;
     prepared.current = null;
-    for (const batch of [...batches.current]) release(batch, false);
+    for (const batch of batches.current) release(batch, false);
     order.current.clear();
     if (scene.current) {
       scene.current.style.textContent = "";
@@ -331,7 +331,8 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
           node.setAttribute("tabindex", "-1");
           node.removeAttribute("contenteditable");
         }
-        for (const attr of [...node.attributes]) {
+        // Copy first: node.attributes is live, so removing while iterating would skip entries.
+        for (const attr of Array.from(node.attributes)) {
           if (attr.name.startsWith("on")) node.removeAttribute(attr.name);
         }
       }

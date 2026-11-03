@@ -421,7 +421,7 @@ export class MockMailStore {
     const mailbox = this.assertScope(scope);
     name = text(name, "folder name", 255).trim();
     if (
-      /[\/\\]/.test(name) ||
+      /[/\\]/.test(name) ||
       [...SYSTEM_FOLDERS, ...LOCAL_FOLDERS, "starred", "all"].includes(
         name.normalize("NFKC").toLowerCase(),
       )

@@ -50,7 +50,7 @@ export function text(value: unknown, field: string, maximum = 512, empty = false
 
 export function contextId(value: unknown, field: string): string {
   const result = text(value, field);
-  if (result.trim() !== result || /[\/\\]/.test(result)) invalid(`Invalid ${field}.`);
+  if (result.trim() !== result || /[/\\]/.test(result)) invalid(`Invalid ${field}.`);
   return result;
 }
 

@@ -1051,9 +1051,9 @@ export class InboxStore {
     // Wait for first paint. Each server pass is bounded; continue a progressing
     // count instead of abandoning larger inboxes. Navigation cancels the fill.
     const idle = new Promise<void>((resolve) => {
-      typeof requestIdleCallback === "function"
-        ? requestIdleCallback(() => resolve(), { timeout: 2000 })
-        : setTimeout(resolve, 300);
+      if (typeof requestIdleCallback === "function")
+        requestIdleCallback(() => resolve(), { timeout: 2000 });
+      else setTimeout(resolve, 300);
     });
     const job = {
       queryId,
@@ -2695,7 +2695,7 @@ export class InboxStore {
       return this.state.accounts.find((account) => account.id === boxId);
     const message = messageId
       ? mail?.messages.find((message) => message.id === messageId)
-      : mail?.messages.filter((message) => !message.pending).at(-1);
+      : mail?.messages.findLast((message) => !message.pending);
     const ids = message?.memberships?.length
       ? message.memberships.map((state) => state.mailboxId)
       : (mail?.mailboxIds ?? this.unifiedMailboxIds());
@@ -2916,7 +2916,9 @@ export class InboxStore {
             signal: options.signal,
           });
           if (!response.ok)
-            throw new Error("Sign in through the host application before opening this inbox.");
+            throw new Error("Sign in through the host application before opening this inbox.", {
+              cause: error,
+            });
           this.client.clearCache();
         }
         if (generation !== this.generation) return;
@@ -5126,8 +5128,7 @@ export class InboxStore {
     )
       throw new Error("The selected message no longer belongs to this conversation.");
     const parent =
-      input.sourceMessageId ??
-      input.mail?.messages.filter((message) => !message.pending).at(-1)?.id;
+      input.sourceMessageId ?? input.mail?.messages.findLast((message) => !message.pending)?.id;
     if (input.mail?.messages.find((message) => message.id === parent)?.pending)
       throw new Error("Wait for the queued message to finish sending before replying to it.");
     const implicitReply = !!parent && (input.mode === "reply" || input.mode === "replyAll");
@@ -5215,7 +5216,7 @@ export class InboxStore {
     const issue = this.state.issues.find((issue) => issue.key === `draft:${draft.id}`);
     this.editDraft(draft);
     const raw = await this.flushDraft(draft.id);
-    const previous = this.references.filter((ref) => ref.draftId === draft.id).at(-1);
+    const previous = this.references.findLast((ref) => ref.draftId === draft.id);
     const previousStatus = previous && this.operations.get(previous.id)?.status;
     if (previousStatus === "cancelled" || previousStatus === "failed")
       this.submissions.delete(draft.id);
@@ -7309,6 +7310,7 @@ export class InboxStore {
                   if (incomplete)
                     throw new Error(
                       "The action did not finish, and some changes could not be restored. Refresh the inbox before retrying.",
+                      { cause: error },
                     );
                   throw error;
                 }
@@ -7376,6 +7378,7 @@ export class InboxStore {
         if (incomplete)
           throw new Error(
             "Label changes did not finish, and some changes could not be restored. Refresh before retrying.",
+            { cause: error },
           );
         throw error;
       }
@@ -7484,7 +7487,9 @@ export class InboxStore {
             signal: this.controller.signal,
           });
           if (!response.ok)
-            throw new Error("Sign in through the host application before opening this inbox.");
+            throw new Error("Sign in through the host application before opening this inbox.", {
+              cause: error,
+            });
           this.client.clearCache();
           await this.readUpdates(true);
         } catch (next) {

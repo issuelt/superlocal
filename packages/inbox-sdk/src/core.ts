@@ -43,7 +43,6 @@ import {
   type Inbox,
   type InboxOptions,
   type Label,
-  type Message,
   type MessageSummary,
   type MutationInput,
   type Operation,
@@ -58,7 +57,6 @@ import {
   type ConnectionIdentity,
   type Mailbox,
   type MailboxCandidate,
-  type MailboxInput,
   type MailboxMembership,
   type MailboxMessageSummary,
   type MailboxQuery,
@@ -602,6 +600,7 @@ export function createInbox(options: InboxOptions): Inbox {
     reader.closeSent = true;
     reader.worker.ref();
     try {
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage takes no targetOrigin; a second argument is the transfer list.
       reader.worker.postMessage({ type: "close" });
     } catch {
       failCorrespondence(reader, closedRead());
@@ -622,14 +621,16 @@ export function createInbox(options: InboxOptions): Inbox {
     reader.active = true;
     reader.worker.ref();
     try {
-      reader.worker.postMessage({
+      const message = {
         type: "read",
         id: job.id,
         filename: correspondenceFilename,
         owner: job.owner,
         sql: job.sql,
         params: job.params,
-      });
+      };
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage takes no targetOrigin; a second argument is the transfer list.
+      reader.worker.postMessage(message);
     } catch {
       failCorrespondence(reader, unavailableRead());
     }
