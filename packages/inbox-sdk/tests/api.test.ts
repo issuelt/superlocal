@@ -33241,6 +33241,8 @@ describe("AI triage service", () => {
       expect(JSON.stringify(diagnostics)).not.toContain(privateValue);
     unavailable = false;
     invalidEvidence = true;
+    // The last 503 still holds the provider-wide cooldown; let it elapse.
+    h.clock.value += 10000;
     await service.process("alice", { id: "ai-evidence-repair", scope: "inbox", limit: 100 });
     await bounded(
       (async () => {
@@ -33265,6 +33267,69 @@ describe("AI triage service", () => {
       attempts: 6,
       completed: 0,
       failed: 6,
+    });
+  });
+
+  test("a provider rate limit pauses all dispatch until its Retry-After instead of spending an attempt from every queued conversation", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    await h.seed(
+      "alice",
+      "ai-throttled",
+      Array.from({ length: 6 }, (_, index) => native(`throttled-${index}`)),
+    );
+    let calls = 0,
+      limited = true;
+    const service = createAiTriageService({
+      database,
+      inbox: h.inbox,
+      configuration,
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        return limited
+          ? new Response(BODY_SECRET, { status: 429, headers: { "retry-after": "30" } })
+          : Response.json(response);
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      await service.close();
+      database.close();
+    });
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    await service.process("alice", { id: "ai-throttled-history", scope: "inbox", limit: 100 });
+    await bounded(
+      (async () => {
+        while (calls < 1) await Bun.sleep(10);
+      })(),
+      "first throttled request",
+    );
+    // Let the immediate re-pump and at least one interval tick run against the frozen clock.
+    await Bun.sleep(1100);
+    expect(calls).toBe(1);
+    h.clock.value += 20_000;
+    await Bun.sleep(1100);
+    expect(calls).toBe(1);
+    limited = false;
+    h.clock.value += 11_000;
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).jobs[0]?.status === "running") await Bun.sleep(10);
+      })(),
+      "throttled history drain",
+    );
+    expect((await service.state("alice")).jobs[0]).toMatchObject({
+      status: "completed",
+      completed: 6,
+      failed: 0,
+    });
+    expect(calls).toBe(7);
+    expect((await service.diagnostics("alice")).usage).toMatchObject({
+      attempts: 7,
+      completed: 6,
+      failed: 1,
     });
   });
 
