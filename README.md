@@ -61,7 +61,7 @@ and recovery copies remain in the browser; this volume preserves server state.
 ### Published images
 
 Pushes to `main` build and publish **Linux AMD64 and ARM64** images at
-`ghcr.io/r44vc0rp/superlocal:latest`. The workflow can also be run manually on
+`ghcr.io/issuelt/superlocal:latest`. The image name follows the GitHub repository. The workflow can also be run manually on
 `main`. It uses GitHub's built-in `GITHUB_TOKEN` with package-write permission;
 no Docker Hub account or registry password is needed. Images also receive a
 `sha-<full-commit-sha>` tag, and the workflow records the digest for pinned deploys.
@@ -69,7 +69,7 @@ no Docker Hub account or registry password is needed. Images also receive a
 To run or update the published image without building it locally:
 
 ```sh
-SUPERLOCAL_IMAGE=ghcr.io/r44vc0rp/superlocal:latest \
+SUPERLOCAL_IMAGE=ghcr.io/issuelt/superlocal:latest \
   docker compose up -d --no-build --pull always --wait
 ```
 
