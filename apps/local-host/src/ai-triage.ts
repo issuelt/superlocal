@@ -451,6 +451,19 @@ export function createAiTriageService({
       .get(owner);
     return row ? JSON.parse(row.data) : emptyUsage();
   };
+  /** Adds known tokens and estimated cost from any billed request: triage attempts and rule drafts. */
+  function addBilled(
+    value: AiUsageSummary,
+    { usage, estimate }: Pick<AiInferenceResult, "usage" | "estimate">,
+  ) {
+    value.inputTokens += usage.input ?? 0;
+    value.outputTokens += usage.output ?? 0;
+    value.cachedInputTokens += usage.cachedInput ?? 0;
+    value.cacheWriteInputTokens += usage.cacheWriteInput ?? 0;
+    value.reasoningOutputTokens += usage.reasoningOutput ?? 0;
+    value.estimatedMinimumUsd += estimate?.minimumUsd ?? 0;
+    value.estimatedMaximumUsd += estimate?.maximumUsd ?? 0;
+  }
   function updateUsage(owner: string, mutate: (value: AiUsageSummary) => void) {
     const value = usage(owner);
     mutate(value);
@@ -1999,16 +2012,8 @@ export function createAiTriageService({
           result.usage.output !== null
         )
           value.unknownUsage--;
-        if (result?.estimate) {
-          value.unpriced--;
-          value.estimatedMinimumUsd += result.estimate.minimumUsd;
-          value.estimatedMaximumUsd += result.estimate.maximumUsd;
-        }
-        value.inputTokens += result?.usage.input ?? 0;
-        value.outputTokens += result?.usage.output ?? 0;
-        value.cachedInputTokens += result?.usage.cachedInput ?? 0;
-        value.cacheWriteInputTokens += result?.usage.cacheWriteInput ?? 0;
-        value.reasoningOutputTokens += result?.usage.reasoningOutput ?? 0;
+        if (result?.estimate) value.unpriced--;
+        if (result) addBilled(value, result);
       });
       // Every removed attempt has already contributed to the durable all-time aggregate.
       db.query(
@@ -3302,6 +3307,8 @@ export function createAiTriageService({
           configuration,
           { model: value.model, signal: controller.signal, fetcher },
         );
+        // Drafts are billed but are not triage attempts or decisions, so they add to the totals only.
+        updateUsage(owner, (usage) => addBilled(usage, result));
         if (result.outcome !== "completed" || !result.draft)
           fail(result.code ?? "AI_RULE_FAILED", 502);
         rule = {

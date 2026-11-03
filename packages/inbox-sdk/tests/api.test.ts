@@ -28486,6 +28486,7 @@ describe("AI triage inference and local scoring", () => {
       draft: { text: valid.text, category: "Other", supersedes: [] },
       code: null,
       usage: expect.objectContaining({ input: 1000, output: 100 }),
+      estimate: expect.objectContaining({ minimumUsd: expect.any(Number) }),
     });
     for (const [body, code] of [
       [message([{ type: "refusal", refusal: "No." }]), "AI_RESPONSE_REFUSED"],
@@ -32246,12 +32247,26 @@ describe("AI triage service", () => {
     const fenceBefore = database
       .query("SELECT revision FROM local_ai_settings_fence WHERE owner='alice'")
       .get();
+    const usageBefore = (await service.state("alice")).usage;
     const taught = await service.teach("alice", {
       sourceId: account.id,
       threadId: alert.threadId,
       id: "ai-taught-rule-1",
       note: "Do not mark these as important anymore",
     });
+    // The billed draft adds its tokens and cost to the totals but is not a triage attempt.
+    expect(taught.state.usage).toMatchObject({
+      attempts: usageBefore.attempts,
+      completed: usageBefore.completed,
+      failed: usageBefore.failed,
+      inputTokens: usageBefore.inputTokens + 1000,
+      outputTokens: usageBefore.outputTokens + 100,
+      reasoningOutputTokens: usageBefore.reasoningOutputTokens + 40,
+    });
+    expect(taught.state.usage.estimatedMinimumUsd).toBeCloseTo(
+      usageBefore.estimatedMinimumUsd * 1.5,
+      12,
+    );
     // A rule never fences saved decisions: nothing turns stale, so no conversation falls back to normal inbox rules while the re-sort runs.
     expect(
       database.query("SELECT revision FROM local_ai_settings_fence WHERE owner='alice'").get(),
