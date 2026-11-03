@@ -33605,6 +33605,99 @@ describe("AI triage service", () => {
     expect(calls).toBe(3);
   });
 
+  test("a conversation still preparing its context when another request starts a cooldown is not sent, and resumes after it", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    const { account, box } = await h.seed("alice", "ai-cooldown-race", [
+      native("cooldown-race-seed"),
+    ]);
+    let calls = 0,
+      limited = true;
+    const held = deferred<void>(),
+      release = deferred<void>();
+    // Hold the second arrival inside prepare() (its thread read) until the first one's 429 lands.
+    const inbox = new Proxy(h.inbox, {
+      get(target, property) {
+        const value = Reflect.get(target, property);
+        if (property !== "thread") return typeof value === "function" ? value.bind(target) : value;
+        return async (...args: Parameters<typeof target.thread>) => {
+          const page = await target.thread(...args);
+          if (page.items.some((item) => item.subject === "Subject cooldown-race-held")) {
+            held.resolve();
+            await release.promise;
+          }
+          return page;
+        };
+      },
+    });
+    const service = createAiTriageService({
+      database,
+      inbox,
+      configuration: { ...configuration, concurrency: 2 },
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        if (!limited) return Response.json(response);
+        await held.promise;
+        return new Response(BODY_SECRET, { status: 429, headers: { "retry-after": "30" } });
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      release.resolve();
+      await service.close();
+      database.close();
+    });
+    const attempts = () =>
+      database
+        .query<{ attempts: number }, []>("SELECT attempts FROM local_ai_queue ORDER BY attempts")
+        .all()
+        .map((row) => row.attempts);
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    box.put(native("cooldown-race-sent"));
+    box.put(native("cooldown-race-held"));
+    await h.sync("alice", account.id);
+    await bounded(
+      (async () => {
+        while (!attempts().includes(1)) await Bun.sleep(10);
+      })(),
+      "cooldown from the first arrival",
+    );
+    limited = false;
+    release.resolve();
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).queue.processing) await Bun.sleep(10);
+      })(),
+      "held arrival settles",
+    );
+    // Let an interval tick run against the frozen clock: the cooldown still holds both.
+    await Bun.sleep(1100);
+    expect(calls).toBe(1);
+    expect((await service.state("alice")).queue).toEqual({ pending: 2, processing: 0, failed: 0 });
+    expect(attempts()).toEqual([0, 1]);
+    // The held conversation waits as pending, not processing or failed.
+    const heldRow = database
+      .query<{ source: string; thread: string }, []>(
+        "SELECT source,thread FROM local_ai_queue WHERE attempts=0",
+      )
+      .get()!;
+    expect(
+      (await service.results("alice")).decisions.find(
+        (item) => item.sourceId === heldRow.source && item.threadId === heldRow.thread,
+      ),
+    ).toMatchObject({ state: "pending", problemCode: null });
+    h.clock.value += 31_000;
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).usage.completed !== 2) await Bun.sleep(10);
+      })(),
+      "both arrivals sorted after the cooldown",
+    );
+    expect(calls).toBe(3);
+  });
+
   test("in-flight pause and cancel stop application without inventing free usage and an explicit new job can resume work", async () => {
     const h = await fixture(),
       database = new Database(":memory:");

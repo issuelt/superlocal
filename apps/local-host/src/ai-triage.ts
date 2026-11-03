@@ -864,10 +864,11 @@ export function createAiTriageService({
     });
   }
   /**
-   * The halt is the account's problem, not this conversation's: unless newer work replaced
-   * it, the conversation waits in the queue for the halt to end, keeping its attempt count.
+   * A halt or cooldown is the provider's problem, not this conversation's: unless newer work
+   * replaced it, the conversation waits in the queue for it to end, keeping its attempt count.
+   * `code` is the halt code, or null for a cooldown, which the interval pump outlasts.
    */
-  function holdForHalt(queue: QueueRow, code: string) {
+  function holdForProvider(queue: QueueRow, code: string | null) {
     transaction(() => {
       const requeued = db
         .query(
@@ -2391,9 +2392,9 @@ export function createAiTriageService({
         publish(queue.owner, decision, queue.fingerprint, context!.sender, context!.messages);
       });
     if (!permitted(queue) || controller.signal.aborted) return;
-    // Another request may have started a halt while this one awaited its context.
-    if (providerHalt) {
-      holdForHalt(queue, providerHalt);
+    // Another request may have started a halt or cooldown while this one awaited its context.
+    if (providerHalt || now() < cooldownUntil) {
+      holdForProvider(queue, providerHalt);
       return;
     }
     const attempt = beginAttempt(queue, value.model, context.hash);
@@ -2427,7 +2428,7 @@ export function createAiTriageService({
     if (haltCode) {
       halt(haltCode);
       finishAttempt(queue.owner, attempt, result);
-      holdForHalt(queue, haltCode);
+      holdForProvider(queue, haltCode);
       return;
     }
     let current: Context | null = null;
