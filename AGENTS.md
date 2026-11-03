@@ -64,8 +64,8 @@ app is newer; a newer checkout does not prove the running app serves that build.
   there.
 - Read-only reference clones (effect, t3code, executor, opencode) live in the
   gitignored `/.reference/` at the main checkout root.
-  `bun --no-env-file run sync:repos` clones or updates them; effect is pinned
-  to the version we install. Read them, never edit them.
+  `bun --no-env-file run sync:repos` clones or updates them to each repo's
+  default branch (effect `main` is v4). Read them, never edit them.
 
 ## Data and privacy
 
