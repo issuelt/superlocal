@@ -11,7 +11,16 @@ type MailRowProps = {
   showSnippets: boolean;
 };
 
-const labelHues: Record<string, number> = { social: 250, marketing: 25, pitch: 300, news: 85, updates: 200, forums: 150, promotions: 55, finance: 130 };
+const labelHues: Record<string, number> = {
+  social: 250,
+  marketing: 25,
+  pitch: 300,
+  news: 85,
+  updates: 200,
+  forums: 150,
+  promotions: 55,
+  finance: 130,
+};
 
 /** Stable hue per label so the same label reads the same color everywhere. */
 export function labelHue(label: string) {
@@ -22,14 +31,7 @@ export function labelHue(label: string) {
   return hash % 360;
 }
 
-function MailRow({
-  mail: m,
-  index: i,
-  highlighted,
-  selected,
-  sent,
-  showSnippets,
-}: MailRowProps) {
+function MailRow({ mail: m, index: i, highlighted, selected, sent, showSnippets }: MailRowProps) {
   const recipients = m.toAddresses?.join(", ") ?? m.to;
   const messageCount = m.window ? m.window.counts.messages : m.messages.length;
   return (
@@ -74,15 +76,19 @@ function MailRow({
           {m.labels[0]}
         </span>
       )}
-      <span className="row-recipients" role="cell" title={recipients ? `To: ${m.to || recipients}` : "No To recipients"}>
+      <span
+        className="row-recipients"
+        role="cell"
+        title={recipients ? `To: ${m.to || recipients}` : "No To recipients"}
+      >
         {recipients ? `To: ${recipients}` : "No To recipients"}
       </span>
       <span className="row-metadata">
-        {m.remindedAt !== undefined && (
-          <Icon name="Bell" size={13} className="reminded-icon" />
-        )}
+        {m.remindedAt !== undefined && <Icon name="Bell" size={13} className="reminded-icon" />}
         {m.starred && <Icon name="Star" size={13} className="starred-icon" />}
-        {(m.window ? m.hasAttachments : m.messages.some((msg) => msg.hasAttachments || msg.attachments?.length)) && (
+        {(m.window
+          ? m.hasAttachments
+          : m.messages.some((msg) => msg.hasAttachments || msg.attachments?.length)) && (
           <Icon name="Paperclip" size={14} />
         )}
         <time className={m.reminder || m.scheduled ? "reminder-date" : ""}>
@@ -90,21 +96,9 @@ function MailRow({
         </time>
       </span>
       <span className="row-actions">
-        <IconButton
-          name="Check"
-          title="Mark Done (E)"
-          data-mail-action="done"
-        />
-        <IconButton
-          name="Clock"
-          title="Remind Me (H)"
-          data-mail-action="remind"
-        />
-        <IconButton
-          name="Bolt"
-          title="Superlocal Command (⌘K)"
-          data-mail-action="command"
-        />
+        <IconButton name="Check" title="Mark Done (E)" data-mail-action="done" />
+        <IconButton name="Clock" title="Remind Me (H)" data-mail-action="remind" />
+        <IconButton name="Bolt" title="Superlocal Command (⌘K)" data-mail-action="command" />
       </span>
     </div>
   );

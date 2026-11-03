@@ -1,62 +1,128 @@
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
-import { loadLocalConfig, LocalConfigurationError, ROOT_DIR } from '../apps/local-host/src/config'
-import { reportStartupError, startLocalServer } from '../apps/local-host/src/index'
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { loadLocalConfig, LocalConfigurationError, ROOT_DIR } from "../apps/local-host/src/config";
+import { reportStartupError, startLocalServer } from "../apps/local-host/src/index";
 
 // The host runs here; Vite is the only direct child. No shell/watch supervisor or platform-specific service manager.
-let service: Awaited<ReturnType<typeof startLocalServer>> | undefined
-let web: ReturnType<typeof Bun.spawn> | undefined
-let stopping: Promise<void> | undefined
-let interrupted = false
-const built = process.argv.includes('--built')
+let service: Awaited<ReturnType<typeof startLocalServer>> | undefined;
+let web: ReturnType<typeof Bun.spawn> | undefined;
+let stopping: Promise<void> | undefined;
+let interrupted = false;
+const built = process.argv.includes("--built");
 
 function stop(code = 0): Promise<void> {
-  interrupted = true
-  return stopping ??= (async () => {
-    process.exitCode = code
-    const child = web
-    try { child?.kill('SIGTERM') } catch { /* It may already have exited. */ }
-    const force = setTimeout(() => { try { child?.kill('SIGKILL') } catch { /* Already exited. */ } }, 5000)
-    force.unref()
-    try { await Promise.all([child?.exited, service?.close()]) } finally { clearTimeout(force) }
-  })()
+  interrupted = true;
+  return (stopping ??= (async () => {
+    process.exitCode = code;
+    const child = web;
+    try {
+      child?.kill("SIGTERM");
+    } catch {
+      /* It may already have exited. */
+    }
+    const force = setTimeout(() => {
+      try {
+        child?.kill("SIGKILL");
+      } catch {
+        /* Already exited. */
+      }
+    }, 5000);
+    force.unref();
+    try {
+      await Promise.all([child?.exited, service?.close()]);
+    } finally {
+      clearTimeout(force);
+    }
+  })());
 }
 
-const signal = () => { void stop().catch(() => { console.error('[LOCAL_SHUTDOWN_FAILED] Development shutdown failed.'); process.exitCode = 1 }) }
-process.on('SIGINT', signal)
-process.on('SIGTERM', signal)
+const signal = () => {
+  void stop().catch(() => {
+    console.error("[LOCAL_SHUTDOWN_FAILED] Development shutdown failed.");
+    process.exitCode = 1;
+  });
+};
+process.on("SIGINT", signal);
+process.on("SIGTERM", signal);
 
 try {
-  const config = loadLocalConfig()
-  const webBind = process.env.SUPERLOCAL_WEB_BIND ?? '127.0.0.1'
-  if (!['127.0.0.1', '0.0.0.0'].includes(webBind)) {
-    throw new LocalConfigurationError('LOCAL_WEB_BIND_INVALID', 'Use 127.0.0.1 or 0.0.0.0 for SUPERLOCAL_WEB_BIND.')
+  const config = loadLocalConfig();
+  const webBind = process.env.SUPERLOCAL_WEB_BIND ?? "127.0.0.1";
+  if (!["127.0.0.1", "0.0.0.0"].includes(webBind)) {
+    throw new LocalConfigurationError(
+      "LOCAL_WEB_BIND_INVALID",
+      "Use 127.0.0.1 or 0.0.0.0 for SUPERLOCAL_WEB_BIND.",
+    );
   }
-  const webDir = join(ROOT_DIR, 'apps', 'web')
-  if (built && !await Bun.file(join(webDir, 'dist', 'index.html')).exists()) {
-    throw new LocalConfigurationError('LOCAL_WEB_BUILD_MISSING', 'Build the optimized local client with bun --no-env-file run start.')
+  const webDir = join(ROOT_DIR, "apps", "web");
+  if (built && !(await Bun.file(join(webDir, "dist", "index.html")).exists())) {
+    throw new LocalConfigurationError(
+      "LOCAL_WEB_BUILD_MISSING",
+      "Build the optimized local client with bun --no-env-file run start.",
+    );
   }
-  const require = createRequire(join(webDir, 'package.json'))
-  const vite = join(dirname(require.resolve('vite/package.json')), 'bin', 'vite.js')
-  service = await startLocalServer(config)
-  if (interrupted) await service.close()
+  const require = createRequire(join(webDir, "package.json"));
+  const vite = join(dirname(require.resolve("vite/package.json")), "bin", "vite.js");
+  service = await startLocalServer(config);
+  if (interrupted) await service.close();
   else {
     // Provider/client secrets and arbitrary VITE_* variables must not enter the frontend process.
-    const env: Record<string, string> = {}
-    for (const name of ['PATH', 'HOME', 'USERPROFILE', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'TERM', 'FORCE_COLOR', 'NO_COLOR']) {
-      if (process.env[name] !== undefined) env[name] = process.env[name]!
+    const env: Record<string, string> = {};
+    for (const name of [
+      "PATH",
+      "HOME",
+      "USERPROFILE",
+      "SystemRoot",
+      "SYSTEMROOT",
+      "WINDIR",
+      "COMSPEC",
+      "PATHEXT",
+      "TEMP",
+      "TMP",
+      "TMPDIR",
+      "LANG",
+      "LC_ALL",
+      "TERM",
+      "FORCE_COLOR",
+      "NO_COLOR",
+    ]) {
+      if (process.env[name] !== undefined) env[name] = process.env[name]!;
     }
-    Object.assign(env, { NODE_ENV: built ? 'production' : 'development', SUPERLOCAL_API_ORIGIN: `http://127.0.0.1:${service.server.port}`,
-      SUPERLOCAL_WEB_PORT: String(config.web.port), SUPERLOCAL_WEB_ORIGIN: config.web.origin, SUPERLOCAL_CONFIG: config.configPath })
-    web = Bun.spawn([process.execPath, '--no-env-file', vite, ...(built ? ['preview'] : []), '--host', webBind, '--port', String(config.web.port), '--strictPort'], {
-      cwd: webDir, env, stdin: 'inherit', stdout: 'inherit', stderr: 'inherit',
-    })
-    console.info(`Superlocal (${config.mode}, ${built ? 'optimized local UI' : 'development UI'}): ${config.web.origin}\nConfiguration: ${config.configPath}\nCtrl-C stops the web server and drains the local SDK host.`)
-    const code = await web.exited
-    if (!stopping) await stop(code)
-    else await stopping
+    Object.assign(env, {
+      NODE_ENV: built ? "production" : "development",
+      SUPERLOCAL_API_ORIGIN: `http://127.0.0.1:${service.server.port}`,
+      SUPERLOCAL_WEB_PORT: String(config.web.port),
+      SUPERLOCAL_WEB_ORIGIN: config.web.origin,
+      SUPERLOCAL_CONFIG: config.configPath,
+    });
+    web = Bun.spawn(
+      [
+        process.execPath,
+        "--no-env-file",
+        vite,
+        ...(built ? ["preview"] : []),
+        "--host",
+        webBind,
+        "--port",
+        String(config.web.port),
+        "--strictPort",
+      ],
+      {
+        cwd: webDir,
+        env,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      },
+    );
+    console.info(
+      `Superlocal (${config.mode}, ${built ? "optimized local UI" : "development UI"}): ${config.web.origin}\nConfiguration: ${config.configPath}\nCtrl-C stops the web server and drains the local SDK host.`,
+    );
+    const code = await web.exited;
+    if (!stopping) await stop(code);
+    else await stopping;
   }
 } catch (error) {
-  reportStartupError(error)
-  await stop(1).catch(() => {})
+  reportStartupError(error);
+  await stop(1).catch(() => {});
 }

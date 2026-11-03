@@ -73,7 +73,10 @@ export default function MailCommandDialog({
     if (open) {
       const active = document.activeElement;
       // Capture before focusing the input; Modal's later effect sees the input instead.
-      if (active instanceof HTMLElement && !commandInput.current?.closest('[role="dialog"]')?.contains(active)) {
+      if (
+        active instanceof HTMLElement &&
+        !commandInput.current?.closest('[role="dialog"]')?.contains(active)
+      ) {
         opener.current = active;
       }
       restoreOnDismiss.current = false;
@@ -85,7 +88,11 @@ export default function MailCommandDialog({
     restoreOnDismiss.current = false;
     // Commands own destination focus. Even a dismissal must not override a new focus target.
     if (document.activeElement && document.activeElement !== document.body) return;
-    if (target?.isConnected && !target.matches(":disabled") && !target.closest('[inert], [aria-disabled="true"]')) {
+    if (
+      target?.isConnected &&
+      !target.matches(":disabled") &&
+      !target.closest('[inert], [aria-disabled="true"]')
+    ) {
       target.focus({ preventScroll: true });
     }
   }, [open]);
@@ -107,23 +114,46 @@ export default function MailCommandDialog({
     ...(labelMode === "move" ? ["Inbox", "Done", "Trash", "Spam"] : []),
     ...labels,
   ].filter((label) => label.toLowerCase().includes(query.toLowerCase()));
-  const reminderOptions = [
-    "tomorrow",
-    "next week",
-    "this weekend",
-    "someday",
-    "never",
-  ].filter((time) => time.includes(query.toLowerCase()));
+  const reminderOptions = ["tomorrow", "next week", "this weekend", "someday", "never"].filter(
+    (time) => time.includes(query.toLowerCase()),
+  );
   const accountChoices = [
-    { id: UNIFIED_ACCOUNT, name: "Unified inbox", detail: `${unifiedMailboxCount} ${unifiedMailboxCount === 1 ? "mailbox" : "mailboxes"}`, shortcut: 0 },
-    ...[...accounts].sort((a, b) => (pinnedMailboxIds.includes(a.id) ? pinnedMailboxIds.indexOf(a.id) : 1000)
-      - (pinnedMailboxIds.includes(b.id) ? pinnedMailboxIds.indexOf(b.id) : 1000) || a.name.localeCompare(b.name)).map(account => ({
-        id: account.id, name: account.name || account.email, detail: account.email !== account.name ? account.email : "",
-        shortcut: pinnedMailboxIds.includes(account.id) ? pinnedMailboxIds.indexOf(account.id) + 1 : undefined,
+    {
+      id: UNIFIED_ACCOUNT,
+      name: "Unified inbox",
+      detail: `${unifiedMailboxCount} ${unifiedMailboxCount === 1 ? "mailbox" : "mailboxes"}`,
+      shortcut: 0,
+    },
+    ...[...accounts]
+      .sort(
+        (a, b) =>
+          (pinnedMailboxIds.includes(a.id) ? pinnedMailboxIds.indexOf(a.id) : 1000) -
+            (pinnedMailboxIds.includes(b.id) ? pinnedMailboxIds.indexOf(b.id) : 1000) ||
+          a.name.localeCompare(b.name),
+      )
+      .map((account) => ({
+        id: account.id,
+        name: account.name || account.email,
+        detail: account.email !== account.name ? account.email : "",
+        shortcut: pinnedMailboxIds.includes(account.id)
+          ? pinnedMailboxIds.indexOf(account.id) + 1
+          : undefined,
       })),
   ];
-  const filteredAccounts = accountChoices.filter(account => `${account.name} ${account.detail}`.toLowerCase().includes(query.toLowerCase()));
-  const optionCount = mode === "teach" ? 0 : (mode === "command" ? commandItems : mode === "label" ? labelOptions : mode === "remind" ? reminderOptions : filteredAccounts).length;
+  const filteredAccounts = accountChoices.filter((account) =>
+    `${account.name} ${account.detail}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  const optionCount =
+    mode === "teach"
+      ? 0
+      : (mode === "command"
+          ? commandItems
+          : mode === "label"
+            ? labelOptions
+            : mode === "remind"
+              ? reminderOptions
+              : filteredAccounts
+        ).length;
   const activeIndex = optionCount ? Math.min(Math.max(menuIndex, 0), optionCount - 1) : -1;
 
   useEffect(() => {
@@ -199,7 +229,9 @@ export default function MailCommandDialog({
           aria-autocomplete={mode === "command" ? "list" : undefined}
           aria-expanded={mode === "command" ? true : undefined}
           aria-controls={mode === "command" ? commandListId : undefined}
-          aria-activedescendant={mode === "command" && activeIndex >= 0 ? `${commandListId}-${activeIndex}` : undefined}
+          aria-activedescendant={
+            mode === "command" && activeIndex >= 0 ? `${commandListId}-${activeIndex}` : undefined
+          }
           aria-label={
             mode === "command"
               ? "Search commands"
@@ -210,13 +242,23 @@ export default function MailCommandDialog({
                     ? "Move to folder or label"
                     : labelMode === "navigate"
                       ? "Find a label"
-                      : canCreateLabel ? "Find or create a label" : "Find a label"
+                      : canCreateLabel
+                        ? "Find or create a label"
+                        : "Find a label"
                   : mode === "teach"
                     ? "What should the classifier learn?"
                     : "Find a mailbox"
           }
           value={query}
-          placeholder={mode === "remind" ? "Try: 8 am, 3 days, aug 7" : mode === "accounts" ? "Search mailboxes…" : mode === "teach" ? "e.g. Don't mark these as important" : ""}
+          placeholder={
+            mode === "remind"
+              ? "Try: 8 am, 3 days, aug 7"
+              : mode === "accounts"
+                ? "Search mailboxes…"
+                : mode === "teach"
+                  ? "e.g. Don't mark these as important"
+                  : ""
+          }
           disabled={mode === "teach" && teachBusy}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -234,17 +276,19 @@ export default function MailCommandDialog({
             if (e.key === "Enter") {
               e.preventDefault();
               if (mode === "command") commandItems[activeIndex]?.run();
-              else if (mode === "teach") { if (query.trim() && onTeach && !teachBusy) void onTeach(query.trim()); }
-              else if (mode === "remind")
+              else if (mode === "teach") {
+                if (query.trim() && onTeach && !teachBusy) void onTeach(query.trim());
+              } else if (mode === "remind")
                 onRemind(query || reminderOptions[activeIndex] || "tomorrow");
               else if (mode === "accounts" && filteredAccounts[activeIndex])
-                  onAccount(filteredAccounts[activeIndex].id);
+                onAccount(filteredAccounts[activeIndex].id);
               else if (mode === "label" && labelOptions[activeIndex]) {
                 onLabel(labelOptions[activeIndex]);
                 onClose();
               } else if (
                 mode === "label" &&
-                labelMode !== "navigate" && canCreateLabel &&
+                labelMode !== "navigate" &&
+                canCreateLabel &&
                 query &&
                 !labels.includes(query)
               ) {
@@ -293,7 +337,10 @@ export default function MailCommandDialog({
         )}
         {mode === "teach" && (
           <p className="teach-hint" role={teachError ? "alert" : "status"}>
-            {teachError || (teachBusy ? "Writing the rule…" : "Say it in your own words. Superlocal turns it into a rule for this kind of mail, applies it to this conversation now, and re-sorts recent inbox mail.")}
+            {teachError ||
+              (teachBusy
+                ? "Writing the rule…"
+                : "Say it in your own words. Superlocal turns it into a rule for this kind of mail, applies it to this conversation now, and re-sorts recent inbox mail.")}
           </p>
         )}
         {mode === "remind" && (
@@ -306,9 +353,7 @@ export default function MailCommandDialog({
                 onClick={() => onRemind(`${time}${i < 3 ? ", 8:00 AM" : ""}`)}
               >
                 <span>{time}</span>
-                <small>
-                  {["Wed, 8:00 AM", "Mon, 8:00 AM", "Sat, 8:00 AM", "", ""][i]}
-                </small>
+                <small>{["Wed, 8:00 AM", "Mon, 8:00 AM", "Sat, 8:00 AM", "", ""][i]}</small>
               </button>
             ))}
             <div className="custom-reminder">
@@ -341,9 +386,7 @@ export default function MailCommandDialog({
                 <span>{label}</span>
                 {labelMode === "toggle" &&
                   targets.length > 0 &&
-                  targets.every((mail) => mail.labels.includes(label)) && (
-                    <Icon name="Check" />
-                  )}
+                  targets.every((mail) => mail.labels.includes(label)) && <Icon name="Check" />}
               </button>
             ))}
             {canCreateLabel && labelMode !== "navigate" && query && !labels.includes(query) && (
@@ -353,7 +396,11 @@ export default function MailCommandDialog({
               </button>
             )}
             <div className="label-done">
-              {!canCreateLabel && <p className="settings-note">Choose an individual mailbox to create or rename labels.</p>}
+              {!canCreateLabel && (
+                <p className="settings-note">
+                  Choose an individual mailbox to create or rename labels.
+                </p>
+              )}
               <button className="primary-button" onClick={dismiss}>
                 Done
               </button>
@@ -369,17 +416,39 @@ export default function MailCommandDialog({
               onMouseMove={() => setMenuIndex(i)}
               onClick={() => onAccount(account.id)}
             >
-              <span className="account-avatar">{account.id === UNIFIED_ACCOUNT ? <Icon name="Inbox" size={16} /> : account.name.slice(0, 1)}</span>
-              <span className="account-option-name" title={[account.name, account.detail].filter(Boolean).join(" · ")}>{account.name}{account.detail && <small>{account.detail}</small>}</span>
+              <span className="account-avatar">
+                {account.id === UNIFIED_ACCOUNT ? (
+                  <Icon name="Inbox" size={16} />
+                ) : (
+                  account.name.slice(0, 1)
+                )}
+              </span>
+              <span
+                className="account-option-name"
+                title={[account.name, account.detail].filter(Boolean).join(" · ")}
+              >
+                {account.name}
+                {account.detail && <small>{account.detail}</small>}
+              </span>
               {account.id === currentAccount && <Icon name="Check" />}
-              {account.shortcut !== undefined && <span className="account-shortcut"><Key>Ctrl</Key><Key>{account.shortcut}</Key></span>}
+              {account.shortcut !== undefined && (
+                <span className="account-shortcut">
+                  <Key>Ctrl</Key>
+                  <Key>{account.shortcut}</Key>
+                </span>
+              )}
             </button>
           ))}
-        {mode === "accounts" && !filteredAccounts.length && <p className="no-options">No matching mailboxes.</p>}
+        {mode === "accounts" && !filteredAccounts.length && (
+          <p className="no-options">No matching mailboxes.</p>
+        )}
       </div>
       {mode === "accounts" && (
         <div className="account-add">
-          <button onClick={() => onSettings("Mailboxes")}><Icon name="Gear" />Manage mailboxes</button>
+          <button onClick={() => onSettings("Mailboxes")}>
+            <Icon name="Gear" />
+            Manage mailboxes
+          </button>
           <button onClick={() => onSettings("Add Accounts")}>
             <Icon name="Plus" />
             Connect provider

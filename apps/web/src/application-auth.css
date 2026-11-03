@@ -21,7 +21,9 @@
   gap: 20px;
 }
 .application-auth h1 {
-  font: 400 22px/1.27 "Helvetica Neue", sans-serif;
+  font:
+    400 22px/1.27 "Helvetica Neue",
+    sans-serif;
   text-wrap: balance;
 }
 .application-auth p {
@@ -40,7 +42,9 @@
   line-height: 1.57;
   transition: background-color 120ms ease-out;
 }
-.application-auth-button:hover:not(:disabled) { background: var(--hover); }
+.application-auth-button:hover:not(:disabled) {
+  background: var(--hover);
+}
 .application-auth .application-auth-message {
   position: absolute;
   top: calc(100% + 16px);
@@ -51,10 +55,16 @@
   min-height: 40px;
   min-width: 44px;
   padding: 6px 0;
-  font: 13px/1.54 "Helvetica Neue", sans-serif;
+  font:
+    13px/1.54 "Helvetica Neue",
+    sans-serif;
   color: var(--muted);
 }
-.application-sign-out:hover { color: var(--text); }
+.application-sign-out:hover {
+  color: var(--text);
+}
 @media (prefers-reduced-motion: reduce) {
-  .application-auth-button { transition: none; }
+  .application-auth-button {
+    transition: none;
+  }
 }

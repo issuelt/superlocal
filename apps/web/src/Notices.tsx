@@ -17,7 +17,9 @@ type NoticeProps = {
 };
 
 export function Notice({ title, detail, action, onDismiss, quiet, data }: NoticeProps) {
-  const attributes = Object.fromEntries(Object.entries(data ?? {}).map(([key, value]) => [`data-${key}`, value]));
+  const attributes = Object.fromEntries(
+    Object.entries(data ?? {}).map(([key, value]) => [`data-${key}`, value]),
+  );
   return (
     <div className={`notice ${quiet ? "notice-quiet" : ""}`} {...attributes}>
       <p className="notice-text">
@@ -25,9 +27,17 @@ export function Notice({ title, detail, action, onDismiss, quiet, data }: Notice
         {detail && <span className="notice-detail"> · {detail}</span>}
       </p>
       {action && (
-        <button type="button" className="notice-action" onClick={action.onClick}>{action.label}</button>
+        <button type="button" className="notice-action" onClick={action.onClick}>
+          {action.label}
+        </button>
       )}
-      <IconButton name="Notification-closeIcon" title="Dismiss" size={10} className="notice-close" onClick={onDismiss} />
+      <IconButton
+        name="Notification-closeIcon"
+        title="Dismiss"
+        size={10}
+        className="notice-close"
+        onClick={onDismiss}
+      />
     </div>
   );
 }
@@ -40,12 +50,12 @@ type Props = {
 };
 
 export default function Notices({ issues, onRetry, onDismiss, children }: Props) {
-  const visible = issues.filter(issue => !issue.dismissed).slice(-MAX_VISIBLE);
+  const visible = issues.filter((issue) => !issue.dismissed).slice(-MAX_VISIBLE);
   return (
     <div className="notice-stack">
       {/* The live region is always mounted so a new problem is announced once; text of a repeated problem does not change. */}
       <div className="notice-list" role="status" aria-live="polite" aria-atomic="false">
-        {visible.map(issue => (
+        {visible.map((issue) => (
           <Notice
             key={issue.key}
             title={issue.title}

@@ -20,11 +20,7 @@ import {
 import "./message.css";
 import { escapeHTML, plainText } from "./mail-text";
 import { loadSnippets } from "./Snippets";
-import {
-  canUseQuickReplies,
-  quickReplyBody,
-  type QuickReply,
-} from "./quick-replies";
+import { canUseQuickReplies, quickReplyBody, type QuickReply } from "./quick-replies";
 
 type ComposerProps = {
   draft: Draft;
@@ -52,19 +48,42 @@ type ComposerProps = {
 };
 
 /** Receiving views can overlap; expose each authorized source/address once. */
-export function sendingAddressGroups(accounts: MailboxOption[], catalog: Record<string, readonly { email: string }[] | undefined>, preferredMailbox: string) {
-  const groups = accounts.map(account => ({ account, identities: (catalog[account.id] ?? (account.email ? [{ email: account.email }] : []))
-    .filter(identity => account.selectorKind === "address" ? identity.email.toLowerCase() === (account.selectorValue ?? account.email).toLowerCase()
-      : account.selectorKind === "domain" ? identity.email.split("@").at(-1)?.toLowerCase() === account.selectorValue?.toLowerCase() : true)
-    .map(identity => ({ account: account.id, email: identity.email, value: JSON.stringify([account.id, identity.email]) })) }));
+export function sendingAddressGroups(
+  accounts: MailboxOption[],
+  catalog: Record<string, readonly { email: string }[] | undefined>,
+  preferredMailbox: string,
+) {
+  const groups = accounts.map((account) => ({
+    account,
+    identities: (catalog[account.id] ?? (account.email ? [{ email: account.email }] : []))
+      .filter((identity) =>
+        account.selectorKind === "address"
+          ? identity.email.toLowerCase() === (account.selectorValue ?? account.email).toLowerCase()
+          : account.selectorKind === "domain"
+            ? identity.email.split("@").at(-1)?.toLowerCase() ===
+              account.selectorValue?.toLowerCase()
+            : true,
+      )
+      .map((identity) => ({
+        account: account.id,
+        email: identity.email,
+        value: JSON.stringify([account.id, identity.email]),
+      })),
+  }));
   const owners = new Map<string, string>();
-  for (const group of groups) for (const identity of group.identities) {
-    const key = `${group.account.sourceId}\0${identity.email.toLowerCase()}`;
-    if (!owners.has(key) || group.account.id === preferredMailbox) owners.set(key, group.account.id);
-  }
+  for (const group of groups)
+    for (const identity of group.identities) {
+      const key = `${group.account.sourceId}\0${identity.email.toLowerCase()}`;
+      if (!owners.has(key) || group.account.id === preferredMailbox)
+        owners.set(key, group.account.id);
+    }
   let offset = 0;
-  return groups.flatMap(group => {
-    const identities = group.identities.filter(identity => owners.get(`${group.account.sourceId}\0${identity.email.toLowerCase()}`) === group.account.id);
+  return groups.flatMap((group) => {
+    const identities = group.identities.filter(
+      (identity) =>
+        owners.get(`${group.account.sourceId}\0${identity.email.toLowerCase()}`) ===
+        group.account.id,
+    );
     const result = { ...group, identities, offset };
     offset += identities.length;
     return identities.length ? [result] : [];
@@ -76,8 +95,7 @@ const addresses = (value: string) =>
     .split(/[,;\n]+/)
     .map((value) => value.trim())
     .filter(Boolean);
-const emailAddress = (value: string) =>
-  value.match(/<([^>]+)>/)?.[1] || value.trim();
+const emailAddress = (value: string) => value.match(/<([^>]+)>/)?.[1] || value.trim();
 const validAddress = (value: string) =>
   /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(emailAddress(value));
 
@@ -109,18 +127,23 @@ function RecipientField({
   useEffect(() => {
     if (!loadContacts || !focused || !query.trim()) return;
     let stopped = false;
-    const timer = setTimeout(() => { void loadContacts(query).then(contacts => { if (!stopped) setFound({ query, contacts }); }).catch(() => {}); }, 150);
-    return () => { stopped = true; clearTimeout(timer); };
+    const timer = setTimeout(() => {
+      void loadContacts(query)
+        .then((contacts) => {
+          if (!stopped) setFound({ query, contacts });
+        })
+        .catch(() => {});
+    }, 150);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   }, [loadContacts, focused, query]);
-  const results = (loadContacts ? found?.query === query ? found.contacts : [] : contacts)
+  const results = (loadContacts ? (found?.query === query ? found.contacts : []) : contacts)
     .filter(
       (contact) =>
-        `${contact.name} ${contact.email}`
-          .toLowerCase()
-          .includes(query.toLowerCase().trim()) &&
-        !chips.some(
-          (chip) => emailAddress(chip).toLowerCase() === contact.email,
-        ),
+        `${contact.name} ${contact.email}`.toLowerCase().includes(query.toLowerCase().trim()) &&
+        !chips.some((chip) => emailAddress(chip).toLowerCase() === contact.email),
     )
     .slice(0, 5);
   const showResults = focused && !!query.trim() && results.length > 0;
@@ -156,19 +179,14 @@ function RecipientField({
             key={`${recipient}-${index}`}
           >
             <span>
-              {contacts.find(
-                (contact) => contact.email === emailAddress(recipient),
-              )?.name || recipient.replace(/\s*<[^>]*>/, "")}
+              {contacts.find((contact) => contact.email === emailAddress(recipient))?.name ||
+                recipient.replace(/\s*<[^>]*>/, "")}
             </span>
             <button
               type="button"
               aria-label={`Remove ${recipient}`}
               onClick={() =>
-                onChange(
-                  [...chips.filter((_, i) => i !== index), query]
-                    .filter(Boolean)
-                    .join(", "),
-                )
+                onChange([...chips.filter((_, i) => i !== index), query].filter(Boolean).join(", "))
               }
             >
               <Icon name="Close" size={10} />
@@ -184,9 +202,7 @@ function RecipientField({
             aria-expanded={showResults}
             aria-controls={`${id}-contacts`}
             aria-autocomplete="list"
-            aria-activedescendant={
-              showResults ? `${id}-contact-${active}` : undefined
-            }
+            aria-activedescendant={showResults ? `${id}-contact-${active}` : undefined}
             autoComplete="off"
             spellCheck={false}
             value={query}
@@ -214,27 +230,14 @@ function RecipientField({
                 event.altKey
               )
                 return;
-              if (
-                showResults &&
-                (event.key === "ArrowDown" || event.key === "ArrowUp")
-              ) {
+              if (showResults && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
                 event.preventDefault();
                 setActive(
-                  (active +
-                    (event.key === "ArrowDown" ? 1 : -1) +
-                    results.length) %
-                    results.length,
+                  (active + (event.key === "ArrowDown" ? 1 : -1) + results.length) % results.length,
                 );
-              } else if (
-                event.key === "Enter" ||
-                (event.key === "Tab" && query.trim())
-              ) {
+              } else if (event.key === "Enter" || (event.key === "Tab" && query.trim())) {
                 if (event.key === "Enter") event.preventDefault();
-                commit(
-                  showResults
-                    ? results[Math.min(active, results.length - 1)].email
-                    : query,
-                );
+                commit(showResults ? results[Math.min(active, results.length - 1)].email : query);
               } else if (event.key === "Backspace" && !query && chips.length) {
                 event.preventDefault();
                 const last = chips.at(-1)!;
@@ -247,11 +250,7 @@ function RecipientField({
             }}
           />
           {showResults && (
-            <div
-              className="compose-contacts message-menu"
-              id={`${id}-contacts`}
-              role="listbox"
-            >
+            <div className="compose-contacts message-menu" id={`${id}-contacts`} role="listbox">
               {results.map((contact, index) => (
                 <button
                   type="button"
@@ -327,9 +326,7 @@ export default function Composer({
   const [status, setStatus] = useState("");
   const [reminder, setReminder] = useState(() => {
     try {
-      return (
-        readText(`draft-reminder:${draft.id}`) || ""
-      );
+      return readText(`draft-reminder:${draft.id}`) || "";
     } catch {
       return "";
     }
@@ -344,22 +341,31 @@ export default function Composer({
   const [color, setColor] = useState("#000000");
   const [previewReply, setPreviewReply] = useState<QuickReply | null>(null);
   const showQuickReplies =
-    inline &&
-    !draft.popOut &&
-    quickReplies.length > 0 &&
-    canUseQuickReplies(draft);
+    inline && !draft.popOut && quickReplies.length > 0 && canUseQuickReplies(draft);
   const floating = !inline && !!draft.popOut;
   const closeDialog = useCallback(() => setDialog(null), []);
   current.current = draft;
-  const signatures = preferences.signaturesByAccount as
-    Record<string, string> | undefined;
+  const signatures = preferences.signaturesByAccount as Record<string, string> | undefined;
   const signature = signatures?.[draft.account] ?? preferences.signature;
-  const mailbox = accounts.find(account => account.id === draft.account);
+  const mailbox = accounts.find((account) => account.id === draft.account);
   const sourceLocked = draft.mode !== "new" || !!draft.sourceMessageId;
-  const replyMailbox = mailbox && (!draft.sourceId || mailbox.sourceId === draft.sourceId) ? mailbox
-    : accounts.find(account => account.canSend && account.sourceId === draft.sourceId);
-  const sendingAccounts = accounts.filter(account => account.canSend && (!sourceLocked || account.id === replyMailbox?.id));
-  const sourceBinding = JSON.stringify(sendingAccounts.map(account => [account.id, account.sourceId, account.sourceGeneration, account.email, account.selectorKind, account.selectorValue]));
+  const replyMailbox =
+    mailbox && (!draft.sourceId || mailbox.sourceId === draft.sourceId)
+      ? mailbox
+      : accounts.find((account) => account.canSend && account.sourceId === draft.sourceId);
+  const sendingAccounts = accounts.filter(
+    (account) => account.canSend && (!sourceLocked || account.id === replyMailbox?.id),
+  );
+  const sourceBinding = JSON.stringify(
+    sendingAccounts.map((account) => [
+      account.id,
+      account.sourceId,
+      account.sourceGeneration,
+      account.email,
+      account.selectorKind,
+      account.selectorValue,
+    ]),
+  );
   // Switching From within a new draft does not discard other accounts' pending or loaded identities.
   const identityOwner = `${draft.id}\0${draft.mode}\0${draft.sourceMessageId ?? ""}\0${sourceBinding}`;
   const identityOwnerRef = useRef(identityOwner);
@@ -367,18 +373,40 @@ export default function Composer({
   const identityRequest = useRef(0);
   const previousSource = useRef(sourceBinding);
   const identityStatusId = useId();
-  type IdentityState = { loading: boolean; value?: Awaited<ReturnType<LoadSendingIdentities>>; error?: string };
-  const [identityLoad, setIdentityLoad] = useState<{ owner: string; accounts: Record<string, IdentityState> }>({ owner: identityOwner, accounts: {} });
-  const identityStates: Record<string, IdentityState> = identityLoad.owner === identityOwner ? identityLoad.accounts : {};
+  type IdentityState = {
+    loading: boolean;
+    value?: Awaited<ReturnType<LoadSendingIdentities>>;
+    error?: string;
+  };
+  const [identityLoad, setIdentityLoad] = useState<{
+    owner: string;
+    accounts: Record<string, IdentityState>;
+  }>({ owner: identityOwner, accounts: {} });
+  const identityStates: Record<string, IdentityState> =
+    identityLoad.owner === identityOwner ? identityLoad.accounts : {};
   const identityState = identityStates[draft.account];
-  const identitiesLoading = sendingAccounts.some(account => !identityStates[account.id] || identityStates[account.id].loading);
-  const currentLoading = sendingAccounts.some(account => account.id === draft.account) && (!identityState || identityState.loading);
-  const senderGroups = sendingAddressGroups(sendingAccounts,
-    Object.fromEntries(sendingAccounts.map(account => [account.id, identityStates[account.id]?.value?.identities])), draft.account);
-  const identities = senderGroups.flatMap(group => group.identities);
+  const identitiesLoading = sendingAccounts.some(
+    (account) => !identityStates[account.id] || identityStates[account.id].loading,
+  );
+  const currentLoading =
+    sendingAccounts.some((account) => account.id === draft.account) &&
+    (!identityState || identityState.loading);
+  const senderGroups = sendingAddressGroups(
+    sendingAccounts,
+    Object.fromEntries(
+      sendingAccounts.map((account) => [account.id, identityStates[account.id]?.value?.identities]),
+    ),
+    draft.account,
+  );
+  const identities = senderGroups.flatMap((group) => group.identities);
   const from = draft.from ?? mailbox?.email ?? "";
-  const listedFrom = identities.find(identity => identity.account === draft.account && identity.email.toLowerCase() === from.toLowerCase());
-  const missingFrom = !sendingAccounts.some(account => account.id === draft.account) || !!identityState?.value && !listedFrom;
+  const listedFrom = identities.find(
+    (identity) =>
+      identity.account === draft.account && identity.email.toLowerCase() === from.toLowerCase(),
+  );
+  const missingFrom =
+    !sendingAccounts.some((account) => account.id === draft.account) ||
+    (!!identityState?.value && !listedFrom);
   const [senderOpen, setSenderOpen] = useState(false);
   const [senderHighlight, setSenderHighlight] = useState(0);
   const senderAnchor = useRef<HTMLDivElement>(null);
@@ -387,17 +415,26 @@ export default function Composer({
   const senderListId = useId();
   const activeSender = identities.length ? Math.min(senderHighlight, identities.length - 1) : -1;
   const openSenders = (last = false) => {
-    setSenderHighlight(last ? Math.max(0, identities.length - 1) : Math.max(0, identities.findIndex(identity => identity.value === listedFrom?.value)));
+    setSenderHighlight(
+      last
+        ? Math.max(0, identities.length - 1)
+        : Math.max(
+            0,
+            identities.findIndex((identity) => identity.value === listedFrom?.value),
+          ),
+    );
     setSenderOpen(true);
   };
   const chooseSender = (value: string) => {
-    const identity = identities.find(identity => identity.value === value);
+    const identity = identities.find((identity) => identity.value === value);
     if (!identity || sending) return;
     update({ account: identity.account, from: identity.email });
     setSenderOpen(false);
     senderTrigger.current?.focus();
   };
-  useEffect(() => { setSenderOpen(false); }, [identityOwner, sending]);
+  useEffect(() => {
+    setSenderOpen(false);
+  }, [identityOwner, sending]);
   useEffect(() => {
     if (!senderOpen) return;
     const close = (event: PointerEvent) => {
@@ -407,24 +444,52 @@ export default function Composer({
     return () => document.removeEventListener("pointerdown", close);
   }, [senderOpen]);
   useEffect(() => {
-    if (senderOpen) document.getElementById(`${senderListId}-${activeSender}`)?.scrollIntoView({ block: "nearest" });
+    if (senderOpen)
+      document
+        .getElementById(`${senderListId}-${activeSender}`)
+        ?.scrollIntoView({ block: "nearest" });
   }, [senderOpen, activeSender, senderListId]);
-  const loadIdentities = useCallback(async (refresh = false) => {
-    const request = ++identityRequest.current;
-    setIdentityLoad({ owner: identityOwner, accounts: Object.fromEntries(sendingAccounts.map(account => [account.id, { loading: true }])) });
-    await Promise.all(sendingAccounts.map(async account => {
-      let state: IdentityState;
-      try {
-        const value = await loadSendingIdentities(account.id, { refresh });
-        if (value.sourceId !== account.sourceId) throw new Error("The sending mailbox changed. Retry to load its senders.");
-        state = { loading: false, value };
-      } catch (cause) {
-        state = { loading: false, error: cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Could not load sending addresses." };
-      }
-      if (mounted.current && identityOwnerRef.current === identityOwner && identityRequest.current === request)
-        setIdentityLoad(previous => previous.owner === identityOwner ? { ...previous, accounts: { ...previous.accounts, [account.id]: state } } : previous);
-    }));
-  }, [identityOwner, loadSendingIdentities]);
+  const loadIdentities = useCallback(
+    async (refresh = false) => {
+      const request = ++identityRequest.current;
+      setIdentityLoad({
+        owner: identityOwner,
+        accounts: Object.fromEntries(
+          sendingAccounts.map((account) => [account.id, { loading: true }]),
+        ),
+      });
+      await Promise.all(
+        sendingAccounts.map(async (account) => {
+          let state: IdentityState;
+          try {
+            const value = await loadSendingIdentities(account.id, { refresh });
+            if (value.sourceId !== account.sourceId)
+              throw new Error("The sending mailbox changed. Retry to load its senders.");
+            state = { loading: false, value };
+          } catch (cause) {
+            state = {
+              loading: false,
+              error:
+                cause instanceof Error && !(cause instanceof TypeError)
+                  ? cause.message
+                  : "Could not load sending addresses.",
+            };
+          }
+          if (
+            mounted.current &&
+            identityOwnerRef.current === identityOwner &&
+            identityRequest.current === request
+          )
+            setIdentityLoad((previous) =>
+              previous.owner === identityOwner
+                ? { ...previous, accounts: { ...previous.accounts, [account.id]: state } }
+                : previous,
+            );
+        }),
+      );
+    },
+    [identityOwner, loadSendingIdentities],
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -437,7 +502,9 @@ export default function Composer({
     const refresh = previousSource.current !== sourceBinding;
     previousSource.current = sourceBinding;
     void loadIdentities(refresh);
-    return () => { identityRequest.current++; };
+    return () => {
+      identityRequest.current++;
+    };
   }, [loadIdentities, sourceBinding]);
 
   function update(patch: Partial<Draft>) {
@@ -501,9 +568,7 @@ export default function Composer({
       setStatus("");
       setMenu(null);
       try {
-        setReminder(
-          readText(`draft-reminder:${draft.id}`) || "",
-        );
+        setReminder(readText(`draft-reminder:${draft.id}`) || "");
       } catch {
         setReminder("");
       }
@@ -542,8 +607,7 @@ export default function Composer({
     if (menu !== "emoji") emojiTrigger.current = null;
     if (!menu) return;
     const close = (event: MouseEvent) => {
-      if (!(event.target as Element).closest(".compose-menu-anchor"))
-        setMenu(null);
+      if (!(event.target as Element).closest(".compose-menu-anchor")) setMenu(null);
     };
     document.addEventListener("mousedown", close);
     return () => {
@@ -564,10 +628,7 @@ export default function Composer({
   function format(command: string, value?: string) {
     editor.current?.focus();
     const selected = window.getSelection();
-    if (
-      selection.current &&
-      editor.current?.contains(selection.current.commonAncestorContainer)
-    ) {
+    if (selection.current && editor.current?.contains(selection.current.commonAncestorContainer)) {
       selected?.removeAllRanges();
       selected?.addRange(selection.current);
     }
@@ -590,16 +651,10 @@ export default function Composer({
       body: editor.current?.innerHTML ?? current.current.body,
       updated: Date.now(),
     };
-    const recipients = [
-      ...addresses(next.to),
-      ...addresses(next.cc),
-      ...addresses(next.bcc),
-    ];
+    const recipients = [...addresses(next.to), ...addresses(next.cc), ...addresses(next.bcc)];
     if (!recipients.length) {
       setError("Add at least one recipient.");
-      card.current
-        ?.querySelector<HTMLInputElement>('[aria-label="To"]')
-        ?.focus();
+      card.current?.querySelector<HTMLInputElement>('[aria-label="To"]')?.focus();
       return;
     }
     const invalid = recipients.find((recipient) => !validAddress(recipient));
@@ -617,10 +672,7 @@ export default function Composer({
       setError("Wait for your attachments to finish loading.");
       return;
     }
-    if (
-      when &&
-      (!Number.isFinite(Date.parse(when)) || Date.parse(when) <= Date.now())
-    ) {
+    if (when && (!Number.isFinite(Date.parse(when)) || Date.parse(when) <= Date.now())) {
       setError("Choose a date and time in the future.");
       return;
     }
@@ -628,12 +680,24 @@ export default function Composer({
     submitting.current = true;
     setSending(true);
     try {
-      if (await onSend(next, when ? new Date(when).toISOString() : undefined, options)) setMenu(null);
+      if (await onSend(next, when ? new Date(when).toISOString() : undefined, options))
+        setMenu(null);
     } catch (error) {
-      if (mounted.current && current.current.id === next.id && current.current.account === next.account && current.current.from === next.from)
-        setError(error instanceof Error ? error.message : "The send could not be queued. Your draft has been kept.");
+      if (
+        mounted.current &&
+        current.current.id === next.id &&
+        current.current.account === next.account &&
+        current.current.from === next.from
+      )
+        setError(
+          error instanceof Error
+            ? error.message
+            : "The send could not be queued. Your draft has been kept.",
+        );
+    } finally {
+      submitting.current = false;
+      if (mounted.current) setSending(false);
     }
-    finally { submitting.current = false; if (mounted.current) setSending(false); }
   }
 
   function popOut() {
@@ -668,8 +732,7 @@ export default function Composer({
                   size: file.size,
                   data: String(reader.result),
                 });
-              reader.onerror = () =>
-                reject(new Error(`Could not read ${file.name}.`));
+              reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
               reader.readAsDataURL(file);
             }),
         ),
@@ -679,9 +742,7 @@ export default function Composer({
           attachments: [...current.current.attachments, ...attachments],
         });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not attach this file.",
-      );
+      setError(cause instanceof Error ? cause.message : "Could not attach this file.");
     } finally {
       pendingFiles.current -= 1;
       setAttaching(pendingFiles.current > 0);
@@ -692,7 +753,11 @@ export default function Composer({
     setReminder(value);
     setMenu(null);
     update({});
-    if (!(value ? writeText(`draft-reminder:${draft.id}`, value) : removeSaved(`draft-reminder:${draft.id}`))) {
+    if (
+      !(value
+        ? writeText(`draft-reminder:${draft.id}`, value)
+        : removeSaved(`draft-reminder:${draft.id}`))
+    ) {
       setError("Your browser could not save the reminder.");
     }
   }
@@ -712,10 +777,14 @@ export default function Composer({
         ? snippet.body
         : `<p>${escapeHTML(snippet.body).replaceAll("\n", "<br>")}</p>`,
     })),
-    ...(signature ? [{
-      name: "Signature",
-      body: `<p>${escapeHTML(signature).replaceAll("\n", "<br>")}</p>`,
-    }] : []),
+    ...(signature
+      ? [
+          {
+            name: "Signature",
+            body: `<p>${escapeHTML(signature).replaceAll("\n", "<br>")}</p>`,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -734,8 +803,7 @@ export default function Composer({
         }
       }}
       onKeyDown={(event) => {
-        if (event.defaultPrevented || event.nativeEvent.isComposing || dialog)
-          return;
+        if (event.defaultPrevented || event.nativeEvent.isComposing || dialog) return;
 
         const command = event.metaKey || event.ctrlKey;
         const inEditor = !!editor.current?.contains(event.target as Node);
@@ -750,9 +818,7 @@ export default function Composer({
                 editor.current?.focus();
                 if (
                   selection.current &&
-                  editor.current?.contains(
-                    selection.current.commonAncestorContainer,
-                  )
+                  editor.current?.contains(selection.current.commonAncestorContainer)
                 ) {
                   const selected = window.getSelection();
                   selected?.removeAllRanges();
@@ -762,11 +828,7 @@ export default function Composer({
             : onClose;
         } else if (command && !event.altKey) {
           if (event.key === "Enter") {
-            action = () =>
-              submit(
-                undefined,
-                event.shiftKey ? { markDone: true } : undefined,
-              );
+            action = () => submit(undefined, event.shiftKey ? { markDone: true } : undefined);
           } else if (event.shiftKey) {
             const field = matches("o", "KeyO")
               ? "To"
@@ -783,9 +845,7 @@ export default function Composer({
               action = () => {
                 setExpanded(true);
                 requestAnimationFrame(() =>
-                  card.current
-                    ?.querySelector<HTMLElement>(`[aria-label="${field}"]`)
-                    ?.focus(),
+                  card.current?.querySelector<HTMLElement>(`[aria-label="${field}"]`)?.focus(),
                 );
               };
             } else if (matches("m", "KeyM")) {
@@ -824,10 +884,8 @@ export default function Composer({
               action = popOut;
             } else if (inEditor) {
               if (matches("x", "KeyX")) action = () => format("strikeThrough");
-              else if (matches("7", "Digit7"))
-                action = () => format("insertOrderedList");
-              else if (matches("8", "Digit8"))
-                action = () => format("insertUnorderedList");
+              else if (matches("7", "Digit7")) action = () => format("insertOrderedList");
+              else if (matches("8", "Digit8")) action = () => format("insertUnorderedList");
               else if (matches("9", "Digit9"))
                 action = () =>
                   format(
@@ -839,11 +897,7 @@ export default function Composer({
             }
           } else if (matches(";", "Semicolon")) {
             action = () => setMenu(menu === "snippets" ? null : "snippets");
-          } else if (
-            matches("/", "Slash") &&
-            onSearch &&
-            (!inline || onPopOut)
-          ) {
+          } else if (matches("/", "Slash") && onSearch && (!inline || onPopOut)) {
             action = () => {
               if (!current.current.popOut) popOut();
               onSearch();
@@ -860,8 +914,7 @@ export default function Composer({
           }
           if (!action && inEditor && !event.shiftKey) {
             if (matches("]", "BracketRight")) action = () => format("indent");
-            else if (matches("[", "BracketLeft"))
-              action = () => format("outdent");
+            else if (matches("[", "BracketLeft")) action = () => format("outdent");
           }
         } else if (inEditor && !event.altKey) {
           if (event.key === ";" && !event.shiftKey) {
@@ -875,14 +928,12 @@ export default function Composer({
             ) {
               const range = selected.getRangeAt(0);
               const node = range.startContainer;
-              const block = (
-                node instanceof Element ? node : node.parentElement
-              )?.closest("p,div,li,blockquote,pre");
+              const block = (node instanceof Element ? node : node.parentElement)?.closest(
+                "p,div,li,blockquote,pre",
+              );
               const before = range.cloneRange();
               before.selectNodeContents(
-                block && editor.current?.contains(block)
-                  ? block
-                  : editor.current!,
+                block && editor.current?.contains(block) ? block : editor.current!,
               );
               before.setEnd(range.startContainer, range.startOffset);
               if (/(?:^|[\s([{])$/.test(before.toString())) {
@@ -896,10 +947,7 @@ export default function Composer({
                     !trigger.startOffset
                   )
                     return;
-                  trigger.setStart(
-                    trigger.startContainer,
-                    trigger.startOffset - 1,
-                  );
+                  trigger.setStart(trigger.startContainer, trigger.startOffset - 1);
                   emojiTrigger.current = trigger;
                   setMenu("emoji");
                 };
@@ -908,9 +956,9 @@ export default function Composer({
           } else if (event.key === "Tab") {
             const selected = window.getSelection();
             const anchor = selected?.anchorNode;
-            const item = (
-              anchor instanceof Element ? anchor : anchor?.parentElement
-            )?.closest("li");
+            const item = (anchor instanceof Element ? anchor : anchor?.parentElement)?.closest(
+              "li",
+            );
             if (item && editor.current?.contains(item)) {
               action = () => format(event.shiftKey ? "outdent" : "indent");
             }
@@ -936,11 +984,7 @@ export default function Composer({
             <h1>New Message</h1>
             <div className="message-navigation">
               {floating ? (
-                <IconButton
-                  name="Close"
-                  title="Return to full draft"
-                  onClick={popOut}
-                />
+                <IconButton name="Close" title="Return to full draft" onClick={popOut} />
               ) : (
                 <>
                   <IconButton
@@ -991,8 +1035,7 @@ export default function Composer({
           ref={card}
           className={`compose-card ${inline ? "" : "message-column"}`}
           onDragOver={(event) => {
-            if (event.dataTransfer.types.includes("Files"))
-              event.preventDefault();
+            if (event.dataTransfer.types.includes("Files")) event.preventDefault();
           }}
           onDrop={(event) => {
             if (event.dataTransfer.files.length) {
@@ -1043,7 +1086,7 @@ export default function Composer({
                   <RecipientField
                     key={`${draft.id}-cc`}
                     contacts={contacts}
-                loadContacts={loadContacts}
+                    loadContacts={loadContacts}
                     label="Cc"
                     value={draft.cc}
                     onChange={(cc) => update({ cc })}
@@ -1052,7 +1095,7 @@ export default function Composer({
                   <RecipientField
                     key={`${draft.id}-bcc`}
                     contacts={contacts}
-                loadContacts={loadContacts}
+                    loadContacts={loadContacts}
                     label="Bcc"
                     value={draft.bcc}
                     onChange={(bcc) => update({ bcc })}
@@ -1064,71 +1107,146 @@ export default function Composer({
           )}
           <div className="compose-recipient-row compose-from">
             <span>From</span>
-            <div className="compose-sender-picker" ref={senderAnchor} onBlur={event => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSenderOpen(false);
-            }}>
-            <button
-              type="button"
-              ref={senderTrigger}
-              className="compose-sender-trigger"
-              role="combobox"
-              aria-label="From"
-              aria-haspopup="listbox"
-              aria-expanded={senderOpen}
-              aria-controls={senderListId}
-              aria-activedescendant={senderOpen && activeSender >= 0 ? `${senderListId}-${activeSender}` : undefined}
-              aria-describedby={identityStatusId}
-              aria-busy={identitiesLoading}
-              value={listedFrom?.value ?? JSON.stringify([draft.account, from])}
-              disabled={sending}
-              onClick={() => senderOpen ? setSenderOpen(false) : openSenders()}
-              onKeyDown={event => {
-                if (event.nativeEvent.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
-                const key = event.key;
-                if (key === "Tab") { setSenderOpen(false); return; }
-                if (key === "Escape") {
-                  if (!senderOpen) return;
+            <div
+              className="compose-sender-picker"
+              ref={senderAnchor}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
                   setSenderOpen(false);
-                } else if (key === "ArrowDown" || key === "ArrowUp") {
-                  if (!senderOpen) openSenders(key === "ArrowUp");
-                  else setSenderHighlight((activeSender + (key === "ArrowDown" ? 1 : -1) + identities.length) % Math.max(1, identities.length));
-                } else if (key === "Home" || key === "End") {
-                  setSenderOpen(true); setSenderHighlight(key === "Home" ? 0 : Math.max(0, identities.length - 1));
-                } else if (key === "Enter" || key === " ") {
-                  if (!senderOpen) openSenders();
-                  else if (activeSender >= 0) chooseSender(identities[activeSender].value);
-                } else if (key.length === 1) {
-                  const now = Date.now(), previous = senderTypeahead.current;
-                  const text = (now - previous.at < 600 ? previous.text : "") + key.toLowerCase();
-                  senderTypeahead.current = { text, at: now };
-                  const index = identities.findIndex(identity => identity.email.toLowerCase().startsWith(text));
-                  setSenderOpen(true); if (index >= 0) setSenderHighlight(index);
-                } else return;
-                event.preventDefault(); event.stopPropagation();
               }}
             >
-              <span>{from || "Choose a sending address"}{missingFrom && from ? " (Unavailable)" : ""}</span>
-              <Icon name="ChevronDown" size={12} />
-            </button>
-            <div id={senderListId} role="listbox" aria-label="Sending addresses" className="compose-sender-options" hidden={!senderOpen}>
-              {senderGroups.map(({ account, identities, offset }) => {
-                return identities.length > 0 && <div key={account.id} role="group" aria-label={account.email || account.name}>
-                  {senderGroups.length > 1 && <div className="compose-sender-group">{account.email || account.name}</div>}
-                  {identities.map((identity, index) => <button key={identity.value} type="button" role="option" tabIndex={-1}
-                    id={`${senderListId}-${offset + index}`} value={identity.value} aria-label={identity.email}
-                    aria-selected={identity.value === listedFrom?.value} className={offset + index === activeSender ? "is-active" : undefined}
-                    onMouseDown={event => event.preventDefault()} onMouseEnter={() => setSenderHighlight(offset + index)} onClick={() => chooseSender(identity.value)}>
-                    <span>{identity.email}</span>{identity.value === listedFrom?.value && <Icon name="Check" size={14} />}
-                  </button>)}
-                </div>;
-              })}
-              {identities.length === 0 && <div className="compose-sender-group">{identitiesLoading ? "Loading sending addresses…" : "No sending addresses available"}</div>}
-            </div>
+              <button
+                type="button"
+                ref={senderTrigger}
+                className="compose-sender-trigger"
+                role="combobox"
+                aria-label="From"
+                aria-haspopup="listbox"
+                aria-expanded={senderOpen}
+                aria-controls={senderListId}
+                aria-activedescendant={
+                  senderOpen && activeSender >= 0 ? `${senderListId}-${activeSender}` : undefined
+                }
+                aria-describedby={identityStatusId}
+                aria-busy={identitiesLoading}
+                value={listedFrom?.value ?? JSON.stringify([draft.account, from])}
+                disabled={sending}
+                onClick={() => (senderOpen ? setSenderOpen(false) : openSenders())}
+                onKeyDown={(event) => {
+                  if (
+                    event.nativeEvent.isComposing ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.altKey
+                  )
+                    return;
+                  const key = event.key;
+                  if (key === "Tab") {
+                    setSenderOpen(false);
+                    return;
+                  }
+                  if (key === "Escape") {
+                    if (!senderOpen) return;
+                    setSenderOpen(false);
+                  } else if (key === "ArrowDown" || key === "ArrowUp") {
+                    if (!senderOpen) openSenders(key === "ArrowUp");
+                    else
+                      setSenderHighlight(
+                        (activeSender + (key === "ArrowDown" ? 1 : -1) + identities.length) %
+                          Math.max(1, identities.length),
+                      );
+                  } else if (key === "Home" || key === "End") {
+                    setSenderOpen(true);
+                    setSenderHighlight(key === "Home" ? 0 : Math.max(0, identities.length - 1));
+                  } else if (key === "Enter" || key === " ") {
+                    if (!senderOpen) openSenders();
+                    else if (activeSender >= 0) chooseSender(identities[activeSender].value);
+                  } else if (key.length === 1) {
+                    const now = Date.now(),
+                      previous = senderTypeahead.current;
+                    const text = (now - previous.at < 600 ? previous.text : "") + key.toLowerCase();
+                    senderTypeahead.current = { text, at: now };
+                    const index = identities.findIndex((identity) =>
+                      identity.email.toLowerCase().startsWith(text),
+                    );
+                    setSenderOpen(true);
+                    if (index >= 0) setSenderHighlight(index);
+                  } else return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <span>
+                  {from || "Choose a sending address"}
+                  {missingFrom && from ? " (Unavailable)" : ""}
+                </span>
+                <Icon name="ChevronDown" size={12} />
+              </button>
+              <div
+                id={senderListId}
+                role="listbox"
+                aria-label="Sending addresses"
+                className="compose-sender-options"
+                hidden={!senderOpen}
+              >
+                {senderGroups.map(({ account, identities, offset }) => {
+                  return (
+                    identities.length > 0 && (
+                      <div key={account.id} role="group" aria-label={account.email || account.name}>
+                        {senderGroups.length > 1 && (
+                          <div className="compose-sender-group">
+                            {account.email || account.name}
+                          </div>
+                        )}
+                        {identities.map((identity, index) => (
+                          <button
+                            key={identity.value}
+                            type="button"
+                            role="option"
+                            tabIndex={-1}
+                            id={`${senderListId}-${offset + index}`}
+                            value={identity.value}
+                            aria-label={identity.email}
+                            aria-selected={identity.value === listedFrom?.value}
+                            className={offset + index === activeSender ? "is-active" : undefined}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onMouseEnter={() => setSenderHighlight(offset + index)}
+                            onClick={() => chooseSender(identity.value)}
+                          >
+                            <span>{identity.email}</span>
+                            {identity.value === listedFrom?.value && (
+                              <Icon name="Check" size={14} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  );
+                })}
+                {identities.length === 0 && (
+                  <div className="compose-sender-group">
+                    {identitiesLoading
+                      ? "Loading sending addresses…"
+                      : "No sending addresses available"}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div id={identityStatusId} className={`compose-sender-status ${identityState?.error || missingFrom ? "is-error" : ""}`} aria-live="polite">
-            {currentLoading ? "Loading sending addresses…" : identityState?.error || (missingFrom ? "This address is not in the available senders." : "")}
-            {!currentLoading && (identityState?.error || missingFrom || draft.sendError) && <button type="button" onClick={() => void loadIdentities(true)}>Retry sending addresses</button>}
+          <div
+            id={identityStatusId}
+            className={`compose-sender-status ${identityState?.error || missingFrom ? "is-error" : ""}`}
+            aria-live="polite"
+          >
+            {currentLoading
+              ? "Loading sending addresses…"
+              : identityState?.error ||
+                (missingFrom ? "This address is not in the available senders." : "")}
+            {!currentLoading && (identityState?.error || missingFrom || draft.sendError) && (
+              <button type="button" onClick={() => void loadIdentities(true)}>
+                Retry sending addresses
+              </button>
+            )}
           </div>
           {(!inline || expanded) && (
             <input
@@ -1142,17 +1260,12 @@ export default function Composer({
           <div
             ref={editor}
             className="compose-editor message-body"
-            data-quick-reply-preview={
-              showQuickReplies ? previewReply?.body : undefined
-            }
+            data-quick-reply-preview={showQuickReplies ? previewReply?.body : undefined}
             style={{
-              fontFamily:
-                preferences.font === "Super Sans"
-                  ? undefined
-                  : preferences.font,
-              fontSize: (
-                { Small: 12, Large: 18, Huge: 24 } as Record<string, number>
-              )[preferences.fontSize],
+              fontFamily: preferences.font === "Super Sans" ? undefined : preferences.font,
+              fontSize: ({ Small: 12, Large: 18, Huge: 24 } as Record<string, number>)[
+                preferences.fontSize
+              ],
             }}
             contentEditable
             suppressContentEditableWarning
@@ -1176,10 +1289,7 @@ export default function Composer({
           {!!draft.attachments.length && (
             <div className="message-attachments compose-attachments">
               {draft.attachments.map((file, index) => (
-                <div
-                  className="message-attachment"
-                  key={`${file.name}-${index}`}
-                >
+                <div className="message-attachment" key={`${file.name}-${index}`}>
                   <Icon name="Paperclip" />
                   <span title={file.name}>{file.name}</span>
                   <small>
@@ -1193,9 +1303,7 @@ export default function Composer({
                     size={12}
                     onClick={() =>
                       update({
-                        attachments: current.current.attachments.filter(
-                          (_, i) => i !== index,
-                        ),
+                        attachments: current.current.attachments.filter((_, i) => i !== index),
                       })
                     }
                   />
@@ -1248,11 +1356,7 @@ export default function Composer({
                 <s>S</s>
               </button>
               <span className="compose-format-divider" />
-              <IconButton
-                name="Link"
-                title="Insert link (Command K)"
-                onClick={insertLink}
-              />
+              <IconButton name="Link" title="Insert link (Command K)" onClick={insertLink} />
               <button
                 type="button"
                 title="Text color (Command O)"
@@ -1299,9 +1403,7 @@ export default function Composer({
                 onClick={() =>
                   format(
                     "formatBlock",
-                    document.queryCommandValue("formatBlock") === "pre"
-                      ? "div"
-                      : "pre",
+                    document.queryCommandValue("formatBlock") === "pre" ? "div" : "pre",
                   )
                 }
               >
@@ -1319,7 +1421,11 @@ export default function Composer({
           {(error || draft.saveError || draft.sendError) && (
             <div className="compose-error" role="alert">
               {error || draft.saveError || draft.sendError?.message}
-              {draft.saveError && onReload && <button type="button" onClick={onReload}>Reload saved draft</button>}
+              {draft.saveError && onReload && (
+                <button type="button" onClick={onReload}>
+                  Reload saved draft
+                </button>
+              )}
             </div>
           )}
           {status && (
@@ -1333,7 +1439,11 @@ export default function Composer({
                 type="button"
                 className="compose-send"
                 title="Send (Command Enter)"
-                disabled={sending || attaching || !accounts.some(account => account.id === draft.account && account.canSend)}
+                disabled={
+                  sending ||
+                  attaching ||
+                  !accounts.some((account) => account.id === draft.account && account.canSend)
+                }
                 onClick={() => submit()}
               >
                 {sending ? "Queuing…" : "Send"}
@@ -1343,9 +1453,7 @@ export default function Composer({
                   type="button"
                   aria-expanded={menu === "schedule"}
                   title="Send later (Command Shift L)"
-                  onClick={() =>
-                    setMenu(menu === "schedule" ? null : "schedule")
-                  }
+                  onClick={() => setMenu(menu === "schedule" ? null : "schedule")}
                 >
                   Send later
                 </button>
@@ -1356,26 +1464,19 @@ export default function Composer({
                     aria-label="Send later"
                   >
                     <h3>Send later</h3>
-                    <button
-                      type="button"
-                      onClick={() => submit(quickDate(1, 9))}
-                    >
+                    <button type="button" onClick={() => submit(quickDate(1, 9))}>
                       <span>Tomorrow morning</span>
                       <small>9:00 AM</small>
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        submit(quickDate((8 - new Date().getDay()) % 7 || 7, 9))
-                      }
+                      onClick={() => submit(quickDate((8 - new Date().getDay()) % 7 || 7, 9))}
                     >
                       <span>Next Monday</span>
                       <small>9:00 AM</small>
                     </button>
                     <div className="compose-menu-custom">
-                      <label htmlFor={`send-date-${draft.id}`}>
-                        Pick a date and time
-                      </label>
+                      <label htmlFor={`send-date-${draft.id}`}>Pick a date and time</label>
                       <input
                         id={`send-date-${draft.id}`}
                         aria-label="Send date and time"
@@ -1412,18 +1513,12 @@ export default function Composer({
                     aria-label="Remind me"
                   >
                     <h3>Remind me if no reply</h3>
-                    {["Tomorrow", "In 2 days", "In 3 days", "In 1 week"].map(
-                      (value) => (
-                        <button
-                          type="button"
-                          key={value}
-                          onClick={() => chooseReminder(value)}
-                        >
-                          <span>{value}</span>
-                          {reminder === value && <Icon name="Check" />}
-                        </button>
-                      ),
-                    )}
+                    {["Tomorrow", "In 2 days", "In 3 days", "In 1 week"].map((value) => (
+                      <button type="button" key={value} onClick={() => chooseReminder(value)}>
+                        <span>{value}</span>
+                        {reminder === value && <Icon name="Check" />}
+                      </button>
+                    ))}
                     <button type="button" onClick={() => chooseReminder("")}>
                       No reminder
                     </button>
@@ -1462,9 +1557,7 @@ export default function Composer({
                   >
                     <h3>Share availability</h3>
                     <div className="compose-menu-custom">
-                      <label htmlFor={`availability-${draft.id}`}>
-                        Available date and time
-                      </label>
+                      <label htmlFor={`availability-${draft.id}`}>Available date and time</label>
                       <input
                         id={`availability-${draft.id}`}
                         type="datetime-local"
@@ -1519,9 +1612,7 @@ export default function Composer({
                     />
                     {snippets
                       .filter((snippet) =>
-                        snippet.name
-                          .toLowerCase()
-                          .includes(snippetSearch.toLowerCase()),
+                        snippet.name.toLowerCase().includes(snippetSearch.toLowerCase()),
                       )
                       .map((snippet) => (
                         <button
@@ -1585,9 +1676,7 @@ export default function Composer({
                         onClick={() => {
                           if (
                             emojiTrigger.current?.toString() === ":" &&
-                            editor.current?.contains(
-                              emojiTrigger.current.commonAncestorContainer,
-                            )
+                            editor.current?.contains(emojiTrigger.current.commonAncestorContainer)
                           )
                             selection.current = emojiTrigger.current;
                           format("insertText", emoji.value);
@@ -1634,11 +1723,7 @@ export default function Composer({
         </div>
       </div>
       {dialog === "link" && (
-        <Modal
-          label="Insert link"
-          onClose={closeDialog}
-          className="message-modal"
-        >
+        <Modal label="Insert link" onClose={closeDialog} className="message-modal">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -1647,9 +1732,7 @@ export default function Composer({
                 : `https://${link.trim()}`;
               if (
                 !link.trim() ||
-                !/^(https?:\/\/[^\s]+|mailto:[^\s@]+@[^\s]+|tel:[+\d\s()-]+)$/i.test(
-                  url,
-                )
+                !/^(https?:\/\/[^\s]+|mailto:[^\s@]+@[^\s]+|tel:[+\d\s()-]+)$/i.test(url)
               ) {
                 setError("Enter a valid link.");
                 return;

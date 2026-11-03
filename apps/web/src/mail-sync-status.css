@@ -39,7 +39,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mail-sync-name > span { color: var(--muted); font-weight: 400; }
+.mail-sync-name > span {
+  color: var(--muted);
+  font-weight: 400;
+}
 .mail-sync-text {
   flex: 1 1 auto;
   min-width: 0;
@@ -59,7 +62,7 @@
   border-radius: inherit;
   background: var(--muted);
   transform: translateX(115%);
-  opacity: .5;
+  opacity: 0.5;
 }
 .mail-sync-progress.is-active > span {
   opacity: 1;
@@ -73,20 +76,31 @@
   color: var(--muted);
   text-align: start;
 }
-.mail-sync-settings:hover { color: var(--text); }
-.app:not(.settings-open):has(.empty-mailbox.inbox-zero):not(.mobile-sidebar-open) > .right-sidebar:has(.mail-sync-status) {
+.mail-sync-settings:hover {
+  color: var(--text);
+}
+.app:not(.settings-open):has(.empty-mailbox.inbox-zero):not(.mobile-sidebar-open)
+  > .right-sidebar:has(.mail-sync-status) {
   height: auto;
   background: var(--sidebar);
 }
 @keyframes mail-sync-slide {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(333%); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(333%);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mail-sync-progress.is-active > span { animation: none; }
+  .mail-sync-progress.is-active > span {
+    animation: none;
+  }
 }
 @media (max-width: 700px) {
-  .mail-sync-settings { min-height: 44px; }
+  .mail-sync-settings {
+    min-height: 44px;
+  }
 }
 
 @media (min-width: 701px) {
@@ -95,7 +109,9 @@
       flex-direction: column;
       gap: 2px;
     }
-    .mail-sync-name { max-width: 100%; }
+    .mail-sync-name {
+      max-width: 100%;
+    }
   }
 }
 .ai-sorting-status {
@@ -119,7 +135,9 @@
   margin: 0;
   min-width: 0;
 }
-.ai-sorting-row:hover .mail-sync-name { color: var(--text); }
+.ai-sorting-row:hover .mail-sync-name {
+  color: var(--text);
+}
 .ai-sorting-progress {
   display: block;
   width: 100%;
@@ -131,6 +149,13 @@
   background: var(--border);
   overflow: hidden;
 }
-.ai-sorting-progress::-webkit-progress-bar { background: var(--border); }
-.ai-sorting-progress::-webkit-progress-value { background: var(--muted); border-radius: inherit; }
-.ai-sorting-progress::-moz-progress-bar { background: var(--muted); }
+.ai-sorting-progress::-webkit-progress-bar {
+  background: var(--border);
+}
+.ai-sorting-progress::-webkit-progress-value {
+  background: var(--muted);
+  border-radius: inherit;
+}
+.ai-sorting-progress::-moz-progress-bar {
+  background: var(--muted);
+}

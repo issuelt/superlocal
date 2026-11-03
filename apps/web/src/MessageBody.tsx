@@ -21,13 +21,25 @@ function canvasColor(doc: Document): MessageCanvasColor | null {
   const height = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
   const coversCanvas = (element: Element) => {
     const bounds = element.getBoundingClientRect();
-    return bounds.left <= 2 && bounds.top <= 2 && bounds.right >= width - 2 && bounds.bottom >= height - 2;
+    return (
+      bounds.left <= 2 &&
+      bounds.top <= 2 &&
+      bounds.right >= width - 2 &&
+      bounds.bottom >= height - 2
+    );
   };
   const rgba = (value: string) => {
     const match = /^rgba?\(([\d.,\s]+)\)$/.exec(value);
     const channels = match?.[1].split(",").map(Number);
-    if (!channels || (channels.length !== 3 && channels.length !== 4)
-      || channels.some((channel, index) => !Number.isFinite(channel) || channel < 0 || channel > (index === 3 ? 1 : 255))) return null;
+    if (
+      !channels ||
+      (channels.length !== 3 && channels.length !== 4) ||
+      channels.some(
+        (channel, index) =>
+          !Number.isFinite(channel) || channel < 0 || channel > (index === 3 ? 1 : 255),
+      )
+    )
+      return null;
     return [...channels.slice(0, 3), channels[3] ?? 1];
   };
   let color: MessageCanvasColor | null = null;
@@ -35,24 +47,36 @@ function canvasColor(doc: Document): MessageCanvasColor | null {
   // Follow only a single full-canvas wrapper chain, never banners, links or images.
   for (let depth = 0; depth < 12; depth++) {
     const style = view.getComputedStyle(element);
-    if (style.opacity !== "1" || style.filter !== "none" || style.mixBlendMode !== "normal"
-      || style.transform !== "none" || style.visibility !== "visible") return null;
+    if (
+      style.opacity !== "1" ||
+      style.filter !== "none" ||
+      style.mixBlendMode !== "normal" ||
+      style.transform !== "none" ||
+      style.visibility !== "visible"
+    )
+      return null;
     const background = rgba(style.backgroundColor);
     if (!background || style.backgroundImage !== "none") color = null;
     else if (background[3] === 1) color = [background[0], background[1], background[2]];
     else if (background[3] > 0 && color) {
-      const mixed: number[] = color.map((channel, index) => background[index] * background[3] + channel * (1 - background[3]));
+      const mixed: number[] = color.map(
+        (channel, index) => background[index] * background[3] + channel * (1 - background[3]),
+      );
       color = [mixed[0], mixed[1], mixed[2]];
     }
     if (element === doc.documentElement) {
       // CSS propagates the body's background to a transparent root canvas.
-      if (!coversCanvas(doc.body) && !(background?.[3] === 0 && style.backgroundImage === "none")) break;
+      if (!coversCanvas(doc.body) && !(background?.[3] === 0 && style.backgroundImage === "none"))
+        break;
       element = doc.body;
       continue;
     }
     if (element.childElementCount > 100) break;
-    const wrappers = Array.from(element.children).filter(child =>
-      /^(DIV|TABLE|TBODY|TR|TD|CENTER|SECTION|MAIN|ARTICLE)$/.test(child.tagName) && coversCanvas(child));
+    const wrappers = Array.from(element.children).filter(
+      (child) =>
+        /^(DIV|TABLE|TBODY|TR|TD|CENTER|SECTION|MAIN|ARTICLE)$/.test(child.tagName) &&
+        coversCanvas(child),
+    );
     if (wrappers.length !== 1) break;
     const position = view.getComputedStyle(wrappers[0]).position;
     if (position === "absolute" || position === "fixed") break;
@@ -63,15 +87,22 @@ function canvasColor(doc: Document): MessageCanvasColor | null {
 
 function linkedText(text: string): ReactNode[] {
   const result: ReactNode[] = [];
-  const pattern = /\bhttps?:\/\/[^\s<>"']+|\bmailto:[^\s<>"]+|[^\s<>()\[\]{},;:"]+@[^\s<>()\[\]{},;:"]+/gi;
-  const address = /^[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}$/i;
+  const pattern =
+    /\bhttps?:\/\/[^\s<>"']+|\bmailto:[^\s<>"]+|[^\s<>()\[\]{},;:"]+@[^\s<>()\[\]{},;:"]+/gi;
+  const address =
+    /^[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}$/i;
   let start = 0;
   for (const match of text.matchAll(pattern)) {
     const quoted = match[0].startsWith("'") && match[0].endsWith("'");
     const index = match.index! + (quoted ? 1 : 0);
     let value = (quoted ? match[0].slice(1, -1) : match[0]).replace(/[.,;:!?]+$/, "");
-    for (const [open, close] of [["(", ")"], ["[", "]"], ["{", "}"]]) {
-      while (value.endsWith(close) && value.split(close).length > value.split(open).length) value = value.slice(0, -1);
+    for (const [open, close] of [
+      ["(", ")"],
+      ["[", "]"],
+      ["{", "}"],
+    ]) {
+      while (value.endsWith(close) && value.split(close).length > value.split(open).length)
+        value = value.slice(0, -1);
     }
     let href = value;
     if (!/^(?:https?:\/\/|mailto:)/i.test(value)) {
@@ -81,20 +112,33 @@ function linkedText(text: string): ReactNode[] {
     }
     try {
       if (!["https:", "http:", "mailto:"].includes(new URL(href).protocol)) continue;
-    } catch { continue; }
+    } catch {
+      continue;
+    }
     result.push(text.slice(start, index));
-    result.push(<a key={index} href={href} target="_blank" rel="noopener noreferrer">{value}</a>);
+    result.push(
+      <a key={index} href={href} target="_blank" rel="noopener noreferrer">
+        {value}
+      </a>,
+    );
     start = index + value.length;
   }
   result.push(text.slice(start));
   return result;
 }
 
-function unavailableImage(image: HTMLImageElement, reason: "inline image unavailable" | "image unavailable") {
+function unavailableImage(
+  image: HTMLImageElement,
+  reason: "inline image unavailable" | "image unavailable",
+) {
   if (image.dataset.inboxImageError) return;
   image.dataset.inboxImageError = reason;
   const style = image.ownerDocument.defaultView?.getComputedStyle(image);
-  if (image.getAttribute("alt") === "" || style?.display === "none" || style?.visibility === "hidden") {
+  if (
+    image.getAttribute("alt") === "" ||
+    style?.display === "none" ||
+    style?.visibility === "hidden"
+  ) {
     image.style.setProperty("opacity", "0", "important");
     return;
   }
@@ -103,13 +147,18 @@ function unavailableImage(image: HTMLImageElement, reason: "inline image unavail
   const width = bounds.width || image.width;
   const height = bounds.height || image.height;
   const compact = width > 0 && width <= 64;
-  const label = image.alt ? `${image.alt} (${reason})` : reason === "image unavailable" ? "Image unavailable" : "Inline image unavailable";
+  const label = image.alt
+    ? `${image.alt} (${reason})`
+    : reason === "image unavailable"
+      ? "Image unavailable"
+      : "Inline image unavailable";
   missing.setAttribute("role", "img");
   missing.setAttribute("aria-label", label);
   missing.title = label;
   missing.dataset.inboxImageError = reason;
   missing.textContent = compact ? "×" : label;
-  missing.style.cssText = 'display:inline-block;box-sizing:border-box;max-width:100%;padding:6px 8px;background:#f1f1f1;color:#555;font:13px/1.5 "Helvetica Neue",sans-serif;letter-spacing:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle';
+  missing.style.cssText =
+    'display:inline-block;box-sizing:border-box;max-width:100%;padding:6px 8px;background:#f1f1f1;color:#555;font:13px/1.5 "Helvetica Neue",sans-serif;letter-spacing:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle';
   if (compact) {
     missing.style.width = `${width}px`;
     missing.style.height = missing.style.lineHeight = `${height || width}px`;
@@ -125,7 +174,8 @@ function emailDocument(html: string, styles: string, fontSize: string) {
   doc.documentElement.dataset.inboxDocument = id;
   const policy = doc.createElement("meta");
   policy.httpEquiv = "Content-Security-Policy";
-  policy.content = "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: http: data:; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  policy.content =
+    "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: http: data:; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
   const charset = doc.createElement("meta");
   charset.setAttribute("charset", "utf-8");
   const referrer = doc.createElement("meta");
@@ -159,16 +209,20 @@ function emailDocument(html: string, styles: string, fontSize: string) {
     const disclosure = doc.createElement("details");
     disclosure.dataset.inboxDisclosure = id;
     const summary = doc.createElement("summary");
-    const show = doc.createElement("span"), hide = doc.createElement("span");
+    const show = doc.createElement("span"),
+      hide = doc.createElement("span");
     show.textContent = "Show quoted text";
     hide.textContent = "Hide quoted text";
     summary.append(show, hide);
     disclosure.append(summary);
     first.before(disclosure);
     let node: ChildNode | null = first;
-    while (node && (node.nodeType === Node.COMMENT_NODE
-      || node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()
-      || node instanceof Element && node.getAttribute("data-inbox-quoted-history") === "true")) {
+    while (
+      node &&
+      (node.nodeType === Node.COMMENT_NODE ||
+        (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) ||
+        (node instanceof Element && node.getAttribute("data-inbox-quoted-history") === "true"))
+    ) {
       const next: ChildNode | null = node.nextSibling;
       disclosure.append(node);
       node = next;
@@ -192,8 +246,14 @@ function emailDocument(html: string, styles: string, fontSize: string) {
   }
   let blockedImages = 0;
   for (const image of doc.querySelectorAll<HTMLImageElement>("img[data-openmail-src]:not([src])")) {
-    const pixel = Number(image.getAttribute("width")) === 1 && Number(image.getAttribute("height")) === 1;
-    if (pixel || image.style.display === "none" || image.style.visibility === "hidden" || image.style.opacity === "0") {
+    const pixel =
+      Number(image.getAttribute("width")) === 1 && Number(image.getAttribute("height")) === 1;
+    if (
+      pixel ||
+      image.style.display === "none" ||
+      image.style.visibility === "hidden" ||
+      image.style.opacity === "0"
+    ) {
       image.remove();
       continue;
     }
@@ -204,15 +264,28 @@ function emailDocument(html: string, styles: string, fontSize: string) {
   return { id, html: `<!doctype html>${doc.documentElement.outerHTML}`, blockedImages };
 }
 
-export default function MessageBody({ html, text = "", format, styles = "", fontSize, onActivate, onKeyboard, onImageSettings, onCanvasColor }: MessageBodyProps) {
+export default function MessageBody({
+  html,
+  text = "",
+  format,
+  styles = "",
+  fontSize,
+  onActivate,
+  onKeyboard,
+  onImageSettings,
+  onCanvasColor,
+}: MessageBodyProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const cleanup = useRef<() => void>(() => {});
   const activate = useEffectEvent(onActivate);
   const keyboard = useEffectEvent(onKeyboard);
   const reportCanvas = useEffectEvent(onCanvasColor);
   const plain = format === "text";
-  const document = useMemo(() => plain ? null : emailDocument(html, styles, fontSize), [plain, html, styles, fontSize]);
-  const content = useMemo(() => plain ? linkedText(text) : null, [plain, text]);
+  const document = useMemo(
+    () => (plain ? null : emailDocument(html, styles, fontSize)),
+    [plain, html, styles, fontSize],
+  );
+  const content = useMemo(() => (plain ? linkedText(text) : null), [plain, text]);
 
   useLayoutEffect(() => {
     reportCanvas(null);
@@ -220,22 +293,33 @@ export default function MessageBody({ html, text = "", format, styles = "", font
     let waiting = 0;
     const attach = () => {
       const doc = frame.current?.contentDocument;
-      if (doc?.body && doc.documentElement?.dataset.inboxDocument === document.id && doc.readyState !== "loading") loaded();
+      if (
+        doc?.body &&
+        doc.documentElement?.dataset.inboxDocument === document.id &&
+        doc.readyState !== "loading"
+      )
+        loaded();
       else waiting = requestAnimationFrame(attach);
     };
     waiting = requestAnimationFrame(attach);
-    return () => { cancelAnimationFrame(waiting); cleanup.current(); };
+    return () => {
+      cancelAnimationFrame(waiting);
+      cleanup.current();
+    };
   }, [document]);
 
   function loaded() {
-    const element = frame.current, doc = element?.contentDocument;
-    if (!element || !doc?.body || doc.documentElement.dataset.inboxDocument !== document?.id) return;
+    const element = frame.current,
+      doc = element?.contentDocument;
+    if (!element || !doc?.body || doc.documentElement.dataset.inboxDocument !== document?.id)
+      return;
     cleanup.current();
     let pending = 0;
     let width = element.clientWidth;
     let disposed = false;
     const root = doc.documentElement;
-    const originalZoom = root.style.getPropertyValue("zoom"), originalPriority = root.style.getPropertyPriority("zoom");
+    const originalZoom = root.style.getPropertyValue("zoom"),
+      originalPriority = root.style.getPropertyPriority("zoom");
     const restoreZoom = () => {
       if (originalZoom) root.style.setProperty("zoom", originalZoom, originalPriority);
       else root.style.removeProperty("zoom");
@@ -254,13 +338,25 @@ export default function MessageBody({ html, text = "", format, styles = "", font
       if (scale < 1) root.style.setProperty("zoom", String(scale), "important");
       // Body scroll dimensions remain in unscaled CSS pixels; the root's scroll
       // height includes the scaled layout. Do not leave an unscaled blank tail.
-      const height = Math.ceil(Math.max(doc.body.scrollHeight * scale, root.scrollHeight, doc.body.getBoundingClientRect().bottom + (element.contentWindow?.scrollY ?? 0), 1));
+      const height = Math.ceil(
+        Math.max(
+          doc.body.scrollHeight * scale,
+          root.scrollHeight,
+          doc.body.getBoundingClientRect().bottom + (element.contentWindow?.scrollY ?? 0),
+          1,
+        ),
+      );
       element.style.height = `${height}px`;
-      const scrollbar = Math.max(0, (element.contentWindow?.innerHeight ?? height) - doc.documentElement.clientHeight);
+      const scrollbar = Math.max(
+        0,
+        (element.contentWindow?.innerHeight ?? height) - doc.documentElement.clientHeight,
+      );
       if (scrollbar) element.style.height = `${height + scrollbar}px`;
       reportCanvas(canvasColor(doc));
     };
-    const schedule = () => { if (!pending && !disposed) pending = requestAnimationFrame(measure); };
+    const schedule = () => {
+      if (!pending && !disposed) pending = requestAnimationFrame(measure);
+    };
     const bodySize = new ResizeObserver(schedule);
     bodySize.observe(doc.body);
     const frameSize = new ResizeObserver(() => {
@@ -269,11 +365,15 @@ export default function MessageBody({ html, text = "", format, styles = "", font
       schedule();
     });
     frameSize.observe(element);
-    const onKey = (event: KeyboardEvent) => { activate(); keyboard(event); };
+    const onKey = (event: KeyboardEvent) => {
+      activate();
+      keyboard(event);
+    };
     const onFocus = () => activate();
     const onError = (event: Event) => {
       const image = event.target as HTMLImageElement | null;
-      if (image?.tagName === "IMG" && image.hasAttribute("src")) unavailableImage(image, "image unavailable");
+      if (image?.tagName === "IMG" && image.hasAttribute("src"))
+        unavailableImage(image, "image unavailable");
       schedule();
     };
     doc.addEventListener("keydown", onKey, true);
@@ -283,7 +383,8 @@ export default function MessageBody({ html, text = "", format, styles = "", font
     doc.addEventListener("toggle", schedule, true);
     doc.addEventListener("error", onError, true);
     for (const image of Array.from(doc.images)) {
-      if (image.hasAttribute("src") && image.complete && !image.naturalWidth) unavailableImage(image, "image unavailable");
+      if (image.hasAttribute("src") && image.complete && !image.naturalWidth)
+        unavailableImage(image, "image unavailable");
     }
     void doc.fonts.ready.then(schedule);
     measure();
@@ -302,24 +403,35 @@ export default function MessageBody({ html, text = "", format, styles = "", font
     };
   }
 
-  const sizeClass = fontSize === "Large" ? "message-large-text" : fontSize === "Small" ? "message-small-text" : "";
+  const sizeClass =
+    fontSize === "Large" ? "message-large-text" : fontSize === "Small" ? "message-small-text" : "";
   return (
-    <div className={`message-body thread-body ${plain ? "message-plain-text" : "message-html-body"} ${sizeClass}`}>
-      {plain ? <div dir="auto">{content}</div> : <>
-        {!!document?.blockedImages && <div className="message-image-policy">
-          <span>Remote images are blocked.</span>
-          <button type="button" onClick={onImageSettings}>Image settings</button>
-        </div>}
-        <iframe
-          ref={frame}
-          className="message-html-frame"
-          title="Email content"
-          sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          referrerPolicy="no-referrer"
-          srcDoc={document?.html}
-          onLoad={loaded}
-        />
-      </>}
+    <div
+      className={`message-body thread-body ${plain ? "message-plain-text" : "message-html-body"} ${sizeClass}`}
+    >
+      {plain ? (
+        <div dir="auto">{content}</div>
+      ) : (
+        <>
+          {!!document?.blockedImages && (
+            <div className="message-image-policy">
+              <span>Remote images are blocked.</span>
+              <button type="button" onClick={onImageSettings}>
+                Image settings
+              </button>
+            </div>
+          )}
+          <iframe
+            ref={frame}
+            className="message-html-frame"
+            title="Email content"
+            sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            referrerPolicy="no-referrer"
+            srcDoc={document?.html}
+            onLoad={loaded}
+          />
+        </>
+      )}
     </div>
   );
 }

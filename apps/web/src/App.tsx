@@ -61,7 +61,14 @@ import SenderContext from "./SenderContext";
 import { senderContact, senderConversations } from "./sender-context";
 import { normalizeSplits, attentionSplit, type SplitPreferences } from "../../shared/splits";
 
-const unknownTotals: InboxTotals = { conversations: null, messages: null, inbox: null, splits: {}, folders: {}, holding: null };
+const unknownTotals: InboxTotals = {
+  conversations: null,
+  messages: null,
+  inbox: null,
+  splits: {},
+  folders: {},
+  holding: null,
+};
 type Route = {
   account: string;
   folder: string;
@@ -115,12 +122,17 @@ function readSettingsPage(): string | null {
 }
 function routeUrl(route: Route, settingsPage: string | null = null): string {
   const params = new URLSearchParams();
-  Object.entries(route).forEach(([key, value]) => { if (value) params.set(key, value); });
+  Object.entries(route).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
   if (settingsPage !== null) params.set("settings", settingsPage);
   return `#/${params}`;
 }
 
-export default function App({ applicationUser, onSignOut }: { applicationUser?: { name: string; email: string }; onSignOut?: () => void } = {}) {
+export default function App({
+  applicationUser,
+  onSignOut,
+}: { applicationUser?: { name: string; email: string }; onSignOut?: () => void } = {}) {
   const [route, setRoute] = useState<Route>(readRoute);
   const inbox = useInbox();
   const { store, mail, drafts } = inbox;
@@ -131,12 +143,16 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   });
   const [navigation, setNavigation] = useState(false);
   const [settings, setSettings] = useState(() => readSettingsPage() !== null);
-  const [settingsPage, setSettingsPage] = useState<string | undefined>(() => readSettingsPage() ?? undefined);
+  const [settingsPage, setSettingsPage] = useState<string | undefined>(
+    () => readSettingsPage() ?? undefined,
+  );
   const [settingsJumpRequest, setSettingsJumpRequest] = useState(0);
   const settingsOpen = useRef(settings);
   settingsOpen.current = settings;
   const settingsExitGuard = useRef<(() => boolean) | null>(null);
-  const setSettingsExitGuard = useCallback((guard: (() => boolean) | null) => { settingsExitGuard.current = guard; }, []);
+  const setSettingsExitGuard = useCallback((guard: (() => boolean) | null) => {
+    settingsExitGuard.current = guard;
+  }, []);
   const settingsFocus = useRef<HTMLElement | null>(null);
   const settingsScroll = useRef<Array<{ element: HTMLElement; top: number; left: number }>>([]);
   const historyPosition = useRef<number>(history.state?.superlocalIndex ?? 0);
@@ -149,7 +165,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   useLayoutEffect(() => {
     if (settings) return;
     for (const { element, top, left } of settingsScroll.current) {
-      if (element.isConnected) { element.scrollTop = top; element.scrollLeft = left; }
+      if (element.isConnected) {
+        element.scrollTop = top;
+        element.scrollLeft = left;
+      }
     }
     settingsScroll.current = [];
     const target = settingsFocus.current;
@@ -184,26 +203,34 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   const [search, setSearch] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
-  const [searchResult, setSearchResult] = useState<{ key: string; ids: Set<string>; loading: boolean; error?: string } | null>(null);
+  const [searchResult, setSearchResult] = useState<{
+    key: string;
+    ids: Set<string>;
+    loading: boolean;
+    error?: string;
+  } | null>(null);
   const [mailFilter, setMailFilter] = useState<string | null>(null);
   const [availabilityRequest, setAvailabilityRequest] = useState(0);
   const [replyRequest, setReplyRequest] = useState(0);
-  const [sendFeedback, setSendFeedback] = useState<{ id: string; threadId?: string; scheduled?: string } | null>(null);
-  const [calendarInitialView, setCalendarInitialView] = useState<
-    "day" | "week"
-  >("week");
-  const [labelMode, setLabelMode] = useState<"toggle" | "move" | "navigate">(
-    "toggle",
-  );
-  const [searchHistory, setSearchHistory] = useState<string[]>(() =>
-    loadSaved("searches", []),
-  );
+  const [sendFeedback, setSendFeedback] = useState<{
+    id: string;
+    threadId?: string;
+    scheduled?: string;
+  } | null>(null);
+  const [calendarInitialView, setCalendarInitialView] = useState<"day" | "week">("week");
+  const [labelMode, setLabelMode] = useState<"toggle" | "move" | "navigate">("toggle");
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => loadSaved("searches", []));
   const [highlight, setHighlight] = useState(0);
   const pointerHighlight = useRef<number | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [importantDoneAccount, setImportantDoneAccount] = useState<string | null>(null);
   const [windowSelection, setWindowSelection] = useState<InboxSelection | null>(null);
-  const [selectionPreparing, setSelectionPreparing] = useState<{ viewKey: string; route: string; queryId: string; scopeState: string } | null>(null);
+  const [selectionPreparing, setSelectionPreparing] = useState<{
+    viewKey: string;
+    route: string;
+    queryId: string;
+    scopeState: string;
+  } | null>(null);
   const selectedCapture = useRef(new Map<string, Mail>());
   const overlayCapture = useRef(new Map<string, Mail>());
   const selectionProjection = useRef<string[] | null>(null);
@@ -218,8 +245,13 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   const [noticeFading, setNoticeFading] = useState(false);
   const [noticeHovered, setNoticeHovered] = useState(false);
   // The read-only host reminder shows once per tab; the disabled controls and Add Accounts keep the state visible afterwards.
-  const [readOnlyDismissed, setReadOnlyDismissed] = useState(() => readSessionText("read-only-notice") === "dismissed");
-  const [onboardingReturn, setOnboardingReturn] = useState<{ providerId: string; connectionId: string | null } | null>(null);
+  const [readOnlyDismissed, setReadOnlyDismissed] = useState(
+    () => readSessionText("read-only-notice") === "dismissed",
+  );
+  const [onboardingReturn, setOnboardingReturn] = useState<{
+    providerId: string;
+    connectionId: string | null;
+  } | null>(null);
   useEffect(() => {
     const url = new URL(location.href);
     const connection = url.searchParams.get("connection");
@@ -230,7 +262,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     history.replaceState(history.state, "", url);
     if (connection === "connected" && providerId) {
       // Resume inline setup without closing any other settings draft on completion.
-      setOnboardingReturn({ providerId, connectionId: /^[A-Za-z0-9_-]{1,128}$/.test(connectionId ?? "") ? connectionId : null });
+      setOnboardingReturn({
+        providerId,
+        connectionId: /^[A-Za-z0-9_-]{1,128}$/.test(connectionId ?? "") ? connectionId : null,
+      });
       openSettings("Add Accounts");
     } else if (connection === "connected") {
       // No provider identified: never assume one. Finish setup from the account list instead.
@@ -241,7 +276,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     }
   }, []);
   const [threadLookupIssue, setThreadLookupIssue] = useState<string | null>(null);
-  const [senderSelection, setSenderSelection] = useState<{ threadId: string; messageId: string } | null>(null);
+  const [senderSelection, setSenderSelection] = useState<{
+    threadId: string;
+    messageId: string;
+  } | null>(null);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [userProfile, setUserProfile] = useState(() =>
     loadSaved("profile", {
@@ -254,7 +292,9 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   const [systemDark, setSystemDark] = useState(
     () => matchMedia("(prefers-color-scheme: dark)").matches,
   );
-  const [mobileViewport, setMobileViewport] = useState(() => matchMedia("(max-width: 700px)").matches);
+  const [mobileViewport, setMobileViewport] = useState(
+    () => matchMedia("(max-width: 700px)").matches,
+  );
   const searchInput = useRef<HTMLInputElement>(null);
   const searchFocus = useRef<HTMLElement | null>(null);
   const restoreSearchFocus = useRef(false);
@@ -264,28 +304,67 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   const sequence = useRef({ key: "", time: 0 });
   const readerScroll = useRef<HTMLDivElement>(null);
   const searchOrigin = useRef<Route | null>(null);
-  const searchHistoryStates = useRef(new Map<number, { search: boolean; query: string; submitted: boolean; origin: Route | null; filter: string | null }>());
+  const searchHistoryStates = useRef(
+    new Map<
+      number,
+      {
+        search: boolean;
+        query: string;
+        submitted: boolean;
+        origin: Route | null;
+        filter: string | null;
+      }
+    >(),
+  );
   useLayoutEffect(() => {
     // Search history is owner-lifetime state, not persistent query data in history.state.
     const states = searchHistoryStates.current;
     states.delete(historyPosition.current);
-    states.set(historyPosition.current, { search, query, submitted: searchSubmitted, origin: searchOrigin.current, filter: mailFilter });
+    states.set(historyPosition.current, {
+      search,
+      query,
+      submitted: searchSubmitted,
+      origin: searchOrigin.current,
+      filter: mailFilter,
+    });
     if (states.size > 64) states.delete(states.keys().next().value!);
   }, [route, search, query, searchSubmitted, mailFilter, settings]);
   const isUnified = route.account === UNIFIED_ACCOUNT;
-  const accountOptions = (inbox.viewPreferences?.pinnedMailboxIds ?? []).filter(id => inbox.accounts.some(account => account.id === id));
-  const unifiedMailboxIds = useMemo(() => inbox.viewPreferences?.unifiedMode === "all" ? inbox.accounts.map(account => account.id)
-    : inbox.accounts.filter(account => inbox.viewPreferences?.includedMailboxIds.includes(account.id)).map(account => account.id), [inbox.accounts, inbox.viewPreferences]);
-  const activeAccount = isUnified ? store.defaultMailbox() : inbox.accounts.find(account => account.id === route.account);
-  const accountTitle = isUnified ? "Unified inbox" : activeAccount?.name || activeAccount?.email || "Choose a mailbox";
+  const accountOptions = (inbox.viewPreferences?.pinnedMailboxIds ?? []).filter((id) =>
+    inbox.accounts.some((account) => account.id === id),
+  );
+  const unifiedMailboxIds = useMemo(
+    () =>
+      inbox.viewPreferences?.unifiedMode === "all"
+        ? inbox.accounts.map((account) => account.id)
+        : inbox.accounts
+            .filter((account) => inbox.viewPreferences?.includedMailboxIds.includes(account.id))
+            .map((account) => account.id),
+    [inbox.accounts, inbox.viewPreferences],
+  );
+  const activeAccount = isUnified
+    ? store.defaultMailbox()
+    : inbox.accounts.find((account) => account.id === route.account);
+  const accountTitle = isUnified
+    ? "Unified inbox"
+    : activeAccount?.name || activeAccount?.email || "Choose a mailbox";
   const accountEmail = activeAccount?.email ?? "";
   const deferredQuery = useDeferredValue(query);
   const resultQuery = searchSubmitted ? query : deferredQuery;
-  const listViewKey = JSON.stringify([route.account, route.folder, route.split, mailFilter,
-    search ? searchSubmitted ? "results" : "suggestions" : "list", search && searchSubmitted ? resultQuery : null]);
+  const listViewKey = JSON.stringify([
+    route.account,
+    route.folder,
+    route.split,
+    mailFilter,
+    search ? (searchSubmitted ? "results" : "suggestions") : "list",
+    search && searchSubmitted ? resultQuery : null,
+  ]);
   const selectionViewKey = useRef(listViewKey);
   selectionViewKey.current = listViewKey;
-  const listScroll = useMemo(() => listPositions.current.get(listViewKey) ?? { current: 0 }, [listViewKey]);
+  const listScroll = useMemo(
+    () => listPositions.current.get(listViewKey) ?? { current: 0 },
+    [listViewKey],
+  );
   useLayoutEffect(() => {
     const positions = listPositions.current;
     positions.delete(listViewKey);
@@ -296,9 +375,13 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     root.scrollTop = top;
     if (root.scrollTop > 0) {
       const highlighted = root.querySelector<HTMLElement>('[data-highlighted="true"]');
-      const inView = (row: HTMLElement) => row.offsetTop >= root.scrollTop && row.offsetTop + row.offsetHeight <= root.scrollTop + root.clientHeight;
+      const inView = (row: HTMLElement) =>
+        row.offsetTop >= root.scrollTop &&
+        row.offsetTop + row.offsetHeight <= root.scrollTop + root.clientHeight;
       if (!highlighted || !inView(highlighted)) {
-        const row = [...root.querySelectorAll<HTMLElement>(":scope > [aria-rowindex]")].find(inView);
+        const row = [...root.querySelectorAll<HTMLElement>(":scope > [aria-rowindex]")].find(
+          inView,
+        );
         if (row) {
           const index = Number(row.getAttribute("aria-rowindex")) - 1;
           pointerHighlight.current = index;
@@ -307,94 +390,204 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       }
     }
   }, []);
-  const attachList = useCallback((root: HTMLDivElement | null) => {
-    list.current = root;
-    if (!root) return;
-    restoreListPosition(root, listScroll.current);
-    return () => {
-      listScroll.current = root.scrollTop;
-      list.current = null;
-    };
-  }, [listScroll, restoreListPosition]);
+  const attachList = useCallback(
+    (root: HTMLDivElement | null) => {
+      list.current = root;
+      if (!root) return;
+      restoreListPosition(root, listScroll.current);
+      return () => {
+        listScroll.current = root.scrollTop;
+        list.current = null;
+      };
+    },
+    [listScroll, restoreListPosition],
+  );
   const accountMail = useMemo(
     () => mail.filter((message) => message.account === route.account),
     [mail, route.account],
   );
-  const windowQuery = useMemo<InboxViewQuery>(() => ({ account: route.account, folder: route.folder, split: route.split,
-    search: search && searchSubmitted, query: search && searchSubmitted ? resultQuery : "", filter: mailFilter as InboxViewQuery["filter"] }),
-    [route.account, route.folder, route.split, search, searchSubmitted, resultQuery, mailFilter]);
-  const matchingWindow = inbox.host?.inboxWindow && inbox.window && JSON.stringify(inbox.window.query) === JSON.stringify(windowQuery) ? inbox.window : null;
-  const activeWindow = useMemo(() => inbox.host?.inboxWindow
-    ? matchingWindow ? store.presentWindow(matchingWindow) : { keys: [], totals: unknownTotals }
-    : undefined, [store, inbox.host?.inboxWindow, matchingWindow, inbox.mail, inbox.pendingDone]);
-  useEffect(() => { void store.setWindowQuery(windowQuery).catch(actionError); }, [store, windowQuery]);
+  const windowQuery = useMemo<InboxViewQuery>(
+    () => ({
+      account: route.account,
+      folder: route.folder,
+      split: route.split,
+      search: search && searchSubmitted,
+      query: search && searchSubmitted ? resultQuery : "",
+      filter: mailFilter as InboxViewQuery["filter"],
+    }),
+    [route.account, route.folder, route.split, search, searchSubmitted, resultQuery, mailFilter],
+  );
+  const matchingWindow =
+    inbox.host?.inboxWindow &&
+    inbox.window &&
+    JSON.stringify(inbox.window.query) === JSON.stringify(windowQuery)
+      ? inbox.window
+      : null;
+  const activeWindow = useMemo(
+    () =>
+      inbox.host?.inboxWindow
+        ? matchingWindow
+          ? store.presentWindow(matchingWindow)
+          : { keys: [], totals: unknownTotals }
+        : undefined,
+    [store, inbox.host?.inboxWindow, matchingWindow, inbox.mail, inbox.pendingDone],
+  );
+  useEffect(() => {
+    void store.setWindowQuery(windowQuery).catch(actionError);
+  }, [store, windowQuery]);
   // Static folders follow the receiving sources' capabilities; a unified view offers what any selected source supports.
-  const hiddenFolders = useMemo(() => folders.filter(([, , , capability]) => capability && !store.sourceCapability(capability, route.account)).map(([name]) => name),
-    [store, inbox.sources, inbox.mailboxes, inbox.viewPreferences, route.account]);
+  const hiddenFolders = useMemo(
+    () =>
+      folders
+        .filter(
+          ([, , , capability]) => capability && !store.sourceCapability(capability, route.account),
+        )
+        .map(([name]) => name),
+    [store, inbox.sources, inbox.mailboxes, inbox.viewPreferences, route.account],
+  );
   useEffect(() => {
     setThreadLookupIssue(null);
-    if (!inbox.host?.inboxWindow || !route.thread) { store.pinWindow("reader", []); return; }
+    if (!inbox.host?.inboxWindow || !route.thread) {
+      store.pinWindow("reader", []);
+      return;
+    }
     let stopped = false;
     store.pinWindow("reader", [route.thread]);
-    if (inbox.loaded && !mail.some(mail => mail.id === route.thread)) void store.lookupWindow([route.thread], route.account).then(rows => {
-      if (!stopped && !rows.length) setThreadLookupIssue("This conversation is not available in the selected receiving scope.");
-    }).catch(error => { if (!stopped && !(error instanceof DOMException && error.name === "AbortError")) setThreadLookupIssue(error instanceof Error ? error.message : "Could not load this conversation."); });
-    return () => { stopped = true; };
+    if (inbox.loaded && !mail.some((mail) => mail.id === route.thread))
+      void store
+        .lookupWindow([route.thread], route.account)
+        .then((rows) => {
+          if (!stopped && !rows.length)
+            setThreadLookupIssue(
+              "This conversation is not available in the selected receiving scope.",
+            );
+        })
+        .catch((error) => {
+          if (!stopped && !(error instanceof DOMException && error.name === "AbortError"))
+            setThreadLookupIssue(
+              error instanceof Error ? error.message : "Could not load this conversation.",
+            );
+        });
+    return () => {
+      stopped = true;
+    };
   }, [store, inbox.host?.inboxWindow, inbox.loaded, route.thread, route.account]);
   useEffect(() => {
     const selectedIds = new Set(selected);
-    for (const id of selectedCapture.current.keys()) if (!selectedIds.has(id)) selectedCapture.current.delete(id);
-    for (const id of selected.slice(0, 100)) if (!selectedCapture.current.has(id)) {
-      const captured = mail.find(mail => mail.id === id); if (captured) selectedCapture.current.set(id, captureActionMail(captured));
-    }
-    store.pinWindow("selection", [...selectedCapture.current.keys()], [...selectedCapture.current.values()]);
+    for (const id of selectedCapture.current.keys())
+      if (!selectedIds.has(id)) selectedCapture.current.delete(id);
+    for (const id of selected.slice(0, 100))
+      if (!selectedCapture.current.has(id)) {
+        const captured = mail.find((mail) => mail.id === id);
+        if (captured) selectedCapture.current.set(id, captureActionMail(captured));
+      }
+    store.pinWindow(
+      "selection",
+      [...selectedCapture.current.keys()],
+      [...selectedCapture.current.values()],
+    );
     if (selected !== selectionProjection.current) setWindowSelection(null);
   }, [selected, store]);
-  useEffect(() => { if (!commandMode) { overlayCapture.current.clear(); store.pinWindow("command", []); } }, [commandMode, store]);
-  const searchKey = `${route.account}\0${resultQuery}`;
-  const searchVersion = useMemo(() => search && searchSubmitted
-    ? accountMail.map(mail => `${mail.id}:${mail.folder}:${mail.unread}:${mail.starred}:${mail.labels.join(",")}:${mail.reminder ?? ""}:${mail.messages.map(message => message.revision).join(",")}`).join("|")
-    : "", [accountMail, search, searchSubmitted]);
-  const serverMatches = useMemo(() => searchSubmitted ? searchResult?.key === searchKey ? searchResult.ids : new Set<string>() : undefined, [searchSubmitted, searchResult, searchKey]);
   useEffect(() => {
-    if (inbox.host?.inboxWindow || !search || !searchSubmitted || !route.account || !resultQuery.trim()) return;
+    if (!commandMode) {
+      overlayCapture.current.clear();
+      store.pinWindow("command", []);
+    }
+  }, [commandMode, store]);
+  const searchKey = `${route.account}\0${resultQuery}`;
+  const searchVersion = useMemo(
+    () =>
+      search && searchSubmitted
+        ? accountMail
+            .map(
+              (mail) =>
+                `${mail.id}:${mail.folder}:${mail.unread}:${mail.starred}:${mail.labels.join(",")}:${mail.reminder ?? ""}:${mail.messages.map((message) => message.revision).join(",")}`,
+            )
+            .join("|")
+        : "",
+    [accountMail, search, searchSubmitted],
+  );
+  const serverMatches = useMemo(
+    () =>
+      searchSubmitted
+        ? searchResult?.key === searchKey
+          ? searchResult.ids
+          : new Set<string>()
+        : undefined,
+    [searchSubmitted, searchResult, searchKey],
+  );
+  useEffect(() => {
+    if (
+      inbox.host?.inboxWindow ||
+      !search ||
+      !searchSubmitted ||
+      !route.account ||
+      !resultQuery.trim()
+    )
+      return;
     const controller = new AbortController();
     setSearchResult({ key: searchKey, ids: new Set(), loading: true });
-    void store.search(route.account, resultQuery, controller.signal).then(ids => {
-      if (!controller.signal.aborted) setSearchResult({ key: searchKey, ids, loading: false });
-    }).catch(error => {
-      if (!controller.signal.aborted) setSearchResult({ key: searchKey, ids: new Set(), loading: false, error: error instanceof ApiError && ["VALIDATION", "INVALID_QUERY"].includes(error.code)
-        ? "Check your search terms and filters. Try a word or a filter with a value, such as from:alex."
-        : error instanceof Error ? error.message : "Search failed." });
-    });
+    void store
+      .search(route.account, resultQuery, controller.signal)
+      .then((ids) => {
+        if (!controller.signal.aborted) setSearchResult({ key: searchKey, ids, loading: false });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setSearchResult({
+            key: searchKey,
+            ids: new Set(),
+            loading: false,
+            error:
+              error instanceof ApiError && ["VALIDATION", "INVALID_QUERY"].includes(error.code)
+                ? "Check your search terms and filters. Try a word or a filter with a value, such as from:alex."
+                : error instanceof Error
+                  ? error.message
+                  : "Search failed.",
+          });
+      });
     return () => controller.abort();
   }, [store, search, searchSubmitted, route.account, resultQuery, searchKey, searchVersion]);
   const recent = useMemo(
     () =>
-      accountMail
-        .filter((message) => message.opened && message.folder !== "Trash")
-        .slice(0, 30),
+      accountMail.filter((message) => message.opened && message.folder !== "Trash").slice(0, 30),
     [accountMail],
   );
-  const [contactLookup, setContactLookup] = useState<{ key: string; contacts: Array<{ name: string; email: string }> } | null>(null);
+  const [contactLookup, setContactLookup] = useState<{
+    key: string;
+    contacts: Array<{ name: string; email: string }>;
+  } | null>(null);
   const contactKey = `${route.account}:${query}`;
   useEffect(() => {
     if (!inbox.host?.inboxWindow || !search || searchSubmitted) return;
     let stopped = false;
-    const timer = setTimeout(() => { void store.windowTransport.contacts({ account: route.account, query, limit: 30 }).then(result => {
-      if (!stopped) setContactLookup({ key: contactKey, contacts: result.contacts });
-    }).catch(() => {}); }, 150);
-    return () => { stopped = true; clearTimeout(timer); };
+    const timer = setTimeout(() => {
+      void store.windowTransport
+        .contacts({ account: route.account, query, limit: 30 })
+        .then((result) => {
+          if (!stopped) setContactLookup({ key: contactKey, contacts: result.contacts });
+        })
+        .catch(() => {});
+    }, 150);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   }, [store, inbox.host?.inboxWindow, route.account, query, contactKey, search, searchSubmitted]);
   const contacts = useMemo(
-    () => inbox.host?.inboxWindow ? contactLookup?.key === contactKey ? contactLookup.contacts : [] : [
-      ...new Map(
-        accountMail.map((message) => [
-          message.email,
-          { name: message.from, email: message.email },
-        ]),
-      ).values(),
-    ],
+    () =>
+      inbox.host?.inboxWindow
+        ? contactLookup?.key === contactKey
+          ? contactLookup.contacts
+          : []
+        : [
+            ...new Map(
+              accountMail.map((message) => [
+                message.email,
+                { name: message.from, email: message.email },
+              ]),
+            ).values(),
+          ],
     [accountMail, inbox.host?.inboxWindow, contactLookup, contactKey],
   );
   const {
@@ -436,52 +629,144 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     ],
   );
   const accountDrafts = useMemo(
-    () => drafts.filter((d) => isUnified ? unifiedMailboxIds.includes(d.account) : d.account === route.account),
+    () =>
+      drafts.filter((d) =>
+        isUnified ? unifiedMailboxIds.includes(d.account) : d.account === route.account,
+      ),
     [drafts, route.account, isUnified, unifiedMailboxIds],
   );
   const isDrafts = route.folder === "Drafts" && !search;
-  const currentMail = useMemo(() => route.thread ? accountMail.find((m) => m.id === route.thread) : undefined, [accountMail, route.thread]);
-  const readerId = currentMail?.id, readerGeneration = currentMail?.sourceGeneration, readerScope = matchingWindow?.state;
-  const pinReaderMessages = useCallback((ids: readonly string[]) => {
-    const snapshot = store.getSnapshot(), scope = snapshot.window?.state;
-    if (!readerId || !readerScope || !scope || scope.queryId !== readerScope.queryId || scope.queryGeneration !== readerScope.queryGeneration || scope.scopeState !== readerScope.scopeState
-      || snapshot.mail.find(mail => mail.id === readerId)?.sourceGeneration !== readerGeneration) return;
-    store.pinThreadMessages(readerId, ids);
-  }, [store, readerId, readerGeneration, readerScope?.queryId, readerScope?.queryGeneration, readerScope?.scopeState]);
-  const loadReaderMessage = useCallback((id: string) => readerId ? store.loadThread(readerId, id) : Promise.resolve(), [store, readerId]);
-  const loadOlderMessages = useCallback(() => readerId ? store.loadMoreMessages(readerId) : Promise.resolve(), [store, readerId]);
-  const resetReaderHistory = useCallback(() => readerId ? store.resetThreadHistory(readerId) : Promise.resolve(), [store, readerId]);
-  const getSenderConversations = useCallback((keys: readonly string[]) => senderConversations(accountMail, keys), [accountMail]);
-  const contextContact = useMemo(() => currentMail && !currentMail.operationId
-    ? senderContact(currentMail, inbox.senderHistory, inbox.accounts, senderSelection?.threadId === currentMail.id ? senderSelection.messageId : undefined)
-    : null, [currentMail, inbox.senderHistory, inbox.accounts, senderSelection]);
-  const loadSenderActivity = useCallback((domain: string | null) => {
-    const selectedMessageId = senderSelection && senderSelection.threadId === route.thread ? senderSelection.messageId : undefined;
-    return store.senderWindow({ account: route.account, id: route.thread!, selectedMessageId, domain }, store.loadThread(route.thread!, selectedMessageId));
-  }, [store, route.account, route.thread, senderSelection]);
+  const currentMail = useMemo(
+    () => (route.thread ? accountMail.find((m) => m.id === route.thread) : undefined),
+    [accountMail, route.thread],
+  );
+  const readerId = currentMail?.id,
+    readerGeneration = currentMail?.sourceGeneration,
+    readerScope = matchingWindow?.state;
+  const pinReaderMessages = useCallback(
+    (ids: readonly string[]) => {
+      const snapshot = store.getSnapshot(),
+        scope = snapshot.window?.state;
+      if (
+        !readerId ||
+        !readerScope ||
+        !scope ||
+        scope.queryId !== readerScope.queryId ||
+        scope.queryGeneration !== readerScope.queryGeneration ||
+        scope.scopeState !== readerScope.scopeState ||
+        snapshot.mail.find((mail) => mail.id === readerId)?.sourceGeneration !== readerGeneration
+      )
+        return;
+      store.pinThreadMessages(readerId, ids);
+    },
+    [
+      store,
+      readerId,
+      readerGeneration,
+      readerScope?.queryId,
+      readerScope?.queryGeneration,
+      readerScope?.scopeState,
+    ],
+  );
+  const loadReaderMessage = useCallback(
+    (id: string) => (readerId ? store.loadThread(readerId, id) : Promise.resolve()),
+    [store, readerId],
+  );
+  const loadOlderMessages = useCallback(
+    () => (readerId ? store.loadMoreMessages(readerId) : Promise.resolve()),
+    [store, readerId],
+  );
+  const resetReaderHistory = useCallback(
+    () => (readerId ? store.resetThreadHistory(readerId) : Promise.resolve()),
+    [store, readerId],
+  );
+  const getSenderConversations = useCallback(
+    (keys: readonly string[]) => senderConversations(accountMail, keys),
+    [accountMail],
+  );
+  const contextContact = useMemo(
+    () =>
+      currentMail && !currentMail.operationId
+        ? senderContact(
+            currentMail,
+            inbox.senderHistory,
+            inbox.accounts,
+            senderSelection?.threadId === currentMail.id ? senderSelection.messageId : undefined,
+          )
+        : null,
+    [currentMail, inbox.senderHistory, inbox.accounts, senderSelection],
+  );
+  const loadSenderActivity = useCallback(
+    (domain: string | null) => {
+      const selectedMessageId =
+        senderSelection && senderSelection.threadId === route.thread
+          ? senderSelection.messageId
+          : undefined;
+      return store.senderWindow(
+        { account: route.account, id: route.thread!, selectedMessageId, domain },
+        store.loadThread(route.thread!, selectedMessageId),
+      );
+    },
+    [store, route.account, route.thread, senderSelection],
+  );
   useEffect(() => () => store.clearSenderWindow(), [store, route.account, route.thread]);
-  const loadContacts = useCallback(async (query: string) => (await store.windowTransport.contacts({ account: route.account, query, limit: 30 })).contacts, [store, route.account]);
-  const contextMailboxIds = useMemo(() => isUnified ? unifiedMailboxIds : [route.account], [isUnified, unifiedMailboxIds, route.account]);
-  const contextSender = currentMail && contextContact ? store.defaultMailbox(route.account, currentMail, contextContact.messageId ?? undefined) : undefined;
+  const loadContacts = useCallback(
+    async (query: string) =>
+      (await store.windowTransport.contacts({ account: route.account, query, limit: 30 })).contacts,
+    [store, route.account],
+  );
+  const contextMailboxIds = useMemo(
+    () => (isUnified ? unifiedMailboxIds : [route.account]),
+    [isUnified, unifiedMailboxIds, route.account],
+  );
+  const contextSender =
+    currentMail && contextContact
+      ? store.defaultMailbox(route.account, currentMail, contextContact.messageId ?? undefined)
+      : undefined;
   // A reply keeps its thread association when the user changes its From account.
   const currentDraft =
     drafts.find((d) => d.id === route.draft) ||
     (currentMail
-      ? drafts.find((d) => d.threadId === currentMail.id || !!d.sourceMessageId && d.sourceId === currentMail.sourceId && currentMail.messages.some(message => message.id === d.sourceMessageId))
+      ? drafts.find(
+          (d) =>
+            d.threadId === currentMail.id ||
+            (!!d.sourceMessageId &&
+              d.sourceId === currentMail.sourceId &&
+              currentMail.messages.some((message) => message.id === d.sourceMessageId)),
+        )
       : undefined);
   useEffect(() => {
     if (!currentDraft || !inbox.host?.inboxWindow) return;
     void store.loadDraftParent(currentDraft.id, route.account).catch(actionError);
     return () => store.pinWindow(`draft:${currentDraft.id}`, []);
-  }, [store, currentDraft?.id, currentDraft?.sourceMessageId, route.account, inbox.host?.inboxWindow]);
+  }, [
+    store,
+    currentDraft?.id,
+    currentDraft?.sourceMessageId,
+    route.account,
+    inbox.host?.inboxWindow,
+  ]);
   const zero = useGuidedZero({
-    inbox, store, account: route.account, mailboxIds: contextMailboxIds, accountMail, currentMail,
+    inbox,
+    store,
+    account: route.account,
+    mailboxIds: contextMailboxIds,
+    accountMail,
+    currentMail,
     visible: route.view === "zero" && !settings,
     onOpen: (mail) => {
       if (!leaveSettings()) return;
-      setSearch(false); setQuery(""); setMailFilter(null); setSelected([]);
+      setSearch(false);
+      setQuery("");
+      setMailFilter(null);
+      setSelected([]);
       navigate({ folder: "Inbox", view: "zero", thread: mail?.id, draft: undefined });
-      if (mail && preferences.markRead && mail.unread && store.supports("read", mail.mailboxId ?? mail.account))
+      if (
+        mail &&
+        preferences.markRead &&
+        mail.unread &&
+        store.supports("read", mail.mailboxId ?? mail.account)
+      )
         void store.action([mail], "read").catch(actionError);
     },
     onPause: () => navigate({ view: undefined, thread: undefined, draft: undefined }),
@@ -489,52 +774,89 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   function startZero() {
     if (!leaveSettings()) return;
     actionNavigationVersion.current++;
-    setOverlay(null); setOverlayIds(null); setCommandDraftId(null);
-    setImportantDoneAccount(current => current ?? route.account);
+    setOverlay(null);
+    setOverlayIds(null);
+    setCommandDraftId(null);
+    setImportantDoneAccount((current) => current ?? route.account);
   }
   const rowCount = isDrafts ? accountDrafts.length : visibleMail.length;
-  const virtualized =
-    !isDrafts && (!search || searchSubmitted) && entries.length > 100;
+  const virtualized = !isDrafts && (!search || searchSubmitted) && entries.length > 100;
   const displayedRows = isDrafts ? accountDrafts : visibleMail;
-  const optimisticHighlight = useRef({ view: listViewKey, index: highlight, id: visibleMail[highlight]?.id,
-    reading: !!currentMail, pending: inbox.pendingDone.length > 0 });
+  const optimisticHighlight = useRef({
+    view: listViewKey,
+    index: highlight,
+    id: visibleMail[highlight]?.id,
+    reading: !!currentMail,
+    pending: inbox.pendingDone.length > 0,
+  });
   useLayoutEffect(() => {
     const previous = optimisticHighlight.current;
     let index = highlight;
     // A failed operation revealing an older row must not redirect the next E
     // from the conversation the user has since highlighted.
-    if (!isDrafts && !currentMail && !previous.reading && previous.view === listViewKey && previous.index === highlight
-      && (previous.pending || inbox.pendingDone.length > 0) && previous.id) {
-      const restored = visibleMail.findIndex(mail => mail.id === previous.id);
+    if (
+      !isDrafts &&
+      !currentMail &&
+      !previous.reading &&
+      previous.view === listViewKey &&
+      previous.index === highlight &&
+      (previous.pending || inbox.pendingDone.length > 0) &&
+      previous.id
+    ) {
+      const restored = visibleMail.findIndex((mail) => mail.id === previous.id);
       if (restored >= 0 && restored !== highlight) {
-        index = restored; pointerHighlight.current = restored; setHighlight(restored);
+        index = restored;
+        pointerHighlight.current = restored;
+        setHighlight(restored);
       }
     }
-    optimisticHighlight.current = { view: listViewKey, index, id: visibleMail[index]?.id,
-      reading: !!currentMail, pending: inbox.pendingDone.length > 0 };
+    optimisticHighlight.current = {
+      view: listViewKey,
+      index,
+      id: visibleMail[index]?.id,
+      reading: !!currentMail,
+      pending: inbox.pendingDone.length > 0,
+    };
   }, [visibleMail, highlight, listViewKey, currentMail?.id, isDrafts, inbox.pendingDone]);
   const rowsKey = useMemo(
-    () =>
-      `${preferences.density}:${displayedRows.map((item) => item.id).join("|")}`,
+    () => `${preferences.density}:${displayedRows.map((item) => item.id).join("|")}`,
     [preferences.density, displayedRows],
   );
-  const getMailWindow = useCallback((top: number, height: number, windowed: boolean) => {
-    const range = windowed ? mailWindow(entries, top, height, rowHeight) : { start: 0, end: entries.length };
-    return { ...range, entries: entries.slice(range.start, range.end) };
-  }, [entries, rowHeight]);
+  const getMailWindow = useCallback(
+    (top: number, height: number, windowed: boolean) => {
+      const range = windowed
+        ? mailWindow(entries, top, height, rowHeight)
+        : { start: 0, end: entries.length };
+      return { ...range, entries: entries.slice(range.start, range.end) };
+    },
+    [entries, rowHeight],
+  );
   const pageAnchor = useRef<{ id: string; offset: number; highlighted?: string } | null>(null);
   const loadOlder = useCallback(() => {
     if (!matchingWindow?.nextCursor || matchingWindow.paging) return;
-    const top = list.current?.scrollTop ?? 0, entry = entries.find(entry => !entry.group && entry.top + entry.height > top);
-    if (entry) pageAnchor.current = { id: entry.key, offset: top - entry.top, highlighted: visibleMail[highlight]?.id };
+    const top = list.current?.scrollTop ?? 0,
+      entry = entries.find((entry) => !entry.group && entry.top + entry.height > top);
+    if (entry)
+      pageAnchor.current = {
+        id: entry.key,
+        offset: top - entry.top,
+        highlighted: visibleMail[highlight]?.id,
+      };
     void store.loadMoreWindow().catch(actionError);
   }, [store, matchingWindow, entries, visibleMail, highlight]);
   useLayoutEffect(() => {
-    const anchor = pageAnchor.current; if (!anchor || !list.current || inbox.window?.paging) return;
-    const entry = entries.find(entry => entry.key === anchor.id);
-    if (entry) { list.current.scrollTop = entry.top + anchor.offset; listScroll.current = list.current.scrollTop; }
-    const index = visibleMail.findIndex(mail => mail.id === anchor.highlighted);
-    if (index >= 0) { pointerHighlight.current = index; setHighlight(index); }
+    const anchor = pageAnchor.current;
+    if (!anchor || !list.current || inbox.window?.paging) return;
+    const entry = entries.find((entry) => entry.key === anchor.id);
+    if (entry) {
+      list.current.scrollTop = entry.top + anchor.offset;
+      listScroll.current = list.current.scrollTop;
+    }
+    const index = visibleMail.findIndex((mail) => mail.id === anchor.highlighted);
+    if (index >= 0) {
+      pointerHighlight.current = index;
+      setHighlight(index);
+    }
     pageAnchor.current = null;
   }, [entries, inbox.window?.paging]);
   const pageHighlight = useRef({ key: listViewKey, index: highlight });
@@ -542,21 +864,39 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   useEffect(() => {
     const previous = pageHighlight.current;
     pageHighlight.current = { key: listViewKey, index: highlight };
-    if (previous.key !== listViewKey || highlight <= previous.index || pointerHighlight.current === highlight) return;
+    if (
+      previous.key !== listViewKey ||
+      highlight <= previous.index ||
+      pointerHighlight.current === highlight
+    )
+      return;
     const count = visibleMail.length;
-    if (matchingWindow && !currentMail && !isDrafts && count > 0 && (count > 6 ? highlight >= count - 6 : highlight === count - 1)) loadOlder();
+    if (
+      matchingWindow &&
+      !currentMail &&
+      !isDrafts &&
+      count > 0 &&
+      (count > 6 ? highlight >= count - 6 : highlight === count - 1)
+    )
+      loadOlder();
   }, [highlight, listViewKey]);
-  const getHighlightedMail = useCallback((index: number) => entries.find(entry => !entry.group && entry.index === index), [entries]);
-  const targetIds = useMemo(() =>
-    commandMode && commandMode !== "accounts" && overlayIds
-      ? overlayIds
-      : selected.length
-        ? selected
-        : currentMail
-          ? [currentMail.id]
-          : visibleMail[highlight]
-            ? [visibleMail[highlight].id]
-            : [], [commandMode, overlayIds, selected, currentMail, visibleMail, highlight]);
+  const getHighlightedMail = useCallback(
+    (index: number) => entries.find((entry) => !entry.group && entry.index === index),
+    [entries],
+  );
+  const targetIds = useMemo(
+    () =>
+      commandMode && commandMode !== "accounts" && overlayIds
+        ? overlayIds
+        : selected.length
+          ? selected
+          : currentMail
+            ? [currentMail.id]
+            : visibleMail[highlight]
+              ? [visibleMail[highlight].id]
+              : [],
+    [commandMode, overlayIds, selected, currentMail, visibleMail, highlight],
+  );
   const targets = useMemo(() => {
     const ids = new Set(targetIds);
     return ids.size ? mail.filter((message) => ids.has(message.id)) : [];
@@ -574,7 +914,15 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     focused: !navigation && !searchFocused,
   });
   useLayoutEffect(() => {
-    if (!search || !searchSubmitted || searchResult?.key !== searchKey || searchResult.loading || searchResult.error || !list.current) return;
+    if (
+      !search ||
+      !searchSubmitted ||
+      searchResult?.key !== searchKey ||
+      searchResult.loading ||
+      searchResult.error ||
+      !list.current
+    )
+      return;
     restoreListPosition(list.current, searchScrollTop);
     listScroll.current = list.current.scrollTop;
   }, [search, searchSubmitted, searchKey, searchResult, listScroll, restoreListPosition]);
@@ -590,65 +938,130 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     const saved = inbox.splitPreferences;
     if (!saved) return;
     const { version: _version, revision: _revision, ...values } = saved;
-    setPreferences(previous => Object.entries(values).every(([key, value]) => JSON.stringify(previous[key]) === JSON.stringify(value)) ? previous : { ...previous, ...values });
+    setPreferences((previous) =>
+      Object.entries(values).every(
+        ([key, value]) => JSON.stringify(previous[key]) === JSON.stringify(value),
+      )
+        ? previous
+        : { ...previous, ...values },
+    );
     if (!saved.splits.includes(route.split)) {
-      const original = attentionSplit({ splitRules: (preferences.splitRules as Record<string, string>) || {}, splitAliases: (preferences.splitAliases as Record<string, string>) || {} }, route.split);
-      navigate({ split: saved.splits.find(name => original && attentionSplit(saved, name) === original) || saved.splits[0] || "Important" }, true);
+      const original = attentionSplit(
+        {
+          splitRules: (preferences.splitRules as Record<string, string>) || {},
+          splitAliases: (preferences.splitAliases as Record<string, string>) || {},
+        },
+        route.split,
+      );
+      navigate(
+        {
+          split:
+            saved.splits.find((name) => original && attentionSplit(saved, name) === original) ||
+            saved.splits[0] ||
+            "Important",
+        },
+        true,
+      );
     }
   }, [inbox.splitPreferences, route.split]);
   useEffect(() => {
     if (!inbox.policy) return;
-    const sendDelay = inbox.policy.undoSendSeconds ? `${inbox.policy.undoSendSeconds} seconds` : "No delay";
+    const sendDelay = inbox.policy.undoSendSeconds
+      ? `${inbox.policy.undoSendSeconds} seconds`
+      : "No delay";
     const showImages = inbox.policy.remoteImages;
-    setPreferences(previous => previous.sendDelay === sendDelay && previous.showImages === showImages ? previous : { ...previous, sendDelay, showImages });
+    setPreferences((previous) =>
+      previous.sendDelay === sendDelay && previous.showImages === showImages
+        ? previous
+        : { ...previous, sendDelay, showImages },
+    );
   }, [inbox.policy]);
   useEffect(() => {
-    if (!inbox.accounts.length || route.account === UNIFIED_ACCOUNT || inbox.accounts.some(account => account.id === route.account)) return;
-    const account = inbox.accounts.find(account => account.email === route.account);
-    const next: Route = { account: account?.id ?? UNIFIED_ACCOUNT, folder: "Inbox", split: preferences.splits[0] || "Important" };
+    if (
+      !inbox.accounts.length ||
+      route.account === UNIFIED_ACCOUNT ||
+      inbox.accounts.some((account) => account.id === route.account)
+    )
+      return;
+    const account = inbox.accounts.find((account) => account.email === route.account);
+    const next: Route = {
+      account: account?.id ?? UNIFIED_ACCOUNT,
+      folder: "Inbox",
+      split: preferences.splits[0] || "Important",
+    };
     actionNavigationVersion.current++;
-    history.replaceState(history.state, "", routeUrl(next, settingsOpen.current ? settingsPage || "" : null));
+    history.replaceState(
+      history.state,
+      "",
+      routeUrl(next, settingsOpen.current ? settingsPage || "" : null),
+    );
     setRoute(next);
   }, [inbox.accounts, route.account, preferences.splits]);
   useEffect(() => {
     if (!currentMail || currentMail.operationId) return;
     void store.loadThread(currentMail.id).catch(() => {});
-  }, [store, currentMail?.id, currentMail?.messages.map(message => `${message.id}:${message.bodyRevision ?? message.revision}:${!!message.loaded}`).join(","), inbox.policy?.remoteImages]);
+  }, [
+    store,
+    currentMail?.id,
+    currentMail?.messages
+      .map(
+        (message) =>
+          `${message.id}:${message.bodyRevision ?? message.revision}:${!!message.loaded}`,
+      )
+      .join(","),
+    inbox.policy?.remoteImages,
+  ]);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.documentElement.dataset.style =
       preferences.themeStyle === "Classic" ? "Classic" : "Superlocal";
-    document.documentElement.dataset.density =
-      preferences.density.toLowerCase();
+    document.documentElement.dataset.density = preferences.density.toLowerCase();
     document.title = `${settings ? "Settings" : currentMail?.subject || (route.draft ? "New Message" : route.folder === "Inbox" ? route.split : route.folder)} - Superlocal`;
-  }, [
-    dark,
-    settings,
-    preferences.themeStyle,
-    preferences.density,
-    currentMail?.subject,
-    route,
-  ]);
+  }, [dark, settings, preferences.themeStyle, preferences.density, currentMail?.subject, route]);
   const onHistoryChange = useEffectEvent(() => {
-    if (restoringHistory.current) { restoringHistory.current = false; return; }
+    if (restoringHistory.current) {
+      restoringHistory.current = false;
+      return;
+    }
     actionNavigationVersion.current++;
     const nextPage = readSettingsPage();
     const next = readRoute();
-    const nextIndex = typeof history.state?.superlocalIndex === "number" ? history.state.superlocalIndex as number : null;
+    const nextIndex =
+      typeof history.state?.superlocalIndex === "number"
+        ? (history.state.superlocalIndex as number)
+        : null;
     const routeChanged = JSON.stringify(next) !== JSON.stringify(route);
-    if (settingsOpen.current && (nextPage === null || routeChanged) && settingsExitGuard.current?.() === false) {
+    if (
+      settingsOpen.current &&
+      (nextPage === null || routeChanged) &&
+      settingsExitGuard.current?.() === false
+    ) {
       if (nextIndex !== null && nextIndex !== historyPosition.current) {
         restoringHistory.current = true;
         history.go(historyPosition.current - nextIndex);
       } else {
-        history.pushState({ superlocalIndex: historyPosition.current, superlocalSettings: true }, "", routeUrl(route, settingsPage || ""));
+        history.pushState(
+          { superlocalIndex: historyPosition.current, superlocalSettings: true },
+          "",
+          routeUrl(route, settingsPage || ""),
+        );
       }
       return;
     }
     const searchState = nextIndex === null ? undefined : searchHistoryStates.current.get(nextIndex);
-    const searchChanged = search !== (searchState?.search ?? false) || query !== (searchState?.query ?? "") || searchSubmitted !== (searchState?.submitted ?? false) || mailFilter !== (searchState?.filter ?? null);
+    const searchChanged =
+      search !== (searchState?.search ?? false) ||
+      query !== (searchState?.query ?? "") ||
+      searchSubmitted !== (searchState?.submitted ?? false) ||
+      mailFilter !== (searchState?.filter ?? null);
     if (searchChanged) setSelected([]);
-    if (searchChanged || next.account !== route.account || next.folder !== route.folder || next.split !== route.split) setHighlight(0);
+    if (
+      searchChanged ||
+      next.account !== route.account ||
+      next.folder !== route.folder ||
+      next.split !== route.split
+    )
+      setHighlight(0);
     restoreSearchFocus.current = false;
     searchOrigin.current = searchState?.origin ?? null;
     setSearch(searchState?.search ?? false);
@@ -656,7 +1069,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     setSearchSubmitted(searchState?.submitted ?? false);
     setMailFilter(searchState?.filter ?? null);
     historyPosition.current = nextIndex ?? historyPosition.current + 1;
-    if (nextIndex === null) history.replaceState({ ...history.state, superlocalIndex: historyPosition.current }, "");
+    if (nextIndex === null)
+      history.replaceState({ ...history.state, superlocalIndex: historyPosition.current }, "");
     if (!settingsOpen.current && nextPage !== null) rememberSettingsFocus();
     settingsOpen.current = nextPage !== null;
     setSettings(nextPage !== null);
@@ -664,7 +1078,12 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     setMobileSidebar(false);
     closeNavigation();
     // A settings history entry changes the visible page, not the preserved mail selection.
-    if (routeChanged) { setRoute(next); setSelected([]); settingsFocus.current = null; settingsScroll.current = []; }
+    if (routeChanged) {
+      setRoute(next);
+      setSelected([]);
+      settingsFocus.current = null;
+      settingsScroll.current = [];
+    }
   });
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
@@ -689,25 +1108,40 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     if (!sendFeedback || !sendOperation) return;
     const operation = sendOperation;
     const noun = sendFeedback.threadId ? "Reply" : "Email";
-    setNotice(previous => {
+    setNotice((previous) => {
       if (previous && previous.operationId !== operation.id) return previous;
       // Immediate sends acknowledge acceptance; SDK state still controls Undo,
       // scheduled delivery and any later failure or uncertain outcome.
-      const text = operation.status === "succeeded" ? `${noun} sent`
-        : operation.status === "cancelled" ? `${noun} cancelled. Draft restored.`
-        : operation.status === "failed" ? `${noun} not sent. Draft restored.`
-        : operation.status === "partial" ? `${noun} sent to some recipients only.`
-        : operation.status === "uncertain" ? `${noun} delivery unconfirmed.`
-        : sendFeedback.scheduled ? `${noun} scheduled for ${displayDate(sendFeedback.scheduled)}` : `${noun} sent`;
-      return { text, operationId: operation.id, scheduled: !!sendFeedback.scheduled,
-        ...(operation.status === "pending" ? { undo: undoAction(() => store.undoSend(operation.id)) } : {}) };
+      const text =
+        operation.status === "succeeded"
+          ? `${noun} sent`
+          : operation.status === "cancelled"
+            ? `${noun} cancelled. Draft restored.`
+            : operation.status === "failed"
+              ? `${noun} not sent. Draft restored.`
+              : operation.status === "partial"
+                ? `${noun} sent to some recipients only.`
+                : operation.status === "uncertain"
+                  ? `${noun} delivery unconfirmed.`
+                  : sendFeedback.scheduled
+                    ? `${noun} scheduled for ${displayDate(sendFeedback.scheduled)}`
+                    : `${noun} sent`;
+      return {
+        text,
+        operationId: operation.id,
+        scheduled: !!sendFeedback.scheduled,
+        ...(operation.status === "pending"
+          ? { undo: undoAction(() => store.undoSend(operation.id)) }
+          : {}),
+      };
     });
   }, [sendFeedback, sendOperation?.status]);
   useEffect(() => {
     setNoticeFading(false);
     if (!notice || noticeHovered) return;
     const operation = notice.operationId ? inbox.operations[notice.operationId] : undefined;
-    if (!notice.scheduled && operation && ["pending", "processing"].includes(operation.status)) return;
+    if (!notice.scheduled && operation && ["pending", "processing"].includes(operation.status))
+      return;
     const lifetime = notice.undo || notice.action ? 10000 : 4000;
     const fade = setTimeout(() => setNoticeFading(true), lifetime);
     const remove = setTimeout(() => setNotice(null), lifetime + 2000);
@@ -715,7 +1149,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       clearTimeout(fade);
       clearTimeout(remove);
     };
-  }, [notice, noticeHovered, notice?.operationId ? inbox.operations[notice.operationId]?.status : undefined]);
+  }, [
+    notice,
+    noticeHovered,
+    notice?.operationId ? inbox.operations[notice.operationId]?.status : undefined,
+  ]);
   useEffect(() => {
     if (search) searchInput.current?.focus();
   }, [search]);
@@ -727,10 +1165,15 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     if (settings || overlay || navigation || issueReporter) return;
     // Closing search remounts its trigger. Other navigation must keep its own focus.
     if (document.activeElement && document.activeElement !== document.body) return;
-    const target = opener?.isConnected && opener !== document.body && opener !== document.documentElement &&
-      opener.getClientRects().length && !opener.matches(":disabled") && !opener.closest('[inert], [aria-disabled="true"]')
-      ? opener
-      : document.querySelector<HTMLElement>(".mail-workspace .search-trigger");
+    const target =
+      opener?.isConnected &&
+      opener !== document.body &&
+      opener !== document.documentElement &&
+      opener.getClientRects().length &&
+      !opener.matches(":disabled") &&
+      !opener.closest('[inert], [aria-disabled="true"]')
+        ? opener
+        : document.querySelector<HTMLElement>(".mail-workspace .search-trigger");
     target?.focus({ preventScroll: true });
   }, [search, settings, overlay, navigation, issueReporter]);
   const highlightedView = useRef(listViewKey);
@@ -753,10 +1196,19 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     const replaceSettings = readSettingsPage() !== null;
     if (!replaceSettings) historyPosition.current += 1;
     history[replaceSettings ? "replaceState" : "pushState"](
-      { superlocalIndex: historyPosition.current, ...(preserveSettings && settingsOpen.current ? { superlocalSettings: history.state?.superlocalSettings } : {}) },
-      "", routeUrl(next, preserveSettings && settingsOpen.current ? settingsPage || "" : null),
+      {
+        superlocalIndex: historyPosition.current,
+        ...(preserveSettings && settingsOpen.current
+          ? { superlocalSettings: history.state?.superlocalSettings }
+          : {}),
+      },
+      "",
+      routeUrl(next, preserveSettings && settingsOpen.current ? settingsPage || "" : null),
     );
-    if (!preserveSettings) { settingsFocus.current = null; settingsScroll.current = []; }
+    if (!preserveSettings) {
+      settingsFocus.current = null;
+      settingsScroll.current = [];
+    }
     setRoute(next);
     closeNavigation();
     setSenderSelection(null);
@@ -765,14 +1217,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   }
   function closeNavigation() {
     const active = document.activeElement;
-    if (active instanceof HTMLElement && active.closest(".folder-panel"))
-      active.blur();
+    if (active instanceof HTMLElement && active.closest(".folder-panel")) active.blur();
     setNavigation(false);
   }
-  function goFolder(
-    folder: string,
-    split = preferences.splits[0] || "Important",
-  ) {
+  function goFolder(folder: string, split = preferences.splits[0] || "Important") {
     if (!leaveSettings()) return;
     motion.prepare("switch");
     navigate({
@@ -790,13 +1238,14 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   }
   function openOverlay(value: Overlay, ids = targetIds) {
     actionNavigationVersion.current++;
-    if (value === "shortcuts") { openSettings("Shortcuts"); return; }
+    if (value === "shortcuts") {
+      openSettings("Shortcuts");
+      return;
+    }
     if (value === "label") setLabelMode("toggle");
     if (value === "command") {
       const draft =
-        (currentDraft &&
-        (!currentDraft.popOut ||
-          document.activeElement?.closest(".compose-view"))
+        (currentDraft && (!currentDraft.popOut || document.activeElement?.closest(".compose-view"))
           ? currentDraft
           : undefined) ||
         (isDrafts && !route.thread
@@ -810,29 +1259,38 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     if (inbox.host?.inboxWindow) {
       overlayCapture.current.clear();
       for (const id of ids.slice(0, 100)) {
-        const captured = selectedCapture.current.get(id) ?? mail.find(mail => mail.id === id);
+        const captured = selectedCapture.current.get(id) ?? mail.find((mail) => mail.id === id);
         if (captured) overlayCapture.current.set(id, captureActionMail(captured));
       }
-      store.pinWindow("command", [...overlayCapture.current.keys()], [...overlayCapture.current.values()]);
+      store.pinWindow(
+        "command",
+        [...overlayCapture.current.keys()],
+        [...overlayCapture.current.values()],
+      );
     }
-    setOverlayIds(
-      value === "command" || value === "remind" || value === "label"
-        ? ids
-        : null,
-    );
+    setOverlayIds(value === "command" || value === "remind" || value === "label" ? ids : null);
     setOverlay(value);
     closeNavigation();
   }
   function updatePreferences(patch: Partial<Preferences>) {
-    const { sendDelay, showImages, splits, inactiveSplits, splitRules, splitAliases, ...local } = patch;
+    const { sendDelay, showImages, splits, inactiveSplits, splitRules, splitAliases, ...local } =
+      patch;
     setPreferences((p) => ({ ...p, ...local }));
-    const splitPatch = Object.fromEntries(Object.entries({ splits, inactiveSplits, splitRules, splitAliases }).filter(([, value]) => value !== undefined));
-    if (Object.keys(splitPatch).length) void store.setSplitPreferences(splitPatch as Partial<Omit<SplitPreferences, "version">>).catch(actionError);
+    const splitPatch = Object.fromEntries(
+      Object.entries({ splits, inactiveSplits, splitRules, splitAliases }).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
+    if (Object.keys(splitPatch).length)
+      void store
+        .setSplitPreferences(splitPatch as Partial<Omit<SplitPreferences, "version">>)
+        .catch(actionError);
     if (typeof sendDelay === "string") {
       const seconds = Number.parseInt(sendDelay, 10) || 0;
       void store.setPolicy({ undoSendSeconds: Math.min(120, seconds) }).catch(actionError);
     }
-    if (typeof showImages === "boolean") void store.setPolicy({ remoteImages: showImages }).catch(actionError);
+    if (typeof showImages === "boolean")
+      void store.setPolicy({ remoteImages: showImages }).catch(actionError);
     if (typeof patch.profileName === "string")
       setUserProfile((p) => ({ ...p, name: patch.profileName as string }));
     if (typeof patch.profileLocation === "string")
@@ -842,54 +1300,113 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       }));
   }
   function actionError(error: unknown) {
-    if (error instanceof InboxActionError || error instanceof DOMException && error.name === "AbortError") return;
-    setNotice({ text: error instanceof Error ? error.message : "The inbox action failed. Your data has not been replaced with simulated state." });
+    if (
+      error instanceof InboxActionError ||
+      (error instanceof DOMException && error.name === "AbortError")
+    )
+      return;
+    setNotice({
+      text:
+        error instanceof Error
+          ? error.message
+          : "The inbox action failed. Your data has not been replaced with simulated state.",
+    });
   }
   // Retry for background problems only rereads: refresh the snapshot, reconnect live updates, reload the open conversation.
   function retryIssue(issue: InboxIssue) {
     void store.retry();
-    if (issue.scope === "thread" && currentMail && !currentMail.operationId) void store.loadThread(currentMail.id).catch(() => {});
+    if (issue.scope === "thread" && currentMail && !currentMail.operationId)
+      void store.loadThread(currentMail.id).catch(() => {});
   }
   function dismissReadOnly() {
     setReadOnlyDismissed(true);
     writeSessionText("read-only-notice", "dismissed");
   }
   function retryDone(id: string) {
-    if (!store.getSnapshot().pendingDone.some(command => command.id === id)) return;
-    void store.retryPendingDone(id).then(reverse => {
-      setNotice({ text: "Marked as Done.", undo: undoAction(reverse) });
-    }).catch(() => { /* The store retains unconfirmed recovery or raises a rejection issue. */ });
+    if (!store.getSnapshot().pendingDone.some((command) => command.id === id)) return;
+    void store
+      .retryPendingDone(id)
+      .then((reverse) => {
+        setNotice({ text: "Marked as Done.", undo: undoAction(reverse) });
+      })
+      .catch(() => {
+        /* The store retains unconfirmed recovery or raises a rejection issue. */
+      });
   }
-  const pendingDoneCount = inbox.pendingDone.filter(command => command.status === "pending").reduce((sum, command) => sum + command.count, 0);
-  const unconfirmedDone = inbox.pendingDone.filter(command => command.status === "unconfirmed");
+  const pendingDoneCount = inbox.pendingDone
+    .filter((command) => command.status === "pending")
+    .reduce((sum, command) => sum + command.count, 0);
+  const unconfirmedDone = inbox.pendingDone.filter((command) => command.status === "unconfirmed");
   const notices = (
     <Notices issues={inbox.issues} onRetry={retryIssue} onDismiss={store.dismissIssue}>
-      {pendingDoneCount > 0 && <div className="notice notice-quiet" role="status">
-        <p className="notice-text">{pendingDoneCount === 1 ? "Marking Done…" : `Marking ${pendingDoneCount} conversations Done…`}</p>
-      </div>}
-      {unconfirmedDone.slice(0, 3).map(command => {
-        return <div key={command.id} className="notice" role="status">
-          <p className="notice-text">Done not confirmed.{command.count > 1 && <span className="notice-detail"> · {command.count} conversations</span>}</p>
-          <button type="button" className="notice-action" onClick={() => retryDone(command.id)}>Retry</button>
-        </div>;
+      {pendingDoneCount > 0 && (
+        <div className="notice notice-quiet" role="status">
+          <p className="notice-text">
+            {pendingDoneCount === 1
+              ? "Marking Done…"
+              : `Marking ${pendingDoneCount} conversations Done…`}
+          </p>
+        </div>
+      )}
+      {unconfirmedDone.slice(0, 3).map((command) => {
+        return (
+          <div key={command.id} className="notice" role="status">
+            <p className="notice-text">
+              Done not confirmed.
+              {command.count > 1 && (
+                <span className="notice-detail"> · {command.count} conversations</span>
+              )}
+            </p>
+            <button type="button" className="notice-action" onClick={() => retryDone(command.id)}>
+              Retry
+            </button>
+          </div>
+        );
       })}
-      {unconfirmedDone.length > 3 && <div className="notice notice-quiet" role="status">
-        <p className="notice-text">{unconfirmedDone.length - 3} more Done actions need confirmation.</p>
-      </div>}
+      {unconfirmedDone.length > 3 && (
+        <div className="notice notice-quiet" role="status">
+          <p className="notice-text">
+            {unconfirmedDone.length - 3} more Done actions need confirmation.
+          </p>
+        </div>
+      )}
       {inbox.host && !inbox.host.allowProviderWrites && !readOnlyDismissed && (
         <div role="status">
-          <Notice quiet title="Read-only host" detail="Sending and provider changes are disabled." action={{ label: "Accounts", onClick: () => openSettings("Add Accounts") }} onDismiss={dismissReadOnly} data={{ scope: "read-only" }} />
+          <Notice
+            quiet
+            title="Read-only host"
+            detail="Sending and provider changes are disabled."
+            action={{ label: "Accounts", onClick: () => openSettings("Add Accounts") }}
+            onDismiss={dismissReadOnly}
+            data={{ scope: "read-only" }}
+          />
         </div>
       )}
-      {selectionPreparing?.viewKey === listViewKey && selectionPreparing.route === routeUrl(route) && selectionPreparing.queryId === matchingWindow?.state.queryId && selectionPreparing.scopeState === matchingWindow?.state.scopeState && (
-        <div role="status">
-          <Notice quiet title="Preparing selection…" action={{ label: "Select all", onClick: () => {
-            const window = store.getSnapshot().window;
-            if (selectionViewKey.current === selectionPreparing.viewKey && routeUrl(readRoute()) === selectionPreparing.route &&
-              window?.state.queryId === selectionPreparing.queryId && window.state.scopeState === selectionPreparing.scopeState) void selectAllMail();
-          } }} onDismiss={() => setSelectionPreparing(null)} />
-        </div>
-      )}
+      {selectionPreparing?.viewKey === listViewKey &&
+        selectionPreparing.route === routeUrl(route) &&
+        selectionPreparing.queryId === matchingWindow?.state.queryId &&
+        selectionPreparing.scopeState === matchingWindow?.state.scopeState && (
+          <div role="status">
+            <Notice
+              quiet
+              title="Preparing selection…"
+              action={{
+                label: "Select all",
+                onClick: () => {
+                  const window = store.getSnapshot().window;
+                  if (
+                    selectionViewKey.current === selectionPreparing.viewKey &&
+                    routeUrl(readRoute()) === selectionPreparing.route &&
+                    window?.state.queryId === selectionPreparing.queryId &&
+                    window.state.scopeState === selectionPreparing.scopeState
+                  )
+                    void selectAllMail();
+                },
+              }}
+              onDismiss={() => setSelectionPreparing(null)}
+            />
+          </div>
+        )}
       {notice && (
         <div
           className={`toast ${noticeFading ? "is-fading" : ""}`}
@@ -924,7 +1441,16 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   function undoAction(reverse: () => Promise<void>) {
     return () => {
       const timing = measureAction("undo");
-      void reverse().then(() => { timing.accepted(); timing.finish(); }, error => { actionError(error); timing.finish("error"); });
+      void reverse().then(
+        () => {
+          timing.accepted();
+          timing.finish();
+        },
+        (error) => {
+          actionError(error);
+          timing.finish("error");
+        },
+      );
     };
   }
   async function reportIssue() {
@@ -948,12 +1474,18 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     }
   }
   function rememberSettingsFocus() {
-    settingsScroll.current = [...document.querySelectorAll<HTMLElement>(".mail-workspace .mail-list, .mail-workspace .message-view-scroll, .mail-workspace [contenteditable=true]")]
-      .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+    settingsScroll.current = [
+      ...document.querySelectorAll<HTMLElement>(
+        ".mail-workspace .mail-list, .mail-workspace .message-view-scroll, .mail-workspace [contenteditable=true]",
+      ),
+    ].map((element) => ({ element, top: element.scrollTop, left: element.scrollLeft }));
     const active = document.activeElement;
-    settingsFocus.current = active instanceof HTMLIFrameElement
-      ? active.contentDocument?.activeElement as HTMLElement | null
-      : active instanceof HTMLElement ? active : null;
+    settingsFocus.current =
+      active instanceof HTMLIFrameElement
+        ? (active.contentDocument?.activeElement as HTMLElement | null)
+        : active instanceof HTMLElement
+          ? active
+          : null;
   }
   function leaveSettings() {
     if (!settingsOpen.current) return true;
@@ -976,12 +1508,16 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       historyPosition.current += 1;
     }
     history[alreadyOpen ? "replaceState" : "pushState"](
-      { superlocalIndex: historyPosition.current, superlocalSettings: alreadyOpen ? history.state?.superlocalSettings : true },
-      "", routeUrl(route, page || ""),
+      {
+        superlocalIndex: historyPosition.current,
+        superlocalSettings: alreadyOpen ? history.state?.superlocalSettings : true,
+      },
+      "",
+      routeUrl(route, page || ""),
     );
     settingsOpen.current = true;
     setSettingsPage(page);
-    setSettingsJumpRequest(value => value + 1);
+    setSettingsJumpRequest((value) => value + 1);
     setSettings(true);
     setMobileSidebar(false);
     sequence.current.key = "";
@@ -990,13 +1526,16 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   }
   function startSearch(floatingDraftId?: string) {
     if (!leaveSettings()) return;
-    searchFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    searchFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     restoreSearchFocus.current = false;
     motion.prepare("search");
     searchOrigin.current = route;
     flushSync(() => {
       if (floatingDraftId)
-        drafts.filter(draft => draft.id === floatingDraftId).forEach(draft => store.editDraft({ ...draft, popOut: true }));
+        drafts
+          .filter((draft) => draft.id === floatingDraftId)
+          .forEach((draft) => store.editDraft({ ...draft, popOut: true }));
       navigate({ thread: undefined, draft: floatingDraftId, view: undefined });
       setSearch(true);
       setSearchSubmitted(false);
@@ -1016,9 +1555,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       const origin = searchOrigin.current;
       navigate({
         ...origin,
-        draft: drafts.some((draft) => draft.id === origin.draft)
-          ? origin.draft
-          : undefined,
+        draft: drafts.some((draft) => draft.id === origin.draft) ? origin.draft : undefined,
       });
       searchOrigin.current = null;
     }
@@ -1030,7 +1567,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     setSearchSubmitted(submit);
     setHighlight(0);
     if (submit) searchInput.current?.blur();
-    timing.accepted(); timing.finish();
+    timing.accepted();
+    timing.finish();
   }
   function openMail(m: Mail) {
     const timing = measureAction("open", 1);
@@ -1040,7 +1578,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       void store.action([m], "read").catch(actionError);
     navigate({ thread: m.id, draft: undefined, view: undefined });
     setSelected([]);
-    timing.accepted(); timing.finish();
+    timing.accepted();
+    timing.finish();
   }
   function handleMailRow(event: MouseEvent<HTMLDivElement>) {
     if (!(event.target instanceof Element)) return;
@@ -1056,9 +1595,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       openOverlay("command", [mail.id]);
       return;
     }
-    const action =
-      event.target.closest<HTMLElement>("[data-mail-action]")?.dataset
-        .mailAction;
+    const action = event.target.closest<HTMLElement>("[data-mail-action]")?.dataset.mailAction;
     if (!action) {
       openMail(mail);
       return;
@@ -1066,9 +1603,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     event.stopPropagation();
     if (action === "select") {
       setSelected((items) =>
-        items.includes(mail.id)
-          ? items.filter((id) => id !== mail.id)
-          : [...items, mail.id],
+        items.includes(mail.id) ? items.filter((id) => id !== mail.id) : [...items, mail.id],
       );
     } else if (action === "done") {
       applyAction("done", [mail.id]);
@@ -1103,9 +1638,12 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       !plainText(currentDraft.body).trim() &&
       !currentDraft.attachments.length
     ) {
-      if (store.getSnapshot().drafts.some(draft => draft.id === currentDraft.id))
+      if (store.getSnapshot().drafts.some((draft) => draft.id === currentDraft.id))
         void store.discardDraft(currentDraft.id).catch(actionError);
-    } else if (currentDraft && store.getSnapshot().drafts.some(draft => draft.id === currentDraft.id)) {
+    } else if (
+      currentDraft &&
+      store.getSnapshot().drafts.some((draft) => draft.id === currentDraft.id)
+    ) {
       void store.flushDraft(currentDraft.id).catch(actionError);
     }
     if (route.view === "zero") zero.pause();
@@ -1115,22 +1653,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   function toggleComposeFocus() {
     if (document.activeElement?.closest(".compose-view"))
       (
-        list.current ||
-        document.querySelector<HTMLElement>(
-          ".thread-view [data-thread-message]",
-        )
+        list.current || document.querySelector<HTMLElement>(".thread-view [data-thread-message]")
       )?.focus();
-    else
-      document
-        .querySelector<HTMLElement>(".compose-view [contenteditable=true]")
-        ?.focus();
+    else document.querySelector<HTMLElement>(".compose-view [contenteditable=true]")?.focus();
   }
-  async function newDraft(
-    subject = "",
-    body = "",
-    popOut = false,
-    availability = false,
-  ) {
+  async function newDraft(subject = "", body = "", popOut = false, availability = false) {
     motion.prepare("switch");
     setAvailabilityRequest((value) => (availability ? value + 1 : 0));
     try {
@@ -1138,7 +1665,9 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       navigate({ draft: draft.id, thread: undefined, view: undefined });
       setSearch(false);
       return draft;
-    } catch (error) { actionError(error); }
+    } catch (error) {
+      actionError(error);
+    }
   }
   async function composeReply(
     mode: "reply" | "replyAll" | "forward",
@@ -1148,17 +1677,28 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     if (!currentMail) return;
     setReplyRequest((value) => value + 1);
     const existing =
-      currentDraft && (currentDraft.threadId === currentMail.id || currentDraft.sourceId === currentMail.sourceId && currentMail.messages.some(message => message.id === currentDraft.sourceMessageId)) ? currentDraft : undefined;
+      currentDraft &&
+      (currentDraft.threadId === currentMail.id ||
+        (currentDraft.sourceId === currentMail.sourceId &&
+          currentMail.messages.some((message) => message.id === currentDraft.sourceMessageId)))
+        ? currentDraft
+        : undefined;
     if (existing) {
       store.editDraft({ ...existing, popOut: popOut || existing.popOut, updated: Date.now() });
-      if (existing.mode !== mode || sourceMessageId && existing.sourceMessageId !== sourceMessageId)
+      if (
+        existing.mode !== mode ||
+        (sourceMessageId && existing.sourceMessageId !== sourceMessageId)
+      )
         setNotice({
           text: "Resumed your saved draft. Discard it to change its reply or forward target.",
         });
       return;
     }
-    try { await store.newDraft(route.account, { mode, popOut, mail: currentMail, sourceMessageId }); }
-    catch (error) { actionError(error); }
+    try {
+      await store.newDraft(route.account, { mode, popOut, mail: currentMail, sourceMessageId });
+    } catch (error) {
+      actionError(error);
+    }
   }
   async function composeContact() {
     if (!contextContact || !contextSender?.canSend) return;
@@ -1167,14 +1707,19 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       const draft = await store.newDraft(contextSender.id, { to: contextContact.email });
       navigate({ draft: draft.id, thread: undefined, view: undefined });
       setSearch(false);
-    } catch (error) { actionError(error); }
+    } catch (error) {
+      actionError(error);
+    }
   }
   function updateDraft(draft: Draft) {
-    const current = drafts.find(value => value.id === draft.id);
+    const current = drafts.find((value) => value.id === draft.id);
     if (current && current.account !== draft.account) {
-      void store.moveDraft(draft.id, draft.account, draft.from).then(moved => {
-        navigate({ account: moved.account, draft: moved.id, thread: undefined, view: undefined });
-      }).catch(actionError);
+      void store
+        .moveDraft(draft.id, draft.account, draft.from)
+        .then((moved) => {
+          navigate({ account: moved.account, draft: moved.id, thread: undefined, view: undefined });
+        })
+        .catch(actionError);
     } else store.editDraft(draft);
   }
   async function discardDraft(id = currentDraft?.id) {
@@ -1184,26 +1729,46 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       await store.discardDraft(old.id);
       removeSaved(`draft-reminder:${old.id}`);
       if (route.draft === old.id) navigate({ draft: undefined, thread: undefined });
-      setHighlight(value => Math.max(0, Math.min(value, accountDrafts.length - 2)));
+      setHighlight((value) => Math.max(0, Math.min(value, accountDrafts.length - 2)));
       setNotice({ text: "Draft discarded" });
       return true;
-    } catch (error) { actionError(error); return false; }
+    } catch (error) {
+      actionError(error);
+      return false;
+    }
   }
   async function sendDraft(draft: Draft, when?: string, options?: SendOptions) {
     if (options?.instant) when = undefined;
     const conversation = ["reply", "replyAll"].includes(draft.mode)
-      ? accountMail.find(mail => !mail.operationId && (mail.id === draft.threadId || mail.sourceId === draft.sourceId && mail.messages.some(message => message.id === draft.sourceMessageId)))
-        ?? mail.find(mail => mail.id === draft.threadId && mail.account === draft.account && !mail.operationId) : undefined;
+      ? (accountMail.find(
+          (mail) =>
+            !mail.operationId &&
+            (mail.id === draft.threadId ||
+              (mail.sourceId === draft.sourceId &&
+                mail.messages.some((message) => message.id === draft.sourceMessageId))),
+        ) ??
+        mail.find(
+          (mail) =>
+            mail.id === draft.threadId && mail.account === draft.account && !mail.operationId,
+        ))
+      : undefined;
     try {
       const operation = await store.submit(draft, when);
       if (options?.markDone && draft.threadId) {
-        const original = conversation ?? mail.find(mail => mail.id === draft.threadId);
+        const original = conversation ?? mail.find((mail) => mail.id === draft.threadId);
         if (original) await store.action([original], "done");
       }
       const current = readRoute();
       if (conversation) {
-        if (current.draft === draft.id) navigate({ account: conversation.account, draft: undefined, thread: conversation.id, view: undefined });
-      } else if (current.draft === draft.id) navigate({ draft: undefined, thread: undefined, view: undefined });
+        if (current.draft === draft.id)
+          navigate({
+            account: conversation.account,
+            draft: undefined,
+            thread: conversation.id,
+            view: undefined,
+          });
+      } else if (current.draft === draft.id)
+        navigate({ draft: undefined, thread: undefined, view: undefined });
       setNotice(null);
       setSendFeedback({ id: operation.id, threadId: conversation?.id, scheduled: when });
       return true;
@@ -1213,110 +1778,207 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     }
   }
   async function selectAllMail() {
-    if (!inbox.host?.inboxWindow) { setSelected(visibleMail.map(mail => mail.id)); return; }
-    const window = matchingWindow, owner = getApplicationScope(), openingRoute = routeUrl(route);
+    if (!inbox.host?.inboxWindow) {
+      setSelected(visibleMail.map((mail) => mail.id));
+      return;
+    }
+    const window = matchingWindow,
+      owner = getApplicationScope(),
+      openingRoute = routeUrl(route);
     if (!window) return;
-    const current = () => !owner.signal.aborted && selectionViewKey.current === listViewKey && routeUrl(readRoute()) === openingRoute &&
-      store.getSnapshot().window?.state.queryId === window.state.queryId && store.getSnapshot().window?.state.scopeState === window.state.scopeState;
+    const current = () =>
+      !owner.signal.aborted &&
+      selectionViewKey.current === listViewKey &&
+      routeUrl(readRoute()) === openingRoute &&
+      store.getSnapshot().window?.state.queryId === window.state.queryId &&
+      store.getSnapshot().window?.state.scopeState === window.state.scopeState;
     if (!current()) return;
     try {
       const captured = await store.createWindowSelection();
       if (!current()) return;
-      const projection = visibleMail.map(mail => mail.id); selectionProjection.current = projection;
-      setSelectionPreparing(null); setWindowSelection(captured); setSelected(projection);
-      setNotice({ text: captured.count === null ? "Capturing selection…" : `${captured.count.toLocaleString()} conversations selected` });
+      const projection = visibleMail.map((mail) => mail.id);
+      selectionProjection.current = projection;
+      setSelectionPreparing(null);
+      setWindowSelection(captured);
+      setSelected(projection);
+      setNotice({
+        text:
+          captured.count === null
+            ? "Capturing selection…"
+            : `${captured.count.toLocaleString()} conversations selected`,
+      });
     } catch (error) {
       if (!current()) return;
       if (error instanceof InboxViewPreferencesError && error.code === "HOST_INBOX_PREPARING") {
-        setSelectionPreparing({ viewKey: listViewKey, route: openingRoute, queryId: window.state.queryId, scopeState: window.state.scopeState });
-      } else { setSelectionPreparing(null); actionError(error); }
+        setSelectionPreparing({
+          viewKey: listViewKey,
+          route: openingRoute,
+          queryId: window.state.queryId,
+          scopeState: window.state.scopeState,
+        });
+      } else {
+        setSelectionPreparing(null);
+        actionError(error);
+      }
     }
   }
   async function capturedTargets(ids: string[]): Promise<Mail[]> {
     if (windowSelection && ids === targetIds) return store.resolveWindowSelection(windowSelection);
-    if (!inbox.host?.inboxWindow) return mail.filter(mail => ids.includes(mail.id));
-    if (ids.length > 100) throw new Error("Choose at most 100 individual conversations, or use Select all to capture the full query.");
-    const found = ids.map(id => (commandMode ? overlayCapture.current.get(id) : undefined) ?? selectedCapture.current.get(id) ?? mail.find(mail => mail.id === id));
-    if (found.some(mail => !mail)) throw new Error("Some selected conversations are not available. Reselect them before making changes.");
+    if (!inbox.host?.inboxWindow) return mail.filter((mail) => ids.includes(mail.id));
+    if (ids.length > 100)
+      throw new Error(
+        "Choose at most 100 individual conversations, or use Select all to capture the full query.",
+      );
+    const found = ids.map(
+      (id) =>
+        (commandMode ? overlayCapture.current.get(id) : undefined) ??
+        selectedCapture.current.get(id) ??
+        mail.find((mail) => mail.id === id),
+    );
+    if (found.some((mail) => !mail))
+      throw new Error(
+        "Some selected conversations are not available. Reselect them before making changes.",
+      );
     return (found as Mail[]).map(captureActionMail);
   }
   async function applyOptimisticDone(before: Mail[], timing: ReturnType<typeof measureAction>) {
-    const owner = getApplicationScope(), previousRoute = route, previousReader = currentMail;
-    const queryId = matchingWindow!.state.queryId, selectedIds = new Set(before.map(mail => mail.id));
+    const owner = getApplicationScope(),
+      previousRoute = route,
+      previousReader = currentMail;
+    const queryId = matchingWindow!.state.queryId,
+      selectedIds = new Set(before.map((mail) => mail.id));
     const direction = preferences.advanceDirection === "Previous conversation" ? -1 : 1;
-    const index = previousReader ? visibleMail.findIndex(mail => mail.id === previousReader.id) : -1;
+    const index = previousReader
+      ? visibleMail.findIndex((mail) => mail.id === previousReader.id)
+      : -1;
     let nextIndex = index + direction;
-    while (index >= 0 && nextIndex >= 0 && nextIndex < visibleMail.length && selectedIds.has(visibleMail[nextIndex].id)) nextIndex += direction;
+    while (
+      index >= 0 &&
+      nextIndex >= 0 &&
+      nextIndex < visibleMail.length &&
+      selectedIds.has(visibleMail[nextIndex].id)
+    )
+      nextIndex += direction;
     const neighbor = index >= 0 ? visibleMail[nextIndex] : undefined;
     const command = { id: "" };
-    let admitted = false, failed = false, visualFinished = false;
+    let admitted = false,
+      failed = false,
+      visualFinished = false;
     const feedback = measureAction("done-feedback", before.length);
-    let expectedVersion = actionNavigationVersion.current, expectedRoute = routeUrl(readRoute());
-    const stillHere = () => !owner.signal.aborted && actionNavigationVersion.current === expectedVersion
-      && selectionViewKey.current === listViewKey && readSettingsPage() === null && routeUrl(readRoute()) === expectedRoute
-      && store.getSnapshot().window?.state.queryId === queryId;
-    const rememberNavigation = () => { expectedVersion = actionNavigationVersion.current; expectedRoute = routeUrl(readRoute()); };
+    let expectedVersion = actionNavigationVersion.current,
+      expectedRoute = routeUrl(readRoute());
+    const stillHere = () =>
+      !owner.signal.aborted &&
+      actionNavigationVersion.current === expectedVersion &&
+      selectionViewKey.current === listViewKey &&
+      readSettingsPage() === null &&
+      routeUrl(readRoute()) === expectedRoute &&
+      store.getSnapshot().window?.state.queryId === queryId;
+    const rememberNavigation = () => {
+      expectedVersion = actionNavigationVersion.current;
+      expectedRoute = routeUrl(readRoute());
+    };
     const finishMotion = motion.prepare("remove", [...selectedIds]);
     let operation: ReturnType<typeof store.doneOptimistically>;
     try {
       flushSync(() => {
-        operation = store.doneOptimistically(before, plan => { if (plan.kind === "mailbox-state") command.id = plan.input.id; });
+        operation = store.doneOptimistically(before, (plan) => {
+          if (plan.kind === "mailbox-state") command.id = plan.input.id;
+        });
         void operation.catch(() => {});
-        admitted = store.getSnapshot().pendingDone.some(pending => pending.id === command.id);
+        admitted = store.getSnapshot().pendingDone.some((pending) => pending.id === command.id);
         if (!admitted) return;
-        setSelected([]); setOverlay(null);
+        setSelected([]);
+        setOverlay(null);
         if (previousReader) {
           if (preferences.autoAdvance && neighbor) openMail(neighbor);
           else goBack();
         }
-        setHighlight(value => Math.max(0, Math.min(value, rowCount - before.length - 1)));
+        setHighlight((value) => Math.max(0, Math.min(value, rowCount - before.length - 1)));
         rememberNavigation();
       });
       finishMotion();
       if (admitted) {
         // Visual acknowledgement is deliberately distinct from durable completion.
-        feedback.accepted(); feedback.finish(); visualFinished = true;
+        feedback.accepted();
+        feedback.finish();
+        visualFinished = true;
         if (previousReader && preferences.autoAdvance && !neighbor && index >= 0) {
           const window = store.getSnapshot().window;
           if (direction > 0 ? window?.nextCursor : window?.hasNewer) {
-            void (direction > 0 ? store.loadMoreWindow() : store.loadNewerWindow()).then(() => {
-              if (failed || !stillHere()) return;
-              const snapshot = store.getSnapshot(), window = snapshot.window;
-              if (!window) return;
-              const rows = new Map(snapshot.mail.map(mail => [mail.id, mail]));
-              const ordered = store.presentWindow(window).keys.flatMap(id => !selectedIds.has(id) && rows.has(id) ? [rows.get(id)!] : []);
-              const compare = (mail: Mail) => (previousReader.receivedAt ?? 0) - (mail.receivedAt ?? 0) || mail.id.localeCompare(previousReader.id);
-              const next = direction > 0 ? ordered.find(mail => compare(mail) > 0) : [...ordered].reverse().find(mail => compare(mail) < 0);
-              if (next) { openMail(next); rememberNavigation(); }
-            }).catch(error => { if (!failed && stillHere()) actionError(error); });
+            void (direction > 0 ? store.loadMoreWindow() : store.loadNewerWindow())
+              .then(() => {
+                if (failed || !stillHere()) return;
+                const snapshot = store.getSnapshot(),
+                  window = snapshot.window;
+                if (!window) return;
+                const rows = new Map(snapshot.mail.map((mail) => [mail.id, mail]));
+                const ordered = store
+                  .presentWindow(window)
+                  .keys.flatMap((id) =>
+                    !selectedIds.has(id) && rows.has(id) ? [rows.get(id)!] : [],
+                  );
+                const compare = (mail: Mail) =>
+                  (previousReader.receivedAt ?? 0) - (mail.receivedAt ?? 0) ||
+                  mail.id.localeCompare(previousReader.id);
+                const next =
+                  direction > 0
+                    ? ordered.find((mail) => compare(mail) > 0)
+                    : [...ordered].reverse().find((mail) => compare(mail) < 0);
+                if (next) {
+                  openMail(next);
+                  rememberNavigation();
+                }
+              })
+              .catch((error) => {
+                if (!failed && stillHere()) actionError(error);
+              });
           }
         }
       }
       const reverse = await operation!;
       timing.accepted();
-      setNotice({ text: before.length > 1 ? `${before.length} conversations: Marked as Done.` : "Marked as Done.", undo: undoAction(async () => {
-        await reverse(); navigate(previousRoute);
-        const window = store.getSnapshot().window;
-        const restored = window ? store.presentWindow(window).keys.indexOf(previousReader?.id ?? before[0].id) : -1;
-        if (restored >= 0) setHighlight(restored);
-      }) });
+      setNotice({
+        text:
+          before.length > 1 ? `${before.length} conversations: Marked as Done.` : "Marked as Done.",
+        undo: undoAction(async () => {
+          await reverse();
+          navigate(previousRoute);
+          const window = store.getSnapshot().window;
+          const restored = window
+            ? store.presentWindow(window).keys.indexOf(previousReader?.id ?? before[0].id)
+            : -1;
+          if (restored >= 0) setHighlight(restored);
+        }),
+      });
       timing.finish();
     } catch (error) {
       failed = true;
       // Retiring the command reveals current canonical rows; never write an old
       // Mail snapshot back. Return the reader only if the user has not moved on.
       if (admitted && previousReader && stillHere()) {
-        const snapshot = store.getSnapshot(), window = snapshot.window;
-        const current = snapshot.mail.find(mail => mail.id === previousReader.id);
-        const restored = window && current?.sourceId === previousReader.sourceId && current?.sourceGeneration === previousReader.sourceGeneration
-          ? store.presentWindow(window).keys.indexOf(previousReader.id) : -1;
-        if (restored >= 0) { motion.prepare("return"); navigate(previousRoute); setHighlight(restored); }
+        const snapshot = store.getSnapshot(),
+          window = snapshot.window;
+        const current = snapshot.mail.find((mail) => mail.id === previousReader.id);
+        const restored =
+          window &&
+          current?.sourceId === previousReader.sourceId &&
+          current?.sourceGeneration === previousReader.sourceGeneration
+            ? store.presentWindow(window).keys.indexOf(previousReader.id)
+            : -1;
+        if (restored >= 0) {
+          motion.prepare("return");
+          navigate(previousRoute);
+          setHighlight(restored);
+        }
       }
       if (!visualFinished) feedback.finish("error");
       if (!admitted) actionError(error);
       // Admitted failures have a store-owned issue or an explicit same-ID Retry.
       timing.finish("error");
-    } finally { finishMotion(); }
+    } finally {
+      finishMotion();
+    }
   }
   async function applyAction(action: string, ids = targetIds) {
     if (zero.active && (zero.busy || zero.retry)) return;
@@ -1329,45 +1991,85 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       openOverlay(action, ids);
       return;
     }
-    if (zero.active && ids.length === 1 && ids[0] === currentMail?.id && (action === "done" || action === "not-important")) {
-      zero.decide(action); setOverlay(null); return;
+    if (
+      zero.active &&
+      ids.length === 1 &&
+      ids[0] === currentMail?.id &&
+      (action === "done" || action === "not-important")
+    ) {
+      zero.decide(action);
+      setOverlay(null);
+      return;
     }
     if (!ids.length) return;
     actionNavigationVersion.current++;
     const timing = measureAction(action, ids.length);
-    if (action === "not-important" && inbox.pending) { timing.finish("ignored"); return; }
+    if (action === "not-important" && inbox.pending) {
+      timing.finish("ignored");
+      return;
+    }
     const previousRoute = route;
     const previousHighlight = highlight;
     let before: Mail[];
-    try { before = await capturedTargets(ids); } catch (error) { actionError(error); timing.finish("error"); return; }
-    if (
-      action === "done" &&
-      before.every((m) => ["Done", "Trash"].includes(m.folder))
-    )
+    try {
+      before = await capturedTargets(ids);
+    } catch (error) {
+      actionError(error);
+      timing.finish("error");
+      return;
+    }
+    if (action === "done" && before.every((m) => ["Done", "Trash"].includes(m.folder)))
       action = "inbox";
-    if (!inbox.host?.allowProviderWrites && before.some(message => !message.operationId) &&
-      (["star", "unread", "read", "trash", "spam"].includes(action) || action === "inbox" && before.some(message => ["Auto Archived", "Spam", "Trash"].includes(message.folder)))) {
+    if (
+      !inbox.host?.allowProviderWrites &&
+      before.some((message) => !message.operationId) &&
+      (["star", "unread", "read", "trash", "spam"].includes(action) ||
+        (action === "inbox" &&
+          before.some((message) => ["Auto Archived", "Spam", "Trash"].includes(message.folder))))
+    ) {
       setNotice({ text: "Provider changes are disabled by this read-only host." });
       timing.finish("ignored");
       return;
     }
-    if (action === "done" && matchingWindow && route.folder === "Inbox" && !search && !zero.active && before.every(mail => !mail.operationId && mail.window?.targetsComplete)) {
+    if (
+      action === "done" &&
+      matchingWindow &&
+      route.folder === "Inbox" &&
+      !search &&
+      !zero.active &&
+      before.every((mail) => !mail.operationId && mail.window?.targetsComplete)
+    ) {
       const existing = before.length === 1 ? store.pendingDoneFor(before[0]) : undefined;
       if (existing) {
-        if (store.getSnapshot().pendingDone.find(command => command.id === existing)?.status === "unconfirmed") {
-          setNotice({ text: "Done is not confirmed yet.", action: { label: "Retry", run: () => retryDone(existing) } });
+        if (
+          store.getSnapshot().pendingDone.find((command) => command.id === existing)?.status ===
+          "unconfirmed"
+        ) {
+          setNotice({
+            text: "Done is not confirmed yet.",
+            action: { label: "Retry", run: () => retryDone(existing) },
+          });
         }
-        timing.finish("ignored"); return;
+        timing.finish("ignored");
+        return;
       }
-      await applyOptimisticDone(before, timing); return;
+      await applyOptimisticDone(before, timing);
+      return;
     }
     const finishMotion = motion.prepare("remove", ids);
     const starred = before.some((m) => !m.starred);
     const unread = before.some((m) => !m.unread);
     let reverse: () => Promise<void>;
-    try { reverse = await store.action(before, action); timing.accepted(); }
-    catch (error) { actionError(error); timing.finish("error"); return; }
-    finally { finishMotion(); }
+    try {
+      reverse = await store.action(before, action);
+      timing.accepted();
+    } catch (error) {
+      actionError(error);
+      timing.finish("error");
+      return;
+    } finally {
+      finishMotion();
+    }
     const labels: Record<string, string> = {
       done: "Marked as Done.",
       "not-important": "Marked Done. Not-important feedback saved; categorization is unchanged.",
@@ -1380,18 +2082,35 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     };
     setNotice({
       text: `${before.length > 1 ? `${before.length} conversations: ` : ""}${labels[action] || "Updated"}`,
-      undo: before.some(mail => mail.operationId) ? undefined : undoAction(async () => {
-        await reverse(); navigate(previousRoute); setHighlight(previousHighlight);
-      }),
+      undo: before.some((mail) => mail.operationId)
+        ? undefined
+        : undoAction(async () => {
+            await reverse();
+            navigate(previousRoute);
+            setHighlight(previousHighlight);
+          }),
     });
     setSelected([]);
     if (
       currentMail &&
       ["done", "not-important", "trash", "spam", "inbox", "mute", "cancel"].includes(action)
     ) {
-      const next = preferences.autoAdvance ? await adjacentMail(currentMail, preferences.advanceDirection === "Previous conversation" ? -1 : 1).catch(error => { actionError(error); return undefined; }) : undefined;
+      const next = preferences.autoAdvance
+        ? await adjacentMail(
+            currentMail,
+            preferences.advanceDirection === "Previous conversation" ? -1 : 1,
+          ).catch((error) => {
+            actionError(error);
+            return undefined;
+          })
+        : undefined;
       if (preferences.autoAdvance && next) openMail(next);
-      else if (!preferences.autoAdvance || !inbox.host?.inboxWindow || store.getSnapshot().window?.exhausted) goBack();
+      else if (
+        !preferences.autoAdvance ||
+        !inbox.host?.inboxWindow ||
+        store.getSnapshot().window?.exhausted
+      )
+        goBack();
     }
     if (!["star", "unread"].includes(action))
       setHighlight((v) => Math.max(0, Math.min(v, rowCount - 2)));
@@ -1401,39 +2120,93 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   /** One conversation, one note: the host generalizes it into a durable classifier rule and re-sorts recent inbox mail. */
   async function teach(note: string) {
     const target = targets[0] ?? currentMail;
-    if (!target?.sourceId || !target.sdkThreadId) { setTeachError("Open a conversation first."); return; }
-    setTeachBusy(true); setTeachError("");
+    if (!target?.sourceId || !target.sdkThreadId) {
+      setTeachError("Open a conversation first.");
+      return;
+    }
+    setTeachBusy(true);
+    setTeachError("");
     try {
-      const result = await store.ai.teach({ sourceId: target.sourceId, threadId: target.sdkThreadId, id: `teach-${crypto.randomUUID()}`, note });
+      const result = await store.ai.teach({
+        sourceId: target.sourceId,
+        threadId: target.sdkThreadId,
+        id: `teach-${crypto.randomUUID()}`,
+        note,
+      });
       setOverlay(null);
-      setNotice({ text: `Rule saved: ${result.rule.text}${result.superseded.length ? ` (replaced ${result.superseded.length === 1 ? "an earlier rule" : `${result.superseded.length} earlier rules`})` : ""}` });
+      setNotice({
+        text: `Rule saved: ${result.rule.text}${result.superseded.length ? ` (replaced ${result.superseded.length === 1 ? "an earlier rule" : `${result.superseded.length} earlier rules`})` : ""}`,
+      });
     } catch (error) {
-      setTeachError(error instanceof Error && error.message ? error.message : "The rule could not be saved. Try rephrasing.");
-    } finally { setTeachBusy(false); }
+      setTeachError(
+        error instanceof Error && error.message
+          ? error.message
+          : "The rule could not be saved. Try rephrasing.",
+      );
+    } finally {
+      setTeachBusy(false);
+    }
   }
   async function remind(when: string) {
     let before: Mail[];
-    try { before = await capturedTargets(targetIds); } catch (error) { actionError(error); return; }
+    try {
+      before = await capturedTargets(targetIds);
+    } catch (error) {
+      actionError(error);
+      return;
+    }
     const previousRoute = route;
     const previousHighlight = highlight;
     const at = reminderTime(when);
-    if (!at || !Number.isFinite(at)) { setNotice({ text: "Choose a future reminder date." }); return; }
-    if (zero.active) { setOverlay(null); await zero.remind(at); return; }
-    const finishMotion = motion.prepare("remove", before.map(message => message.id));
+    if (!at || !Number.isFinite(at)) {
+      setNotice({ text: "Choose a future reminder date." });
+      return;
+    }
+    if (zero.active) {
+      setOverlay(null);
+      await zero.remind(at);
+      return;
+    }
+    const finishMotion = motion.prepare(
+      "remove",
+      before.map((message) => message.id),
+    );
     let reverse: () => Promise<void>;
-    try { reverse = await store.action(before, "remind", new Date(at).toISOString()); }
-    catch (error) { actionError(error); return; }
-    finally { finishMotion(); }
+    try {
+      reverse = await store.action(before, "remind", new Date(at).toISOString());
+    } catch (error) {
+      actionError(error);
+      return;
+    } finally {
+      finishMotion();
+    }
     setOverlay(null);
     setSelected([]);
     if (currentMail) {
-      const next = preferences.autoAdvance ? await adjacentMail(currentMail, preferences.advanceDirection === "Previous conversation" ? -1 : 1).catch(error => { actionError(error); return undefined; }) : undefined;
+      const next = preferences.autoAdvance
+        ? await adjacentMail(
+            currentMail,
+            preferences.advanceDirection === "Previous conversation" ? -1 : 1,
+          ).catch((error) => {
+            actionError(error);
+            return undefined;
+          })
+        : undefined;
       if (preferences.autoAdvance && next) openMail(next);
-      else if (!preferences.autoAdvance || !inbox.host?.inboxWindow || store.getSnapshot().window?.exhausted) goBack();
+      else if (
+        !preferences.autoAdvance ||
+        !inbox.host?.inboxWindow ||
+        store.getSnapshot().window?.exhausted
+      )
+        goBack();
     }
     setNotice({
       text: `Reminder set for ${displayDate(when)}`,
-      undo: undoAction(async () => { await reverse(); navigate(previousRoute); setHighlight(previousHighlight); }),
+      undo: undoAction(async () => {
+        await reverse();
+        navigate(previousRoute);
+        setHighlight(previousHighlight);
+      }),
     });
   }
   async function changeLabel(label: string) {
@@ -1443,31 +2216,46 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       return;
     }
     let before: Mail[];
-    try { before = await capturedTargets(targetIds); } catch (error) { actionError(error); return; }
+    try {
+      before = await capturedTargets(targetIds);
+    } catch (error) {
+      actionError(error);
+      return;
+    }
     const previousRoute = route;
     const previousHighlight = highlight;
     const destination = ["Inbox", "Done", "Trash", "Spam"].includes(label);
-    const remove =
-      labelMode === "toggle" && targets.every((m) => m.labels.includes(label));
-    const finishMotion = motion.prepare("remove", before.map(message => message.id));
+    const remove = labelMode === "toggle" && targets.every((m) => m.labels.includes(label));
+    const finishMotion = motion.prepare(
+      "remove",
+      before.map((message) => message.id),
+    );
     let reverse: () => Promise<void>;
     try {
-      if (labelMode === "move" && destination) reverse = await store.action(before, label.toLowerCase());
+      if (labelMode === "move" && destination)
+        reverse = await store.action(before, label.toLowerCase());
       else {
         const undoLabel = await store.setLabel(before, label, remove);
         const undoMove = labelMode === "move" ? await store.action(before, "done") : undefined;
-        reverse = async () => { await undoMove?.(); await undoLabel(); };
+        reverse = async () => {
+          await undoMove?.();
+          await undoLabel();
+        };
       }
-    } catch (error) { actionError(error); return; }
-    finally { finishMotion(); }
+    } catch (error) {
+      actionError(error);
+      return;
+    } finally {
+      finishMotion();
+    }
     setNotice({
       text:
-        labelMode === "move"
-          ? `Moved to ${label}`
-          : remove
-            ? `Removed ${label}`
-            : `Added ${label}`,
-      undo: undoAction(async () => { await reverse(); navigate(previousRoute); setHighlight(previousHighlight); }),
+        labelMode === "move" ? `Moved to ${label}` : remove ? `Removed ${label}` : `Added ${label}`,
+      undo: undoAction(async () => {
+        await reverse();
+        navigate(previousRoute);
+        setHighlight(previousHighlight);
+      }),
     });
     if (labelMode === "move") {
       setSelected([]);
@@ -1482,23 +2270,41 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       return;
     }
     let before: Mail[];
-    try { before = await capturedTargets(targetIds); } catch (error) { actionError(error); return; }
+    try {
+      before = await capturedTargets(targetIds);
+    } catch (error) {
+      actionError(error);
+      return;
+    }
     const previousRoute = route;
     const previousHighlight = highlight;
     const next =
       delta && currentMail
-        ? visibleMail[
-            visibleMail.findIndex((m) => m.id === currentMail.id) + delta
-          ]
+        ? visibleMail[visibleMail.findIndex((m) => m.id === currentMail.id) + delta]
         : undefined;
-    const finishMotion = motion.prepare("remove", before.map(message => message.id));
+    const finishMotion = motion.prepare(
+      "remove",
+      before.map((message) => message.id),
+    );
     const reverse: Array<() => Promise<void>> = [];
     try {
-      for (const label of all ? [...new Set(before.flatMap(mail => mail.labels))] : [route.folder]) {
-        reverse.push(await store.setLabel(before.filter(mail => mail.labels.includes(label)), label, true));
+      for (const label of all
+        ? [...new Set(before.flatMap((mail) => mail.labels))]
+        : [route.folder]) {
+        reverse.push(
+          await store.setLabel(
+            before.filter((mail) => mail.labels.includes(label)),
+            label,
+            true,
+          ),
+        );
       }
-    } catch (error) { actionError(error); return; }
-    finally { finishMotion(); }
+    } catch (error) {
+      actionError(error);
+      return;
+    } finally {
+      finishMotion();
+    }
     setSelected([]);
     if (currentMail && !all) {
       if (next) openMail(next);
@@ -1506,7 +2312,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
     }
     setNotice({
       text: all ? "Removed all labels" : `Removed ${route.folder}`,
-      undo: undoAction(async () => { for (const undo of reverse.reverse()) await undo(); navigate(previousRoute); setHighlight(previousHighlight); }),
+      undo: undoAction(async () => {
+        for (const undo of reverse.reverse()) await undo();
+        navigate(previousRoute);
+        setHighlight(previousHighlight);
+      }),
     });
   }
   function editLabel(name: string) {
@@ -1520,57 +2330,99 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       value = labelEdit.value.trim();
     if (
       !deleting &&
-      (!value ||
-        customLabels.some(
-          (l) => l !== name && l.toLowerCase() === value.toLowerCase(),
-        ))
+      (!value || customLabels.some((l) => l !== name && l.toLowerCase() === value.toLowerCase()))
     ) {
       setNotice({ text: "Choose a unique label name." });
       return;
     }
-    try { await store.editLabel(route.account, name, deleting ? undefined : value); }
-    catch (error) { actionError(error); return; }
+    try {
+      await store.editLabel(route.account, name, deleting ? undefined : value);
+    } catch (error) {
+      actionError(error);
+      return;
+    }
     if (route.folder === name) goFolder(deleting ? "Inbox" : value);
     setLabelEdit(null);
     setNotice({ text: deleting ? "Label deleted" : "Label renamed" });
   }
   async function adjacentMail(current: Mail, delta: number): Promise<Mail | undefined> {
-    const index = visibleMail.findIndex(mail => mail.id === current.id);
+    const index = visibleMail.findIndex((mail) => mail.id === current.id);
     const neighbor = index >= 0 ? visibleMail[index + delta] : undefined;
     if (neighbor || !inbox.host?.inboxWindow) return neighbor;
-    if (delta > 0) await store.loadMoreWindow(); else await store.loadNewerWindow();
-    const snapshot = store.getSnapshot(), rows = new Map(snapshot.mail.map(mail => [mail.id, mail]));
-    const ordered = (snapshot.window ? store.presentWindow(snapshot.window).keys : []).flatMap(id => rows.has(id) ? [rows.get(id)!] : []);
-    const compare = (mail: Mail) => (current.receivedAt ?? 0) - (mail.receivedAt ?? 0) || mail.id.localeCompare(current.id);
-    return delta > 0 ? ordered.find(mail => compare(mail) > 0) : [...ordered].reverse().find(mail => compare(mail) < 0);
+    if (delta > 0) await store.loadMoreWindow();
+    else await store.loadNewerWindow();
+    const snapshot = store.getSnapshot(),
+      rows = new Map(snapshot.mail.map((mail) => [mail.id, mail]));
+    const ordered = (snapshot.window ? store.presentWindow(snapshot.window).keys : []).flatMap(
+      (id) => (rows.has(id) ? [rows.get(id)!] : []),
+    );
+    const compare = (mail: Mail) =>
+      (current.receivedAt ?? 0) - (mail.receivedAt ?? 0) || mail.id.localeCompare(current.id);
+    return delta > 0
+      ? ordered.find((mail) => compare(mail) > 0)
+      : [...ordered].reverse().find((mail) => compare(mail) < 0);
   }
   async function navigateThread(delta: number) {
-    if (zero.active) { zero.browse(delta); return; }
+    if (zero.active) {
+      zero.browse(delta);
+      return;
+    }
     const index = visibleMail.findIndex((m) => m.id === currentMail?.id);
-    if (index < 0 && inbox.host?.inboxWindow) { setNotice({ text: "This conversation is outside the current view. Return to the list to continue." }); return; }
+    if (index < 0 && inbox.host?.inboxWindow) {
+      setNotice({
+        text: "This conversation is outside the current view. Return to the list to continue.",
+      });
+      return;
+    }
     const next = visibleMail[index + delta];
-    if (next) { setHighlight(index + delta); openMail(next); return; }
+    if (next) {
+      setHighlight(index + delta);
+      openMail(next);
+      return;
+    }
     if (!inbox.host?.inboxWindow || !currentMail) return;
     try {
       const next = await adjacentMail(currentMail, delta);
       if (next) {
         const window = store.getSnapshot().window;
-        setHighlight(Math.max(0, window ? store.presentWindow(window).keys.indexOf(next.id) : 0)); openMail(next);
+        setHighlight(Math.max(0, window ? store.presentWindow(window).keys.indexOf(next.id) : 0));
+        openMail(next);
       }
-    } catch (error) { actionError(error); }
+    } catch (error) {
+      actionError(error);
+    }
   }
   const commandDraft = drafts.find((draft) => draft.id === commandDraftId);
-  const lastFeedback = inbox.attentionFeedback.find(event => event.status === "active");
+  const lastFeedback = inbox.attentionFeedback.find((event) => event.status === "active");
   const commandItems: CommandItem[] = [
-    ...(!commandDraft && store.canRecordFeedback(targets) && !inbox.pending ? [{
-      label: "Done + not important to me", detail: "Save feedback only. This does not change future categorization.", key: "W", icon: "Check", run: () => applyAction("not-important"),
-    }] : []),
-    ...(lastFeedback ? [{
-      label: "Undo last not-important feedback", detail: "Retract the saved feedback and restore its previous Done state", key: "", icon: "ArrowLeft", run: () => {
-        setOverlay(null);
-        void store.undoFeedback(lastFeedback.id).then(() => setNotice({ text: "Feedback retracted and Done state restored." })).catch(actionError);
-      },
-    }] : []),
+    ...(!commandDraft && store.canRecordFeedback(targets) && !inbox.pending
+      ? [
+          {
+            label: "Done + not important to me",
+            detail: "Save feedback only. This does not change future categorization.",
+            key: "W",
+            icon: "Check",
+            run: () => applyAction("not-important"),
+          },
+        ]
+      : []),
+    ...(lastFeedback
+      ? [
+          {
+            label: "Undo last not-important feedback",
+            detail: "Retract the saved feedback and restore its previous Done state",
+            key: "",
+            icon: "ArrowLeft",
+            run: () => {
+              setOverlay(null);
+              void store
+                .undoFeedback(lastFeedback.id)
+                .then(() => setNotice({ text: "Feedback retracted and Done state restored." }))
+                .catch(actionError);
+            },
+          },
+        ]
+      : []),
     ...(commandDraft
       ? [
           {
@@ -1598,13 +2450,20 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       icon: "Clock",
       run: () => openOverlay("remind"),
     },
-    ...(inbox.ai?.configured ? [{
-      label: "Teach AI",
-      detail: "Tell the classifier how to treat mail like this",
-      key: "",
-      icon: "Bolt",
-      run: () => { setTeachError(""); openOverlay("teach"); },
-    }] : []),
+    ...(inbox.ai?.configured
+      ? [
+          {
+            label: "Teach AI",
+            detail: "Tell the classifier how to treat mail like this",
+            key: "",
+            icon: "Bolt",
+            run: () => {
+              setTeachError("");
+              openOverlay("teach");
+            },
+          },
+        ]
+      : []),
     {
       label: "Star",
       detail: "Keep this conversation close",
@@ -1699,12 +2558,35 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         goFolder(label);
       },
     })),
-    ...(inbox.ai?.configured && inbox.ai.settings.enabled ? ["Needs reply", "Action requested", "Time-sensitive", "Suspicious", "Unassessed"].map(name => ({
-      label: `Filter: ${name}`, detail: "Use saved AI assessments in the current view", key: "", icon: "Search",
-      run: () => { setOverlay(null); setMailFilter(value => value === name ? null : name); setHighlight(0); },
-    })) : []),
-    { label: "Get me to zero", detail: "Mark inbox conversations older than a week as Done", key: "", icon: "Check", run: startZero },
-    { label: "AI triage", detail: "Assessment settings, historical processing and costs", key: "", icon: "Gear", run: () => openSettings("AI triage") },
+    ...(inbox.ai?.configured && inbox.ai.settings.enabled
+      ? ["Needs reply", "Action requested", "Time-sensitive", "Suspicious", "Unassessed"].map(
+          (name) => ({
+            label: `Filter: ${name}`,
+            detail: "Use saved AI assessments in the current view",
+            key: "",
+            icon: "Search",
+            run: () => {
+              setOverlay(null);
+              setMailFilter((value) => (value === name ? null : name));
+              setHighlight(0);
+            },
+          }),
+        )
+      : []),
+    {
+      label: "Get me to zero",
+      detail: "Mark inbox conversations older than a week as Done",
+      key: "",
+      icon: "Check",
+      run: startZero,
+    },
+    {
+      label: "AI triage",
+      detail: "Assessment settings, historical processing and costs",
+      key: "",
+      icon: "Gear",
+      run: () => openSettings("AI triage"),
+    },
     {
       label: "Settings",
       detail: "Customize Superlocal",
@@ -1812,14 +2694,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
   const onKey = useEffectEvent((e: KeyboardEvent, sequencesOnly = false) => {
     // One version bump per keystroke: the capture pass only bumps when it owns the key, otherwise the bubble pass does.
     if (!sequencesOnly) actionNavigationVersion.current++;
-    const target = e.target && (e.target as Node).nodeType === 1 ? e.target as HTMLElement : null;
-    const editing = target?.closest(
-      "input,textarea,[contenteditable=true],select",
-    );
+    const target = e.target && (e.target as Node).nodeType === 1 ? (e.target as HTMLElement) : null;
+    const editing = target?.closest("input,textarea,[contenteditable=true],select");
     const intent = resolveMailShortcut(e, {
       mode:
-        target?.closest(".compose-view") ||
-        (route.draft && !currentDraft?.popOut)
+        target?.closest(".compose-view") || (route.draft && !currentDraft?.popOut)
           ? "composer"
           : route.view && !(zero.active && zero.session?.phase === "review" && currentMail)
             ? "auxiliary"
@@ -1835,18 +2714,21 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       floatingDraft: !!currentDraft?.popOut,
       isDrafts,
       accountDialog: overlay === "accounts",
-      sequence:
-        sequence.current.key === "g" &&
-        Date.now() - sequence.current.time < 1500,
+      sequence: sequence.current.key === "g" && Date.now() - sequence.current.time < 1500,
       calendarSequence: sequence.current.key === "0" && Date.now() - sequence.current.time < 1500,
       search,
       hasHighlightedMail: !!visibleMail[highlight],
     });
-    if (sequencesOnly && !(
-      intent?.type === "sequence" || intent?.type === "goFolder" ||
-      intent?.type === "jump" || intent?.type === "labelMode" && intent.mode === "navigate" ||
-      intent?.type === "calendar" && e.key === "0"
-    )) {
+    if (
+      sequencesOnly &&
+      !(
+        intent?.type === "sequence" ||
+        intent?.type === "goFolder" ||
+        intent?.type === "jump" ||
+        (intent?.type === "labelMode" && intent.mode === "navigate") ||
+        (intent?.type === "calendar" && e.key === "0")
+      )
+    ) {
       // Unrelated keys cancel the prefix, then reach their usual owner once.
       if (!e.repeat) sequence.current.key = "";
       return;
@@ -1870,8 +2752,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       };
       return;
     }
-    if (!["escape", "toggleSelection", "undo"].includes(intent.type))
-      e.preventDefault();
+    if (!["escape", "toggleSelection", "undo"].includes(intent.type)) e.preventDefault();
     switch (intent.type) {
       case "command":
         openOverlay("command");
@@ -1892,7 +2773,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         toggleComposeFocus();
         break;
       case "calendar":
-        sequence.current = { key: e.key === "0" && intent.view === "day" ? "0" : "", time: Date.now() };
+        sequence.current = {
+          key: e.key === "0" && intent.view === "day" ? "0" : "",
+          time: Date.now(),
+        };
         setCalendarInitialView(intent.view);
         navigate({ view: "calendar", thread: undefined, draft: undefined });
         break;
@@ -1903,8 +2787,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         );
         break;
       case "selectAll":
-        if (intent.fromHere && inbox.host?.inboxWindow && !inbox.window?.exhausted) setNotice({ text: "Select all captures the whole query. Select individual rows to capture a smaller range." });
-        else if (intent.fromHere) setSelected(visibleMail.slice(highlight).map(mail => mail.id));
+        if (intent.fromHere && inbox.host?.inboxWindow && !inbox.window?.exhausted)
+          setNotice({
+            text: "Select all captures the whole query. Select individual rows to capture a smaller range.",
+          });
+        else if (intent.fromHere) setSelected(visibleMail.slice(highlight).map((mail) => mail.id));
         else void selectAllMail();
         break;
       case "jump":
@@ -1914,11 +2801,14 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
           break;
         }
         if (inbox.host?.inboxWindow) {
-          void store.seekWindow(intent.edge === "top" ? "start" : "end").then(() => {
-            const count = store.getSnapshot().window?.keys.length ?? 0;
-            setHighlight(intent.edge === "top" ? 0 : Math.max(0, count - 1));
-            if (intent.edge === "top" && list.current) list.current.scrollTop = 0;
-          }).catch(actionError);
+          void store
+            .seekWindow(intent.edge === "top" ? "start" : "end")
+            .then(() => {
+              const count = store.getSnapshot().window?.keys.length ?? 0;
+              setHighlight(intent.edge === "top" ? 0 : Math.max(0, count - 1));
+              if (intent.edge === "top" && list.current) list.current.scrollTop = 0;
+            })
+            .catch(actionError);
           break;
         }
         if (intent.edge === "top") {
@@ -1929,16 +2819,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         break;
       case "drawerNavigate": {
         const buttons = [
-          ...document.querySelectorAll<HTMLButtonElement>(
-            ".folder-panel button",
-          ),
+          ...document.querySelectorAll<HTMLButtonElement>(".folder-panel button"),
         ].filter((button) => button.offsetParent !== null);
-        const index = buttons.indexOf(
-          document.activeElement as HTMLButtonElement,
-        );
-        buttons[
-          Math.max(0, Math.min(buttons.length - 1, index + intent.delta))
-        ]?.focus();
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        buttons[Math.max(0, Math.min(buttons.length - 1, index + intent.delta))]?.focus();
         break;
       }
       case "drawerActivate":
@@ -1950,7 +2834,21 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         else closeNavigation();
         break;
       case "goFolder":
-        goFolder(intent.folder, intent.split ? preferences.splits.find(name => attentionSplit({ splitRules: (preferences.splitRules as Record<string, string>) || {}, splitAliases: (preferences.splitAliases as Record<string, string>) || {} }, name) === intent.split) || intent.split : undefined);
+        goFolder(
+          intent.folder,
+          intent.split
+            ? preferences.splits.find(
+                (name) =>
+                  attentionSplit(
+                    {
+                      splitRules: (preferences.splitRules as Record<string, string>) || {},
+                      splitAliases: (preferences.splitAliases as Record<string, string>) || {},
+                    },
+                    name,
+                  ) === intent.split,
+              ) || intent.split
+            : undefined,
+        );
         break;
       case "labelMode":
         openOverlay("label");
@@ -1969,9 +2867,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         const index = shownSplits.indexOf(route.split);
         goFolder(
           "Inbox",
-          shownSplits[
-            (index + intent.delta + shownSplits.length) % shownSplits.length
-          ],
+          shownSplits[(index + intent.delta + shownSplits.length) % shownSplits.length],
         );
         break;
       }
@@ -1985,13 +2881,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         break;
       case "page": {
         const delta =
-          Math.max(
-            1,
-            Math.floor((list.current?.clientHeight || 600) / rowHeight),
-          ) * intent.delta;
-        setHighlight((value) =>
-          Math.max(0, Math.min(rowCount - 1, value + delta)),
-        );
+          Math.max(1, Math.floor((list.current?.clientHeight || 600) / rowHeight)) * intent.delta;
+        setHighlight((value) => Math.max(0, Math.min(rowCount - 1, value + delta)));
         break;
       }
       case "filter":
@@ -2001,27 +2892,22 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         break;
       case "navigateConversation":
         if (currentMail) navigateThread(intent.delta);
-        else
-          setHighlight((value) =>
-            Math.max(0, Math.min(rowCount - 1, value + intent.delta)),
-          );
+        else setHighlight((value) => Math.max(0, Math.min(rowCount - 1, value + intent.delta)));
         break;
       case "reply":
         composeReply(intent.mode, intent.popOut);
         break;
       case "extendSelection": {
         const id = visibleMail[highlight]?.id;
-        if (id) setSelected(items => items.includes(id) ? items : [...items, id]);
-        setHighlight(value => Math.max(0, Math.min(rowCount - 1, value + intent.delta)));
+        if (id) setSelected((items) => (items.includes(id) ? items : [...items, id]));
+        setHighlight((value) => Math.max(0, Math.min(rowCount - 1, value + intent.delta)));
         break;
       }
       case "toggleSelection": {
         const id = visibleMail[highlight]?.id;
         if (id)
           setSelected((items) =>
-            items.includes(id)
-              ? items.filter((item) => item !== id)
-              : [...items, id],
+            items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
           );
         break;
       }
@@ -2032,7 +2918,10 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         applyAction(intent.action);
         break;
       case "undo":
-        if (zero.active && zero.undo) { void zero.undo(); break; }
+        if (zero.active && zero.undo) {
+          void zero.undo();
+          break;
+        }
         if (notice?.undo) {
           notice.undo();
           setNotice(null);
@@ -2062,7 +2951,11 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
 
   if (!inbox.loaded && !inbox.host?.inboxWindow) {
     // Stay blank until the first snapshot arrives; an initial failure adds only the floating notice with Retry.
-    return <div className="app" data-inbox-state={inbox.loading ? "loading" : "error"}>{inbox.loading ? null : notices}</div>;
+    return (
+      <div className="app" data-inbox-state={inbox.loading ? "loading" : "error"}>
+        {inbox.loading ? null : notices}
+      </div>
+    );
   }
 
   const composer = currentDraft && (
@@ -2085,31 +2978,35 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
       availabilityRequest={availabilityRequest}
       onNavigate={(delta) => {
         if (isDrafts) {
-          const index = accountDrafts.findIndex(
-            (d) => d.id === currentDraft.id,
-          );
+          const index = accountDrafts.findIndex((d) => d.id === currentDraft.id);
           const next = accountDrafts[index + delta];
           if (next) navigate({ draft: next.id });
         } else {
           const next =
-            visibleMail[
-              Math.max(0, Math.min(visibleMail.length - 1, highlight + delta))
-            ];
+            visibleMail[Math.max(0, Math.min(visibleMail.length - 1, highlight + delta))];
           if (next) openMail(next);
         }
       }}
     />
   );
 
-  const sortingIssue = inbox.ai?.settings.enabled && inbox.ai.settings.mode === "apply" &&
-    (inbox.aiError || !inbox.ai.configured || inbox.ai.problemCode || inbox.ai.settings.mailboxIds?.length === 0)
-    ? aiSortingStatus(inbox.ai, !!inbox.aiError).label : null;
+  const sortingIssue =
+    inbox.ai?.settings.enabled &&
+    inbox.ai.settings.mode === "apply" &&
+    (inbox.aiError ||
+      !inbox.ai.configured ||
+      inbox.ai.problemCode ||
+      inbox.ai.settings.mailboxIds?.length === 0)
+      ? aiSortingStatus(inbox.ai, !!inbox.aiError).label
+      : null;
 
   return (
     <div
       className={`app ${navigation ? "navigation-open" : ""} ${settings ? "settings-open" : ""} ${mobileSidebar ? "mobile-sidebar-open" : ""} ${route.view === "calendar" || route.view === "snippets" ? "auxiliary-view" : ""}`}
       data-inbox-state={inbox.loading ? "loading" : inbox.error ? "error" : "ready"}
-      onPointerDownCapture={() => { actionNavigationVersion.current++; }}
+      onPointerDownCapture={() => {
+        actionNavigationVersion.current++;
+      }}
     >
       <nav className="app-rail" aria-label="Apps">
         <IconButton
@@ -2144,47 +3041,71 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
             title={sortingIssue ? `Settings — ${sortingIssue}` : "Settings"}
             className={settings ? "active" : ""}
             data-sorting-issue={sortingIssue ? true : undefined}
-            onClick={() => settings ? closeSettings() : openSettings(sortingIssue ? "AI triage" : undefined)}
+            onClick={() =>
+              settings ? closeSettings() : openSettings(sortingIssue ? "AI triage" : undefined)
+            }
           />
           <IconButton
             name="Eye"
             title="Recent Opens"
             onClick={() => {
               if (!leaveSettings()) return;
-              history.replaceState({ superlocalIndex: historyPosition.current }, "", routeUrl(route));
+              history.replaceState(
+                { superlocalIndex: historyPosition.current },
+                "",
+                routeUrl(route),
+              );
               setMobileSidebar(true);
             }}
           />
         </div>
       </nav>
-      {settings && <Settings
-        preferences={preferences}
-        onChange={updatePreferences}
-        onClose={closeSettings}
-        onSectionChange={openSettings}
-        onExitGuardChange={setSettingsExitGuard}
-        initialPage={settingsPage}
-        jumpRequest={settingsJumpRequest}
-        account={accountEmail}
-        accounts={inbox.accounts.map(account => account.email)}
-        host={inbox.host}
-        aiActions={store.ai}
-        aiMailboxes={inbox.accounts}
-        store={store}
-        onStartZero={startZero}
-        zeroReady={inbox.loaded && contextMailboxIds.length > 0 && !zero.busy}
-        zeroResumable={zero.scoped && zero.remainingCount !== 0}
-        onboardingReturn={onboardingReturn}
-        onOnboardingDone={() => setOnboardingReturn(null)}
-      />}
-      <main className="mail-workspace" data-folder={route.folder} hidden={settings} inert={settings} aria-hidden={settings || undefined}>
-        {route.view === "zero" && <GuidedZero state={zero} currentMail={currentMail}
-          onHandle={() => {
-            zero.handle();
-            if (currentMail?.triage?.assessment?.response === "needed") void composeReply("reply");
-          }}
-          onLater={() => { if (zero.captureLater() && currentMail) openOverlay("remind", [currentMail.id]); }} />}
-        {route.view === "zero" && (!zero.active || zero.session?.phase !== "review" || !currentMail) ? null : route.view === "calendar" ? (
+      {settings && (
+        <Settings
+          preferences={preferences}
+          onChange={updatePreferences}
+          onClose={closeSettings}
+          onSectionChange={openSettings}
+          onExitGuardChange={setSettingsExitGuard}
+          initialPage={settingsPage}
+          jumpRequest={settingsJumpRequest}
+          account={accountEmail}
+          accounts={inbox.accounts.map((account) => account.email)}
+          host={inbox.host}
+          aiActions={store.ai}
+          aiMailboxes={inbox.accounts}
+          store={store}
+          onStartZero={startZero}
+          zeroReady={inbox.loaded && contextMailboxIds.length > 0 && !zero.busy}
+          zeroResumable={zero.scoped && zero.remainingCount !== 0}
+          onboardingReturn={onboardingReturn}
+          onOnboardingDone={() => setOnboardingReturn(null)}
+        />
+      )}
+      <main
+        className="mail-workspace"
+        data-folder={route.folder}
+        hidden={settings}
+        inert={settings}
+        aria-hidden={settings || undefined}
+      >
+        {route.view === "zero" && (
+          <GuidedZero
+            state={zero}
+            currentMail={currentMail}
+            onHandle={() => {
+              zero.handle();
+              if (currentMail?.triage?.assessment?.response === "needed")
+                void composeReply("reply");
+            }}
+            onLater={() => {
+              if (zero.captureLater() && currentMail) openOverlay("remind", [currentMail.id]);
+            }}
+          />
+        )}
+        {route.view === "zero" &&
+        (!zero.active || zero.session?.phase !== "review" || !currentMail) ? null : route.view ===
+          "calendar" ? (
           <CalendarView
             initialView={calendarInitialView}
             onBack={goBack}
@@ -2203,24 +3124,62 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         ) : inbox.accounts.length === 0 ? (
           <div className="inbox-setup-empty">
             <h1>Connect an account</h1>
-            <button className="settings-button" type="button" onClick={() => openSettings("Add Accounts")}>Add accounts</button>
+            <button
+              className="settings-button"
+              type="button"
+              onClick={() => openSettings("Add Accounts")}
+            >
+              Add accounts
+            </button>
           </div>
         ) : isUnified && !unifiedMailboxIds.length && !route.draft && !currentMail ? (
           <div className="inbox-setup-empty">
             <h1>No mailboxes in Unified inbox</h1>
-            <button className="settings-button" type="button" onClick={() => openSettings("Mailboxes")}>Choose mailboxes</button>
-            <button className="text-button" type="button" onClick={() => openOverlay("accounts")}>Open an individual mailbox</button>
+            <button
+              className="settings-button"
+              type="button"
+              onClick={() => openSettings("Mailboxes")}
+            >
+              Choose mailboxes
+            </button>
+            <button className="text-button" type="button" onClick={() => openOverlay("accounts")}>
+              Open an individual mailbox
+            </button>
           </div>
         ) : route.draft && currentDraft && !currentDraft.popOut ? (
           composer
         ) : inbox.host?.inboxWindow && route.thread && !currentMail ? (
           <div className="mail-window-status" role={threadLookupIssue ? "alert" : "status"}>
-            <button type="button" className="text-button" onClick={goBack}>Back to list</button>
+            <button type="button" className="text-button" onClick={goBack}>
+              Back to list
+            </button>
             <span>{threadLookupIssue || "Loading conversation…"}</span>
-            {threadLookupIssue && <button type="button" className="text-button" onClick={() => {
-              setThreadLookupIssue(null);
-              void store.lookupWindow([route.thread!], route.account).then(rows => { if (!rows.length) setThreadLookupIssue("This conversation is not available in the selected receiving scope."); }).catch(error => setThreadLookupIssue(error instanceof Error ? error.message : "Could not load this conversation."));
-            }}>Retry</button>}
+            {threadLookupIssue && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setThreadLookupIssue(null);
+                  void store
+                    .lookupWindow([route.thread!], route.account)
+                    .then((rows) => {
+                      if (!rows.length)
+                        setThreadLookupIssue(
+                          "This conversation is not available in the selected receiving scope.",
+                        );
+                    })
+                    .catch((error) =>
+                      setThreadLookupIssue(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not load this conversation.",
+                      ),
+                    );
+                }}
+              >
+                Retry
+              </button>
+            )}
           </div>
         ) : currentMail ? (
           <ThreadView
@@ -2235,11 +3194,19 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
             aiDecision={currentMail.triage}
             aiEnabled={!!inbox.ai?.configured && inbox.ai.settings.enabled}
             aiMode={inbox.ai?.settings.mode}
-            aiReadingEnabled={!!inbox.ai?.settings.personalization && !!inbox.ai.settings.readingSignals && !settings && !overlay && !issueReporter}
-            onCategory={category => store.classify([currentMail], category)}
+            aiReadingEnabled={
+              !!inbox.ai?.settings.personalization &&
+              !!inbox.ai.settings.readingSignals &&
+              !settings &&
+              !overlay &&
+              !issueReporter
+            }
+            onCategory={(category) => store.classify([currentMail], category)}
             onAiFeedback={store.ai.feedback}
             onAiReading={store.ai.reading}
-            focusOperationId={sendFeedback?.threadId === currentMail.id ? sendFeedback.id : undefined}
+            focusOperationId={
+              sendFeedback?.threadId === currentMail.id ? sendFeedback.id : undefined
+            }
             draft={currentDraft}
             account={route.account}
             accounts={inbox.accounts}
@@ -2250,7 +3217,13 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
             onBack={goBack}
             onNavigate={navigateThread}
             onAction={applyAction}
-            supportsAction={action => zero.active && (zero.busy || !!zero.retry) ? false : !!currentMail.operationId ? action === "trash" : store.supports(action, currentMail.mailboxId ?? currentMail.account)}
+            supportsAction={(action) =>
+              zero.active && (zero.busy || !!zero.retry)
+                ? false
+                : !!currentMail.operationId
+                  ? action === "trash"
+                  : store.supports(action, currentMail.mailboxId ?? currentMail.account)
+            }
             onCompose={composeReply}
             replyRequest={replyRequest}
             onDraftChange={updateDraft}
@@ -2320,12 +3293,22 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               ) : selected.length ? (
                 <div className="selection-toolbar">
                   <button
-                    onClick={() => windowSelection || selected.length === visibleMail.length ? setSelected([]) : void selectAllMail()}
+                    onClick={() =>
+                      windowSelection || selected.length === visibleMail.length
+                        ? setSelected([])
+                        : void selectAllMail()
+                    }
                   >
                     <span className="select-square checked">
                       <Icon name="Check" size={11} />
                     </span>
-                    <span>{windowSelection ? windowSelection.count == null ? "All selected" : `${windowSelection.count} selected` : `${selected.length} selected`}</span>
+                    <span>
+                      {windowSelection
+                        ? windowSelection.count == null
+                          ? "All selected"
+                          : `${windowSelection.count} selected`
+                        : `${selected.length} selected`}
+                    </span>
                     <Icon name="ChevronDown" size={13} />
                   </button>
                   {[
@@ -2340,17 +3323,20 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                       key={action}
                       name={icon}
                       title={title}
-                      disabled={!targets.length || targets.some(mail => !mail.operationId && !store.supports(action, mail.mailboxId ?? mail.account))}
+                      disabled={
+                        !targets.length ||
+                        targets.some(
+                          (mail) =>
+                            !mail.operationId &&
+                            !store.supports(action, mail.mailboxId ?? mail.account),
+                        )
+                      }
                       onClick={() => applyAction(action)}
                     />
                   ))}
                 </div>
               ) : route.folder === "Inbox" ? (
-                <div
-                  className="split-tabs"
-                  role="tablist"
-                  aria-label="Split Inbox"
-                >
+                <div className="split-tabs" role="tablist" aria-label="Split Inbox">
                   {shownSplits.map((split) => (
                     <button
                       key={split}
@@ -2377,9 +3363,16 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               )}
               {!selected.length && (
                 <div className="header-actions">
-                  <IconButton name="Refresh" title="Refresh inbox" className="inbox-refresh"
-                    aria-busy={inbox.refreshing} disabled={!activeAccount || inbox.refreshing}
-                    onClick={() => { void store.sync(route.account).catch(actionError); }} />
+                  <IconButton
+                    name="Refresh"
+                    title="Refresh inbox"
+                    className="inbox-refresh"
+                    aria-busy={inbox.refreshing}
+                    disabled={!activeAccount || inbox.refreshing}
+                    onClick={() => {
+                      void store.sync(route.account).catch(actionError);
+                    }}
+                  />
                   {mailFilter && (
                     <button
                       className="mail-filter"
@@ -2394,11 +3387,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                     </button>
                   )}
                   {search ? (
-                    <IconButton
-                      name="Close"
-                      title="Close search"
-                      onClick={closeSearch}
-                    />
+                    <IconButton name="Close" title="Close search" onClick={closeSearch} />
                   ) : (
                     <>
                       <IconButton
@@ -2432,12 +3421,31 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               onScroll={(event) => {
                 const previous = listScroll.current;
                 listScroll.current = event.currentTarget.scrollTop;
-                if (inbox.window?.hasNewer && !inbox.window.paging && event.currentTarget.scrollTop < previous && event.currentTarget.scrollTop < rowHeight * 6) {
-                  const entry = entries.find(entry => !entry.group && entry.top + entry.height > event.currentTarget.scrollTop);
-                  if (entry) pageAnchor.current = { id: entry.key, offset: event.currentTarget.scrollTop - entry.top, highlighted: visibleMail[highlight]?.id };
+                if (
+                  inbox.window?.hasNewer &&
+                  !inbox.window.paging &&
+                  event.currentTarget.scrollTop < previous &&
+                  event.currentTarget.scrollTop < rowHeight * 6
+                ) {
+                  const entry = entries.find(
+                    (entry) =>
+                      !entry.group && entry.top + entry.height > event.currentTarget.scrollTop,
+                  );
+                  if (entry)
+                    pageAnchor.current = {
+                      id: entry.key,
+                      offset: event.currentTarget.scrollTop - entry.top,
+                      highlighted: visibleMail[highlight]?.id,
+                    };
                   void store.loadNewerWindow().catch(actionError);
                 }
-                if (event.currentTarget.scrollHeight - event.currentTarget.scrollTop - event.currentTarget.clientHeight < rowHeight * 6) loadOlder();
+                if (
+                  event.currentTarget.scrollHeight -
+                    event.currentTarget.scrollTop -
+                    event.currentTarget.clientHeight <
+                  rowHeight * 6
+                )
+                  loadOlder();
               }}
               aria-label={
                 search
@@ -2460,9 +3468,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                       .map((contact) => (
                         <button
                           key={contact.email}
-                          onClick={() =>
-                            changeSearchQuery(`from:${contact.email}`, true)
-                          }
+                          onClick={() => changeSearchQuery(`from:${contact.email}`, true)}
                         >
                           <span>{contact.name}</span>
                           <span>{contact.email}</span>
@@ -2483,10 +3489,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                           "preview",
                         ]
                     ).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => changeSearchQuery(s, true)}
-                      >
+                      <button key={s} onClick={() => changeSearchQuery(s, true)}>
                         {s}
                       </button>
                     ))}
@@ -2511,12 +3514,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                       {draft.to || "(no recipients)"}
                     </span>
                     <span className="row-content">
-                      <span className="row-subject">
-                        {draft.subject || "(no subject)"}
-                      </span>
-                      <span className="row-snippet">
-                        {plainText(draft.body)}
-                      </span>
+                      <span className="row-subject">{draft.subject || "(no subject)"}</span>
+                      <span className="row-snippet">{plainText(draft.body)}</span>
                     </span>
                     <time>Draft</time>
                   </div>
@@ -2538,36 +3537,88 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                   onWindowCommit={motion.refreshHighlight}
                 />
               )}
-              {inbox.host?.inboxWindow && !currentMail && <div className="mail-window-status" role="status">
-                {!inbox.loading && matchingWindow?.keys.length === 0 && (!matchingWindow.exhausted || matchingWindow.hasNewer) && (matchingWindow.nextCursor || matchingWindow.hasNewer
-                  ? <span>No matches in the conversations checked.</span>
-                  : <><span>Could not finish loading this view.</span><button type="button" className="text-button" disabled={inbox.refreshing} onClick={() => { void store.refresh().catch(actionError); }}>Retry</button></>)}
-                {matchingWindow?.hasNewer && matchingWindow.keys.length === 0 && <button type="button" className="text-button" disabled={matchingWindow.paging} onClick={() => { void store.loadNewerWindow().catch(actionError); }}>{matchingWindow.paging ? "Loading newer conversations…" : "Load newer conversations"}</button>}
-                {matchingWindow?.nextCursor && <button type="button" className="text-button" disabled={matchingWindow.paging} onClick={loadOlder}>{matchingWindow.paging ? "Loading older conversations…" : "Load older conversations"}</button>}
-              </div>}
+              {inbox.host?.inboxWindow && !currentMail && (
+                <div className="mail-window-status" role="status">
+                  {!inbox.loading &&
+                    matchingWindow?.keys.length === 0 &&
+                    (!matchingWindow.exhausted || matchingWindow.hasNewer) &&
+                    (matchingWindow.nextCursor || matchingWindow.hasNewer ? (
+                      <span>No matches in the conversations checked.</span>
+                    ) : (
+                      <>
+                        <span>Could not finish loading this view.</span>
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={inbox.refreshing}
+                          onClick={() => {
+                            void store.refresh().catch(actionError);
+                          }}
+                        >
+                          Retry
+                        </button>
+                      </>
+                    ))}
+                  {matchingWindow?.hasNewer && matchingWindow.keys.length === 0 && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={matchingWindow.paging}
+                      onClick={() => {
+                        void store.loadNewerWindow().catch(actionError);
+                      }}
+                    >
+                      {matchingWindow.paging
+                        ? "Loading newer conversations…"
+                        : "Load newer conversations"}
+                    </button>
+                  )}
+                  {matchingWindow?.nextCursor && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={matchingWindow.paging}
+                      onClick={loadOlder}
+                    >
+                      {matchingWindow.paging
+                        ? "Loading older conversations…"
+                        : "Load older conversations"}
+                    </button>
+                  )}
+                </div>
+              )}
               {rowCount === 0 &&
                 !(route.folder === "Inbox" && pendingDoneCount > 0) &&
-                (!inbox.host?.inboxWindow || matchingWindow?.exhausted && !matchingWindow.nextCursor && !matchingWindow.hasNewer) &&
+                (!inbox.host?.inboxWindow ||
+                  (matchingWindow?.exhausted &&
+                    !matchingWindow.nextCursor &&
+                    !matchingWindow.hasNewer)) &&
                 !holdingMail &&
-                !(search && searchResult?.key === searchKey && (searchResult.loading || searchResult.error)) &&
+                !(
+                  search &&
+                  searchResult?.key === searchKey &&
+                  (searchResult.loading || searchResult.error)
+                ) &&
                 !motion.hasExits &&
                 !(search && (!query || !searchSubmitted)) && (
-                  <div
-                    className={`empty-mailbox ${route.folder === "Inbox" ? "inbox-zero" : ""}`}
-                  >
-                    {route.folder === "Inbox" && (
-                      <Icon name="Check" size={34} />
-                    )}
+                  <div className={`empty-mailbox ${route.folder === "Inbox" ? "inbox-zero" : ""}`}>
+                    {route.folder === "Inbox" && <Icon name="Check" size={34} />}
                     {(search || route.folder !== "Inbox") && (
                       <h2>
-                        {inbox.host?.inboxWindow ? "No matches in cached mail." : search ? "No results" : "No conversations found here."}
+                        {inbox.host?.inboxWindow
+                          ? "No matches in cached mail."
+                          : search
+                            ? "No results"
+                            : "No conversations found here."}
                       </h2>
                     )}
                     <p>
                       {search
                         ? "Try another search or check your spelling."
                         : route.folder === "Inbox"
-                          ? inbox.host?.inboxWindow ? "No matching conversations in cached mail." : "You are all done."
+                          ? inbox.host?.inboxWindow
+                            ? "No matching conversations in cached mail."
+                            : "You are all done."
                           : ""}
                     </p>
                     {route.folder === "Inbox" && (
@@ -2582,9 +3633,14 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                   </div>
                 )}
               {motion.layers}
-              {search && searchSubmitted && searchResult?.key === searchKey && (searchResult.loading || searchResult.error) && (
-                <div className="empty-mailbox" role={searchResult.error ? "alert" : "status"}>{searchResult.error || "Searching…"}</div>
-              )}
+              {search &&
+                searchSubmitted &&
+                searchResult?.key === searchKey &&
+                (searchResult.loading || searchResult.error) && (
+                  <div className="empty-mailbox" role={searchResult.error ? "alert" : "status"}>
+                    {searchResult.error || "Searching…"}
+                  </div>
+                )}
             </div>
           </>
         )}
@@ -2607,9 +3663,8 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
           className="sidebar-content"
           onClick={(event) => {
             if (!(event.target instanceof Element)) return;
-            const id = event.target.closest<HTMLElement>(
-              "[data-recent-mail-id]",
-            )?.dataset.recentMailId;
+            const id =
+              event.target.closest<HTMLElement>("[data-recent-mail-id]")?.dataset.recentMailId;
             const message = id && recent.find((message) => message.id === id);
             if (message) openMail(message);
           }}
@@ -2638,7 +3693,9 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               remoteImages={inbox.policy?.remoteImages === true}
               showLogos={preferences.showAvatars !== false}
               canCompose={contextSender?.canSend === true}
-              onCompose={() => { void composeContact(); }}
+              onCompose={() => {
+                void composeContact();
+              }}
               onOpen={openMail}
               onImageSettings={() => openSettings("Images")}
             />
@@ -2653,32 +3710,25 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                   </span>
                 </div>
                 <div>
-                  <b>
-                    {currentDraft?.from || currentMail?.email || accountEmail}
-                  </b>
+                  <b>{currentDraft?.from || currentMail?.email || accountEmail}</b>
                   <p>{userProfile.location}</p>
                 </div>
               </div>
-              <button
-                className="primary-button"
-                onClick={() => openOverlay("profile")}
-              >
+              <button className="primary-button" onClick={() => openOverlay("profile")}>
                 Edit Profile
               </button>
               <p className="contact-bio">{userProfile.bio}</p>
-              {userProfile.website && <button
-                className="contact-link"
-                onClick={() =>
-                  window.open(
-                    `https://${userProfile.website}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-              >
-                <Icon name="Link" />
-                {userProfile.website}
-              </button>}
+              {userProfile.website && (
+                <button
+                  className="contact-link"
+                  onClick={() =>
+                    window.open(`https://${userProfile.website}`, "_blank", "noopener,noreferrer")
+                  }
+                >
+                  <Icon name="Link" />
+                  {userProfile.website}
+                </button>
+              )}
             </div>
           ) : preferences.recentOpens ? (
             <RecentOpens mail={recent} />
@@ -2702,31 +3752,52 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                 ))}
               </div>
               <p>No more events today</p>
-              <button
-                className="text-button"
-                onClick={() => navigate({ view: "calendar" })}
-              >
+              <button className="text-button" onClick={() => navigate({ view: "calendar" })}>
                 Open calendar
               </button>
             </div>
           )}
         </div>
-        {importantDoneAccount !== null && <ImportantDone account={importantDoneAccount} accountLabel={importantDoneAccount === UNIFIED_ACCOUNT ? "your unified inbox" : inbox.accounts.find(account => account.id === importantDoneAccount)?.email || "this mailbox"} onClose={() => setImportantDoneAccount(null)} onDone={(run, undo) => {
-          setImportantDoneAccount(null);
-          setNotice({ text: `${run.conversations.toLocaleString()} conversations marked Done.${run.skipped ? ` ${run.skipped.toLocaleString()} changed meanwhile were left untouched.` : ""}`, undo: undoAction(undo) });
-        }} />}
+        {importantDoneAccount !== null && (
+          <ImportantDone
+            account={importantDoneAccount}
+            accountLabel={
+              importantDoneAccount === UNIFIED_ACCOUNT
+                ? "your unified inbox"
+                : inbox.accounts.find((account) => account.id === importantDoneAccount)?.email ||
+                  "this mailbox"
+            }
+            onClose={() => setImportantDoneAccount(null)}
+            onDone={(run, undo) => {
+              setImportantDoneAccount(null);
+              setNotice({
+                text: `${run.conversations.toLocaleString()} conversations marked Done.${run.skipped ? ` ${run.skipped.toLocaleString()} changed meanwhile were left untouched.` : ""}`,
+                undo: undoAction(undo),
+              });
+            }}
+          />
+        )}
         <AiSortingStatus state={inbox.ai} onOpen={() => openSettings("AI triage")} />
-        <MailSyncStatus client={inbox.store.client} mailboxes={inbox.mailboxes} sources={inbox.sources} enabled={inbox.loaded && !settings && !route.view} onMailboxes={() => openSettings("Mailboxes")} />
+        <MailSyncStatus
+          client={inbox.store.client}
+          mailboxes={inbox.mailboxes}
+          sources={inbox.sources}
+          enabled={inbox.loaded && !settings && !route.view}
+          onMailboxes={() => openSettings("Mailboxes")}
+        />
         <footer className="sidebar-footer">
           {applicationUser && onSignOut && (
-            <button className="application-sign-out" type="button" title={`Sign out ${applicationUser.email}`} onClick={onSignOut}>Sign out</button>
+            <button
+              className="application-sign-out"
+              type="button"
+              title={`Sign out ${applicationUser.email}`}
+              onClick={onSignOut}
+            >
+              Sign out
+            </button>
           )}
           <div>
-            <IconButton
-              name="QuestionSquircle"
-              title="Help"
-              onClick={() => openOverlay("help")}
-            />
+            <IconButton name="QuestionSquircle" title="Help" onClick={() => openOverlay("help")} />
             <IconButton
               name="Calendar"
               title="Calendar"
@@ -2743,7 +3814,9 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               title={sortingIssue ? `Settings — ${sortingIssue}` : "Settings"}
               className={settings ? "active" : ""}
               data-sorting-issue={sortingIssue ? true : undefined}
-              onClick={() => (settings ? closeSettings() : openSettings(sortingIssue ? "AI triage" : undefined))}
+              onClick={() =>
+                settings ? closeSettings() : openSettings(sortingIssue ? "AI triage" : undefined)
+              }
             />
           </div>
         </footer>
@@ -2757,9 +3830,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         onClose={() => closeNavigation()}
         onAccounts={() => openOverlay("accounts")}
         onFolder={goFolder}
-        onSnippets={() =>
-          navigate({ view: "snippets", thread: undefined, draft: undefined })
-        }
+        onSnippets={() => navigate({ view: "snippets", thread: undefined, draft: undefined })}
         onCreateLabel={() => {
           openOverlay("label");
         }}
@@ -2771,12 +3842,46 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         mode={commandMode ?? "command"}
         open={commandMode !== null}
         onClose={() => setOverlay(null)}
-        commands={commandItems.filter(item => (!settings || item.label.startsWith("Go to ") || ["Settings", "AI triage", "Theme", "Split Inbox", "Signatures", "Manage mailboxes", "Keyboard Shortcuts", "Switch Account", "Unified inbox", "Snippets", "Issue", "Saved issues"].includes(item.label)) && (inbox.host?.allowProviderWrites || !["Star", "Mark Unread", "Move to Trash", "Report Spam", "Compose", "Reply", "Reply All", "Forward"].includes(item.label)))}
+        commands={commandItems.filter(
+          (item) =>
+            (!settings ||
+              item.label.startsWith("Go to ") ||
+              [
+                "Settings",
+                "AI triage",
+                "Theme",
+                "Split Inbox",
+                "Signatures",
+                "Manage mailboxes",
+                "Keyboard Shortcuts",
+                "Switch Account",
+                "Unified inbox",
+                "Snippets",
+                "Issue",
+                "Saved issues",
+              ].includes(item.label)) &&
+            (inbox.host?.allowProviderWrites ||
+              ![
+                "Star",
+                "Mark Unread",
+                "Move to Trash",
+                "Report Spam",
+                "Compose",
+                "Reply",
+                "Reply All",
+                "Forward",
+              ].includes(item.label)),
+        )}
         labels={customLabels}
         labelMode={labelMode}
         targets={targets}
         onLabel={changeLabel}
-        onCreateLabel={(label) => { void store.createLabel(route.account, label).then(() => changeLabel(label)).catch(actionError); }}
+        onCreateLabel={(label) => {
+          void store
+            .createLabel(route.account, label)
+            .then(() => changeLabel(label))
+            .catch(actionError);
+        }}
         onRemind={remind}
         onTeach={teach}
         teachBusy={teachBusy}
@@ -2824,11 +3929,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                   )[overlay]
                 }
               </h2>
-              <IconButton
-                name="Close"
-                title="Close"
-                onClick={() => setOverlay(null)}
-              />
+              <IconButton name="Close" title="Close" onClick={() => setOverlay(null)} />
             </div>
             {overlay === "help" && (
               <div className="help-options">
@@ -2858,41 +3959,39 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
                   setNotice({ text: "Profile updated" });
                 }}
               >
-                {(["name", "location", "bio", "website"] as const).map(
-                  (field) => (
-                    <label key={field}>
+                {(["name", "location", "bio", "website"] as const).map((field) => (
+                  <label key={field}>
+                    {
                       {
-                        {
-                          name: "Name",
-                          location: "Location",
-                          bio: "About",
-                          website: "Website",
-                        }[field]
-                      }
-                      {field === "bio" ? (
-                        <textarea
-                          value={userProfile[field]}
-                          onChange={(e) =>
-                            setUserProfile((v) => ({
-                              ...v,
-                              [field]: e.target.value,
-                            }))
-                          }
-                        />
-                      ) : (
-                        <input
-                          value={userProfile[field]}
-                          onChange={(e) =>
-                            setUserProfile((v) => ({
-                              ...v,
-                              [field]: e.target.value,
-                            }))
-                          }
-                        />
-                      )}
-                    </label>
-                  ),
-                )}
+                        name: "Name",
+                        location: "Location",
+                        bio: "About",
+                        website: "Website",
+                      }[field]
+                    }
+                    {field === "bio" ? (
+                      <textarea
+                        value={userProfile[field]}
+                        onChange={(e) =>
+                          setUserProfile((v) => ({
+                            ...v,
+                            [field]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <input
+                        value={userProfile[field]}
+                        onChange={(e) =>
+                          setUserProfile((v) => ({
+                            ...v,
+                            [field]: e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                  </label>
+                ))}
                 <button type="submit" className="primary-button">
                   Save
                 </button>
@@ -2929,17 +4028,31 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
         </Modal>
       )}
       {reloadDraftId && (
-        <Modal label="Reload saved draft" onClose={() => setReloadDraftId(null)} className="app-modal">
-          <div className="simple-modal-header"><h2>Reload saved draft?</h2></div>
+        <Modal
+          label="Reload saved draft"
+          onClose={() => setReloadDraftId(null)}
+          className="app-modal"
+        >
+          <div className="simple-modal-header">
+            <h2>Reload saved draft?</h2>
+          </div>
           <div className="simple-form">
             <p>Local unsaved edits will be replaced by the last saved version.</p>
             <div className="label-edit-actions">
-              <button type="button" className="primary-button" onClick={() => {
-                const id = reloadDraftId;
-                setReloadDraftId(null);
-                void store.reloadDraft(id).catch(actionError);
-              }}>Reload draft</button>
-              <button type="button" className="text-button" onClick={() => setReloadDraftId(null)}>Keep editing</button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  const id = reloadDraftId;
+                  setReloadDraftId(null);
+                  void store.reloadDraft(id).catch(actionError);
+                }}
+              >
+                Reload draft
+              </button>
+              <button type="button" className="text-button" onClick={() => setReloadDraftId(null)}>
+                Keep editing
+              </button>
             </div>
           </div>
         </Modal>
@@ -2966,19 +4079,14 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
             }}
           >
             {labelEdit.deleting ? (
-              <p>
-                Delete "{labelEdit.name}"? Messages with this label will not be
-                deleted.
-              </p>
+              <p>Delete "{labelEdit.name}"? Messages with this label will not be deleted.</p>
             ) : (
               <label>
                 Label name
                 <input
                   autoFocus
                   value={labelEdit.value}
-                  onChange={(e) =>
-                    setLabelEdit({ ...labelEdit, value: e.target.value })
-                  }
+                  onChange={(e) => setLabelEdit({ ...labelEdit, value: e.target.value })}
                 />
               </label>
             )}
@@ -2986,11 +4094,7 @@ export default function App({ applicationUser, onSignOut }: { applicationUser?: 
               <button className="primary-button" type="submit">
                 {labelEdit.deleting ? "Delete label" : "Save"}
               </button>
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => setLabelEdit(null)}
-              >
+              <button type="button" className="text-button" onClick={() => setLabelEdit(null)}>
                 Cancel
               </button>
               {!labelEdit.deleting && (

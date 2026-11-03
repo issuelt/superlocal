@@ -42,23 +42,34 @@ function messageKey(message?: Mail["messages"][number]): string {
 }
 
 function messageCanvasStyle(background: MessageCanvasColor): CSSProperties {
-  const luminance = (color: readonly number[]) => color.reduce((sum, channel, index) => {
-    const value = channel / 255;
-    return sum + (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][index];
-  }, 0);
+  const luminance = (color: readonly number[]) =>
+    color.reduce((sum, channel, index) => {
+      const value = channel / 255;
+      return (
+        sum +
+        (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) *
+          [0.2126, 0.7152, 0.0722][index]
+      );
+    }, 0);
   const light = luminance(background);
   const ink = (light + 0.05) / 0.05 >= 1.05 / (light + 0.05) ? 0 : 255;
-  const blend = (target: number, amount: number) => background.map(channel => Math.round(channel * (1 - amount) + target * amount));
-  const contrast = (color: readonly number[]) => ink === 0 ? (luminance(color) + 0.05) / 0.05 : 1.05 / (luminance(color) + 0.05);
+  const blend = (target: number, amount: number) =>
+    background.map((channel) => Math.round(channel * (1 - amount) + target * amount));
+  const contrast = (color: readonly number[]) =>
+    ink === 0 ? (luminance(color) + 0.05) / 0.05 : 1.05 / (luminance(color) + 0.05);
   let hover = blend(ink, 0.08);
   if (contrast(hover) < 4.5) hover = blend(255 - ink, 0.08);
   const surface = ink === 0 ? Math.min(light, luminance(hover)) : Math.max(light, luminance(hover));
   const foreground = (ratio: number) => {
-    const value = ink === 0 ? Math.max(0, (surface + 0.05) / ratio - 0.05) : Math.min(1, (surface + 0.05) * ratio - 0.05);
+    const value =
+      ink === 0
+        ? Math.max(0, (surface + 0.05) / ratio - 0.05)
+        : Math.min(1, (surface + 0.05) * ratio - 0.05);
     // Neutral OKLCH lightness is the cube root of linear luminance.
     return `oklch(${Number(Math.cbrt(value).toFixed(3))} 0 0)`;
   };
-  const css = (color: readonly number[]) => `rgb(${color.map(channel => Math.round(channel)).join(" ")})`;
+  const css = (color: readonly number[]) =>
+    `rgb(${color.map((channel) => Math.round(channel)).join(" ")})`;
   return {
     "--message-canvas": css(background),
     "--message-foreground": foreground(12),
@@ -89,7 +100,11 @@ type ThreadViewProps = {
   onNavigate: (delta: number) => void;
   onAction: (action: string) => void;
   supportsAction: (action: string) => boolean;
-  onCompose: (mode: "reply" | "replyAll" | "forward", popOut?: boolean, sourceMessageId?: string) => void;
+  onCompose: (
+    mode: "reply" | "replyAll" | "forward",
+    popOut?: boolean,
+    sourceMessageId?: string,
+  ) => void;
   onDraftChange: (draft: Draft) => void;
   onSend: (draft: Draft, when?: string, options?: SendOptions) => Promise<boolean>;
   onDiscard: () => Promise<boolean>;
@@ -145,13 +160,15 @@ export default function ThreadView({
   onAiReading,
   aiReadingEnabled = false,
 }: ThreadViewProps) {
-  const explicitCategory = mail.window ? mail.attentionOverride?.override?.category : currentCategoryOverride(mail, mail.attentionOverride?.override)?.category;
-  const [expanded, setExpanded] = useState<string[]>([
-    messageKey(mail.messages.at(-1)),
-  ]);
+  const explicitCategory = mail.window
+    ? mail.attentionOverride?.override?.category
+    : currentCategoryOverride(mail, mail.attentionOverride?.override)?.category;
+  const [expanded, setExpanded] = useState<string[]>([messageKey(mail.messages.at(-1))]);
   const manuallyExpanded = useRef(false);
   const [details, setDetails] = useState<string[]>([]);
-  const [messageCanvases, setMessageCanvases] = useState<Record<string, MessageCanvasColor | null>>({});
+  const [messageCanvases, setMessageCanvases] = useState<Record<string, MessageCanvasColor | null>>(
+    {},
+  );
   const [response, setResponse] = useState("");
   const [replyFocused, setReplyFocused] = useState(false);
   const [pendingCommentDelete, setPendingCommentDelete] = useState<string | null>(null);
@@ -170,14 +187,21 @@ export default function ThreadView({
   const messageCount = mail.window ? mail.window.counts.messages : mail.messages.length;
   useEffect(() => {
     if (!mail.window || !onLoadMessage || !scroller.current) return;
-    const missing = new Set(mail.messages.filter(message => message.loaded === false).map(message => message.id));
-    const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) if (entry.isIntersecting) {
-        const id = (entry.target as HTMLElement).dataset.threadMessage;
-        if (id && missing.delete(id)) void onLoadMessage(id).catch(() => {});
-      }
-    }, { root: scroller.current, rootMargin: "200px" });
-    for (const element of scroller.current.querySelectorAll(".thread-message.is-expanded")) observer.observe(element);
+    const missing = new Set(
+      mail.messages.filter((message) => message.loaded === false).map((message) => message.id),
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) {
+            const id = (entry.target as HTMLElement).dataset.threadMessage;
+            if (id && missing.delete(id)) void onLoadMessage(id).catch(() => {});
+          }
+      },
+      { root: scroller.current, rootMargin: "200px" },
+    );
+    for (const element of scroller.current.querySelectorAll(".thread-message.is-expanded"))
+      observer.observe(element);
     return () => observer.disconnect();
   }, [mail, expanded, onLoadMessage]);
   const readerPane = useRef<HTMLElement>(null);
@@ -190,7 +214,9 @@ export default function ThreadView({
   const scrollToComment = useRef(false);
   // A previous send is not a new focus request when this reader is reopened.
   const revealedReply = useRef(focusOperationId || "");
-  const replyResult = focusOperationId ? mail.messages.find(message => message.operationId === focusOperationId) : undefined;
+  const replyResult = focusOperationId
+    ? mail.messages.find((message) => message.operationId === focusOperationId)
+    : undefined;
   const replyFocusKey = focusOperationId || "";
   const metadataMailbox = useRef(mail.mailboxId ?? account).current;
   const metadataThread = mail.sdkThreadId ? `${metadataMailbox}:${mail.sdkThreadId}` : mail.id;
@@ -210,11 +236,16 @@ export default function ThreadView({
     readerRef: readerPane,
     scrollerRef: scroller,
     activeMessageRef: activeMessage,
-    messageIds: mail.messages.filter(message =>
-      message.loaded === true && !message.pending && !message.operationId &&
-      !(message.outgoing ?? (message.email === account || message.email === mail.account)) &&
-      expanded.includes(messageKey(message)),
-    ).map(message => message.id),
+    messageIds: mail.messages
+      .filter(
+        (message) =>
+          message.loaded === true &&
+          !message.pending &&
+          !message.operationId &&
+          !(message.outgoing ?? (message.email === account || message.email === mail.account)) &&
+          expanded.includes(messageKey(message)),
+      )
+      .map((message) => message.id),
     paused: replyFocused || popOut || !!pendingCommentDelete,
     onReading: onAiReading,
   });
@@ -228,16 +259,24 @@ export default function ThreadView({
   conversationLink.hash = linkParams.toString();
 
   useLayoutEffect(() => {
-    const pane = readerPane.current, column = messageColumn.current;
+    const pane = readerPane.current,
+      column = messageColumn.current;
     if (!pane || !column) return;
     const heading = pane.querySelector<HTMLElement>(".message-heading-row");
     const measure = () => {
-      const contentLeft = Math.min(column.getBoundingClientRect().left, heading?.getBoundingClientRect().left ?? Infinity);
-      pane.style.setProperty("--back-gutter-width", `${Math.max(0, contentLeft - pane.getBoundingClientRect().left)}px`);
+      const contentLeft = Math.min(
+        column.getBoundingClientRect().left,
+        heading?.getBoundingClientRect().left ?? Infinity,
+      );
+      pane.style.setProperty(
+        "--back-gutter-width",
+        `${Math.max(0, contentLeft - pane.getBoundingClientRect().left)}px`,
+      );
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(pane); observer.observe(column);
+    observer.observe(pane);
+    observer.observe(column);
     if (heading) observer.observe(heading);
     return () => observer.disconnect();
   }, []);
@@ -249,9 +288,14 @@ export default function ThreadView({
       const reader = scroller.current;
       if (!reader || event.ctrlKey || event.metaKey) return;
       const line = Number.parseFloat(getComputedStyle(reader).lineHeight) || 16;
-      const x = event.deltaX * (event.deltaMode === 1 ? line : event.deltaMode === 2 ? reader.clientWidth : 1);
-      const y = event.deltaY * (event.deltaMode === 1 ? line : event.deltaMode === 2 ? reader.clientHeight : 1);
-      const top = reader.scrollTop, left = reader.scrollLeft;
+      const x =
+        event.deltaX *
+        (event.deltaMode === 1 ? line : event.deltaMode === 2 ? reader.clientWidth : 1);
+      const y =
+        event.deltaY *
+        (event.deltaMode === 1 ? line : event.deltaMode === 2 ? reader.clientHeight : 1);
+      const top = reader.scrollTop,
+        left = reader.scrollLeft;
       reader.scrollBy({ top: y, left: x, behavior: "auto" });
       if (reader.scrollTop !== top || reader.scrollLeft !== left) event.preventDefault();
     };
@@ -262,9 +306,7 @@ export default function ThreadView({
   useEffect(() => {
     let stored: ThreadComment[] = [];
     try {
-      const parsed: unknown = JSON.parse(
-        readText(commentKey) || "[]",
-      );
+      const parsed: unknown = JSON.parse(readText(commentKey) || "[]");
       if (Array.isArray(parsed)) {
         stored = parsed.filter(
           (item): item is ThreadComment =>
@@ -301,9 +343,7 @@ export default function ThreadView({
     setDetails([]);
     setSnippetRequest(0);
     try {
-      setResponse(
-        readText(`invitation:${metadataThread}`) || "",
-      );
+      setResponse(readText(`invitation:${metadataThread}`) || "");
     } catch {
       setResponse("");
     }
@@ -316,7 +356,7 @@ export default function ThreadView({
       // Undo removes the automatic outgoing card before restoring its draft.
       const keys = new Set(mail.messages.map(messageKey));
       const latest = messageKey(mail.messages.at(-1));
-      if (!manuallyExpanded.current && latest && !expanded.some(key => keys.has(key))) {
+      if (!manuallyExpanded.current && latest && !expanded.some((key) => keys.has(key))) {
         setExpanded([latest]);
         if (!keys.has(activeMessage.current)) activeMessage.current = latest;
       }
@@ -327,18 +367,28 @@ export default function ThreadView({
     const key = messageKey(replyResult);
     const keys = new Set(mail.messages.map(messageKey));
     const preserveExpansion = manuallyExpanded.current;
-    setExpanded(previous => preserveExpansion ? [...new Set([...previous.filter(id => keys.has(id)), key])] : [key]);
+    setExpanded((previous) =>
+      preserveExpansion ? [...new Set([...previous.filter((id) => keys.has(id)), key])] : [key],
+    );
     activeMessage.current = key;
-    const node = scroller.current?.querySelector<HTMLElement>(`[data-thread-message="${CSS.escape(replyResult.id)}"]`);
+    const node = scroller.current?.querySelector<HTMLElement>(
+      `[data-thread-message="${CSS.escape(replyResult.id)}"]`,
+    );
     node?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [replyFocusKey, replyResult?.id, draft?.id]);
 
   useLayoutEffect(() => {
     historyRequest.current++;
-    setHistoryLoading(false); setHistoryError("");
-    return () => { historyRequest.current++; onPinMessages?.([]); };
+    setHistoryLoading(false);
+    setHistoryError("");
+    return () => {
+      historyRequest.current++;
+      onPinMessages?.([]);
+    };
   }, [mail.id, onPinMessages]);
-  useLayoutEffect(() => { reportMessagePins(); }, [mail.messages, expanded, draft?.sourceMessageId, onPinMessages]);
+  useLayoutEffect(() => {
+    reportMessagePins();
+  }, [mail.messages, expanded, draft?.sourceMessageId, onPinMessages]);
 
   useEffect(() => {
     if (draft && !popOut) reply.current?.scrollIntoView({ block: "nearest" });
@@ -347,12 +397,8 @@ export default function ThreadView({
   useEffect(() => {
     if (!scrollToMessage.current) return;
     const message = Array.from(
-      scroller.current?.querySelectorAll<HTMLElement>(
-        "[data-thread-message]",
-      ) || [],
-    ).find(
-      (element) => element.dataset.threadMessage === scrollToMessage.current,
-    );
+      scroller.current?.querySelectorAll<HTMLElement>("[data-thread-message]") || [],
+    ).find((element) => element.dataset.threadMessage === scrollToMessage.current);
     message?.scrollIntoView({ block: "start", behavior: "auto" });
     message?.focus({ preventScroll: true });
     scrollToMessage.current = "";
@@ -362,11 +408,20 @@ export default function ThreadView({
     const elements = root.querySelectorAll<HTMLAnchorElement | HTMLIFrameElement>(
       '.thread-body a[href]:not([aria-disabled="true"]), .message-html-frame, .thread-attachments a[href]:not([aria-disabled="true"])',
     );
-    const inFrame = 'a[href]:not([aria-disabled="true"])'
-      + (includeDisclosures ? ', details[data-inbox-disclosure] > summary' : '');
-    return Array.from(elements).flatMap(element => element.tagName === "IFRAME"
-      ? Array.from((element as HTMLIFrameElement).contentDocument?.querySelectorAll<HTMLElement>(inFrame) ?? [])
-      : [element as HTMLAnchorElement]).filter(link => link.getClientRects().length > 0);
+    const inFrame =
+      'a[href]:not([aria-disabled="true"])' +
+      (includeDisclosures ? ", details[data-inbox-disclosure] > summary" : "");
+    return Array.from(elements)
+      .flatMap((element) =>
+        element.tagName === "IFRAME"
+          ? Array.from(
+              (element as HTMLIFrameElement).contentDocument?.querySelectorAll<HTMLElement>(
+                inFrame,
+              ) ?? [],
+            )
+          : [element as HTMLAnchorElement],
+      )
+      .filter((link) => link.getClientRects().length > 0);
   }
 
   const shortcut = useEffectEvent((event: KeyboardEvent, bodyMessage?: HTMLElement) => {
@@ -379,10 +434,10 @@ export default function ThreadView({
       document.querySelector('[role="dialog"], [aria-modal="true"]')
     )
       return;
-    const target = event.target && (event.target as Node).nodeType === 1 ? event.target as HTMLElement : null;
+    const target =
+      event.target && (event.target as Node).nodeType === 1 ? (event.target as HTMLElement) : null;
     const command = event.metaKey && !event.ctrlKey && !event.altKey;
-    const deleteComment =
-      command && !event.shiftKey && ["Backspace", "Delete"].includes(event.key);
+    const deleteComment = command && !event.shiftKey && ["Backspace", "Delete"].includes(event.key);
     if (
       target?.closest(
         '.compose-view, input, textarea, select, [contenteditable]:not([contenteditable="false"])',
@@ -392,19 +447,14 @@ export default function ThreadView({
       return;
 
     const key = event.key.toLowerCase();
-    const focusedMessage = bodyMessage ?? target?.closest<HTMLElement>(
-      "[data-thread-message]",
-    );
+    const focusedMessage = bodyMessage ?? target?.closest<HTMLElement>("[data-thread-message]");
     const messageId =
-      focusedMessage?.dataset.threadMessage || mail.messages.find(message => messageKey(message) === activeMessage.current)?.id;
-    const messageIndex = mail.messages.findIndex(
-      (message) => message.id === messageId,
-    );
+      focusedMessage?.dataset.threadMessage ||
+      mail.messages.find((message) => messageKey(message) === activeMessage.current)?.id;
+    const messageIndex = mail.messages.findIndex((message) => message.id === messageId);
     if (deleteComment) {
-      const commentId =
-        target?.closest<HTMLElement>("[data-comment-id]")?.dataset.commentId;
-      const comment =
-        comments.find((item) => item.id === commentId) || comments.at(-1);
+      const commentId = target?.closest<HTMLElement>("[data-comment-id]")?.dataset.commentId;
+      const comment = comments.find((item) => item.id === commentId) || comments.at(-1);
       if (!comment) return;
       if (!event.repeat) setPendingCommentDelete(comment.id);
     } else if (command && !event.shiftKey && key === ";") {
@@ -420,34 +470,35 @@ export default function ThreadView({
         const link =
           links.find(
             (item) =>
-              (item.closest<HTMLElement>("[data-thread-message]") ?? item.ownerDocument.defaultView?.frameElement?.closest<HTMLElement>("[data-thread-message]"))?.dataset.threadMessage === messageId,
+              (
+                item.closest<HTMLElement>("[data-thread-message]") ??
+                item.ownerDocument.defaultView?.frameElement?.closest<HTMLElement>(
+                  "[data-thread-message]",
+                )
+              )?.dataset.threadMessage === messageId,
           ) || links[0];
         if (!link) return;
         link.focus();
       }
-    } else if (
-      command &&
-      !event.shiftKey &&
-      ["ArrowUp", "ArrowDown"].includes(event.key)
-    ) {
+    } else if (command && !event.shiftKey && ["ArrowUp", "ArrowDown"].includes(event.key)) {
       scroller.current.scrollTo({
         top: event.key === "ArrowUp" ? 0 : scroller.current.scrollHeight,
         behavior: "auto",
       });
-    } else if (
-      event.ctrlKey &&
-      !event.metaKey &&
-      !event.altKey &&
-      !event.shiftKey &&
-      key === "/"
-    ) {
+    } else if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && key === "/") {
       if (!navigator.clipboard?.writeText) return;
       void navigator.clipboard.writeText(conversationLink.href).catch(() => {});
     } else if (!event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (!event.shiftKey && (key === "n" || key === "p" || event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      if (
+        !event.shiftKey &&
+        (key === "n" || key === "p" || event.key === "ArrowDown" || event.key === "ArrowUp")
+      ) {
         // An open drawer/settings panel owns its arrows, even while the reader stays mounted.
-        if ((event.key === "ArrowDown" || event.key === "ArrowUp") &&
-          readerPane.current?.closest(".navigation-open, .settings-open")) return;
+        if (
+          (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+          readerPane.current?.closest(".navigation-open, .settings-open")
+        )
+          return;
         const message =
           mail.messages[
             Math.max(
@@ -466,15 +517,11 @@ export default function ThreadView({
         else if (messageId) revealMessage(messageId);
         else return;
       } else if (event.shiftKey && key === "h" && messageId) {
-        const expandedKey = messageKey(mail.messages.find(message => message.id === messageId));
+        const expandedKey = messageKey(mail.messages.find((message) => message.id === messageId));
         manuallyExpanded.current = true;
-        setExpanded((all) =>
-          all.includes(expandedKey) ? all : [...all, expandedKey],
-        );
+        setExpanded((all) => (all.includes(expandedKey) ? all : [...all, expandedKey]));
         setDetails((all) =>
-          all.includes(messageId)
-            ? all.filter((id) => id !== messageId)
-            : [...all, messageId],
+          all.includes(messageId) ? all.filter((id) => id !== messageId) : [...all, messageId],
         );
       } else if (event.shiftKey && key === "n") {
         const last = mail.messages.at(-1);
@@ -495,8 +542,7 @@ export default function ThreadView({
       } else if (key === "tab" && focusedMessage) {
         const links = messageLinks(focusedMessage, true);
         const index = links.indexOf(target as HTMLAnchorElement);
-        const next =
-          index >= 0 ? links[index + (event.shiftKey ? -1 : 1)] : undefined;
+        const next = index >= 0 ? links[index + (event.shiftKey ? -1 : 1)] : undefined;
         // Yield at the edges so Tab can leave the message normally.
         if (!next) return;
         next.focus();
@@ -513,7 +559,9 @@ export default function ThreadView({
   }, []);
 
   function bodyKeyboard(event: KeyboardEvent, id: string) {
-    const article = scroller.current?.querySelector<HTMLElement>(`[data-thread-message="${CSS.escape(id)}"]`);
+    const article = scroller.current?.querySelector<HTMLElement>(
+      `[data-thread-message="${CSS.escape(id)}"]`,
+    );
     if (!article) return;
     onSequenceKey?.(event);
     if (event.defaultPrevented) return;
@@ -522,9 +570,16 @@ export default function ThreadView({
     const target = event.target as HTMLElement | null;
     if (["Enter", " "].includes(event.key) && target?.closest?.("a, button, summary")) return;
     const forwarded = new KeyboardEvent("keydown", {
-      key: event.key, code: event.code, altKey: event.altKey, ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey, shiftKey: event.shiftKey, repeat: event.repeat,
-      isComposing: event.isComposing, bubbles: true, cancelable: true,
+      key: event.key,
+      code: event.code,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+      repeat: event.repeat,
+      isComposing: event.isComposing,
+      bubbles: true,
+      cancelable: true,
     });
     article.dispatchEvent(forwarded);
     if (forwarded.defaultPrevented) event.preventDefault();
@@ -532,7 +587,11 @@ export default function ThreadView({
 
   function reportMessagePins() {
     const keys = new Set([...expanded, activeMessage.current]);
-    onPinMessages?.(mail.messages.filter(message => keys.has(messageKey(message)) || message.id === draft?.sourceMessageId).map(message => message.id));
+    onPinMessages?.(
+      mail.messages
+        .filter((message) => keys.has(messageKey(message)) || message.id === draft?.sourceMessageId)
+        .map((message) => message.id),
+    );
   }
 
   function loadHistory(reset = false) {
@@ -540,15 +599,25 @@ export default function ThreadView({
     if (!load) return;
     reportMessagePins(); // Include focus/expansion from this event before the request captures its scope.
     const request = ++historyRequest.current;
-    setHistoryLoading(true); setHistoryError("");
-    void load().catch(error => {
-      if (request === historyRequest.current && !(error instanceof DOMException && error.name === "AbortError"))
-        setHistoryError(error instanceof Error ? error.message : "Could not load conversation history.");
-    }).finally(() => { if (request === historyRequest.current) setHistoryLoading(false); });
+    setHistoryLoading(true);
+    setHistoryError("");
+    void load()
+      .catch((error) => {
+        if (
+          request === historyRequest.current &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        )
+          setHistoryError(
+            error instanceof Error ? error.message : "Could not load conversation history.",
+          );
+      })
+      .finally(() => {
+        if (request === historyRequest.current) setHistoryLoading(false);
+      });
   }
 
   function revealMessage(id: string) {
-    const key = messageKey(mail.messages.find(message => message.id === id));
+    const key = messageKey(mail.messages.find((message) => message.id === id));
     activeMessage.current = key;
     scrollToMessage.current = id;
     manuallyExpanded.current = true;
@@ -603,13 +672,18 @@ export default function ThreadView({
   }
   useEffect(() => {
     if (!pendingCommentDelete) return;
-    scroller.current?.querySelector(`[data-comment-id="${CSS.escape(pendingCommentDelete)}"]`)?.scrollIntoView({ block: "nearest" });
+    scroller.current
+      ?.querySelector(`[data-comment-id="${CSS.escape(pendingCommentDelete)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   }, [pendingCommentDelete]);
 
   function deleteComment(id: string) {
-    const next = comments.filter(comment => comment.id !== id);
-    try { writeText(commentKey, JSON.stringify(next)); }
-    catch { /* Keep the deletion in this reader when storage is unavailable. */ }
+    const next = comments.filter((comment) => comment.id !== id);
+    try {
+      writeText(commentKey, JSON.stringify(next));
+    } catch {
+      /* Keep the deletion in this reader when storage is unavailable. */
+    }
     setCommentState({ key: commentKey, comments: next, text: commentText });
     setPendingCommentDelete(null);
     commentInput.current?.focus();
@@ -653,30 +727,37 @@ export default function ThreadView({
               disabled={!supportsAction("remind")}
               onClick={() => onAction("remind")}
             />
-            <IconButton
-              name="Bolt"
-              title="Superlocal Command"
-              onClick={() => onAction("more")}
-            />
+            <IconButton name="Bolt" title="Superlocal Command" onClick={() => onAction("more")} />
             <IconButton
               name="ChevronLeft"
               title="Previous thread (←)"
               onClick={() => onNavigate(-1)}
             />
-            <IconButton
-              name="ChevronRight"
-              title="Next thread (→)"
-              onClick={() => onNavigate(1)}
-            />
+            <IconButton name="ChevronRight" title="Next thread (→)" onClick={() => onNavigate(1)} />
           </div>
         </div>
         <div className="message-column thread-toolbar">
-          {explicitCategory && onCategory ? <ConversationCategory category={explicitCategory} onChange={onCategory} disabled={!supportsAction("done")} /> : aiEnabled && <ConversationTriage
-            key={JSON.stringify([mail.sourceId, mail.sdkThreadId])}
-            decision={aiDecision?.sourceId === mail.sourceId && aiDecision?.threadId === mail.sdkThreadId ? aiDecision : undefined}
-            mode={aiMode}
-            onFeedback={onAiFeedback}
-          />}
+          {explicitCategory && onCategory ? (
+            <ConversationCategory
+              category={explicitCategory}
+              onChange={onCategory}
+              disabled={!supportsAction("done")}
+            />
+          ) : (
+            aiEnabled && (
+              <ConversationTriage
+                key={JSON.stringify([mail.sourceId, mail.sdkThreadId])}
+                decision={
+                  aiDecision?.sourceId === mail.sourceId &&
+                  aiDecision?.threadId === mail.sdkThreadId
+                    ? aiDecision
+                    : undefined
+                }
+                mode={aiMode}
+                onFeedback={onAiFeedback}
+              />
+            )
+          )}
           {marketing && (
             <button
               className="thread-unsubscribe"
@@ -686,15 +767,16 @@ export default function ThreadView({
               {unsubscribed ? "Unsubscribed" : "Unsubscribe"}
             </button>
           )}
-          {!!mail.mailboxNames?.length && <div className="thread-mailbox-origin" title={mail.mailboxNames.join(", ")}>{mail.mailboxNames[0]}{mail.mailboxNames.length > 1 ? ` +${mail.mailboxNames.length - 1} mailboxes` : ""}</div>}
+          {!!mail.mailboxNames?.length && (
+            <div className="thread-mailbox-origin" title={mail.mailboxNames.join(", ")}>
+              {mail.mailboxNames[0]}
+              {mail.mailboxNames.length > 1 ? ` +${mail.mailboxNames.length - 1} mailboxes` : ""}
+            </div>
+          )}
           {!!mail.labels.length && (
             <div className="thread-labels">
               {mail.labels.map((label) => (
-                <button
-                  type="button"
-                  key={label}
-                  onClick={() => onAction("label")}
-                >
+                <button type="button" key={label} onClick={() => onAction("label")}>
                   {label}
                 </button>
               ))}
@@ -716,14 +798,47 @@ export default function ThreadView({
               {mail.scheduled
                 ? `Scheduled for ${displayDate(mail.scheduled)}`
                 : `Reminder: ${displayDate(mail.reminder || "")}`}
-              {mail.operationId && <button type="button" className="text-button" onClick={() => onAction("cancel")}>Cancel send</button>}
+              {mail.operationId && (
+                <button type="button" className="text-button" onClick={() => onAction("cancel")}>
+                  Cancel send
+                </button>
+              )}
             </div>
           )}
-          {mail.window && (!mail.window.messagesComplete && !mail.historyExhausted && onLoadOlder || mail.historyTruncated && onResetHistory || historyError || mail.historyError) && <div role="status">
-            {!mail.window.messagesComplete && !mail.historyExhausted && onLoadOlder && <button type="button" className="text-button" disabled={historyLoading} onClick={() => loadHistory()}>{historyLoading ? "Loading history…" : "Load more messages"}</button>}
-            {mail.historyTruncated && onResetHistory && <> <button type="button" className="text-button" disabled={historyLoading} onClick={() => loadHistory(true)}>Show recent messages</button></>}
-            {(historyError || mail.historyError) && <span role="alert">{historyError || mail.historyError}</span>}
-          </div>}
+          {mail.window &&
+            ((!mail.window.messagesComplete && !mail.historyExhausted && onLoadOlder) ||
+              (mail.historyTruncated && onResetHistory) ||
+              historyError ||
+              mail.historyError) && (
+              <div role="status">
+                {!mail.window.messagesComplete && !mail.historyExhausted && onLoadOlder && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={historyLoading}
+                    onClick={() => loadHistory()}
+                  >
+                    {historyLoading ? "Loading history…" : "Load more messages"}
+                  </button>
+                )}
+                {mail.historyTruncated && onResetHistory && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={historyLoading}
+                      onClick={() => loadHistory(true)}
+                    >
+                      Show recent messages
+                    </button>
+                  </>
+                )}
+                {(historyError || mail.historyError) && (
+                  <span role="alert">{historyError || mail.historyError}</span>
+                )}
+              </div>
+            )}
           {(messageCount === null || messageCount > 1) && (
             <div className="thread-conversation-controls">
               <span>{messageCount ?? "…"} messages</span>
@@ -732,22 +847,27 @@ export default function ThreadView({
                 title="Expand or collapse all (Shift+O)"
                 onClick={toggleAllMessages}
               >
-                {expanded.length === mail.messages.length
-                  ? "Collapse all"
-                  : "Expand all"}
+                {expanded.length === mail.messages.length ? "Collapse all" : "Expand all"}
               </button>
             </div>
           )}
           {mail.messages.map((message, index) => {
             const key = messageKey(message);
-            const open = expanded.includes(key) || !draft && !!replyResult && message.id === replyResult.id && revealedReply.current !== replyFocusKey;
+            const open =
+              expanded.includes(key) ||
+              (!draft &&
+                !!replyResult &&
+                message.id === replyResult.id &&
+                revealedReply.current !== replyFocusKey);
             const showDetails = details.includes(message.id);
-            const canvas = open && message.loaded !== false && message.bodyFormat !== "text" ? messageCanvases[message.id] : null;
+            const canvas =
+              open && message.loaded !== false && message.bodyFormat !== "text"
+                ? messageCanvases[message.id]
+                : null;
             const sent =
               message.outgoing ?? (message.email === account || message.email === mail.account);
             const isInvitation =
-              mail.split === "Calendar" &&
-              message.body.includes("meeting-invite");
+              mail.split === "Calendar" && message.body.includes("meeting-invite");
             return (
               <article
                 key={key}
@@ -758,10 +878,12 @@ export default function ThreadView({
                 style={canvas ? messageCanvasStyle(canvas) : undefined}
                 tabIndex={-1}
                 onFocusCapture={() => {
-                  activeMessage.current = key; reportMessagePins();
+                  activeMessage.current = key;
+                  reportMessagePins();
                 }}
                 onPointerDownCapture={() => {
-                  activeMessage.current = key; reportMessagePins();
+                  activeMessage.current = key;
+                  reportMessagePins();
                 }}
                 className={`thread-message ${open ? "is-expanded" : "is-collapsed"} ${index === mail.messages.length - 1 ? "is-final" : ""}`}
                 aria-label={`Message from ${message.from}`}
@@ -778,8 +900,23 @@ export default function ThreadView({
                     }}
                   >
                     <strong>{sent ? "Me" : message.from}</strong>
-                    <span>{message.loaded === false ? message.preview : message.bodyFormat === "text" ? message.bodyText : plainText(message.body)}</span>
-                    <time dateTime={message.receivedAt} title={message.receivedAt ? new Date(message.receivedAt).toLocaleString() : message.date}>{message.date}</time>
+                    <span>
+                      {message.loaded === false
+                        ? message.preview
+                        : message.bodyFormat === "text"
+                          ? message.bodyText
+                          : plainText(message.body)}
+                    </span>
+                    <time
+                      dateTime={message.receivedAt}
+                      title={
+                        message.receivedAt
+                          ? new Date(message.receivedAt).toLocaleString()
+                          : message.date
+                      }
+                    >
+                      {message.date}
+                    </time>
                     <Icon name="ChevronDown" size={12} />
                   </button>
                 ) : (
@@ -798,9 +935,7 @@ export default function ThreadView({
                           className="thread-recipient-details"
                           title="Toggle message header (Shift+H)"
                           aria-label={
-                            showDetails
-                              ? "Collapse message header"
-                              : "Expand message header"
+                            showDetails ? "Collapse message header" : "Expand message header"
                           }
                           aria-expanded={showDetails}
                           onClick={() =>
@@ -812,50 +947,56 @@ export default function ThreadView({
                           }
                         >
                           {sent && message.to && <span>to {message.to}</span>}
-                          <Icon
-                            name={showDetails ? "ChevronUp" : "ChevronDown"}
-                            size={12}
-                          />
+                          <Icon name={showDetails ? "ChevronUp" : "ChevronDown"} size={12} />
                         </button>
                       </div>
                       <div className="thread-message-meta">
                         {sent && message.sendStatus === "succeeded" ? (
-                          <span className="thread-read-status" title="Sent" aria-label="Sent"><Icon name="Check" size={14} /></span>
-                        ) : sent && !message.pending && !mail.sourceId && preferences.readReceipts && (
-                          <span
-                            className={`thread-read-status ${mail.opened ? "is-read" : ""}`}
-                            title={
-                              mail.opened
-                                ? `Opened ${mail.opened}`
-                                : "Not opened yet"
-                            }
-                            aria-label={
-                              mail.opened
-                                ? `Opened ${mail.opened}`
-                                : "Not opened yet"
-                            }
-                          >
-                            <Icon
-                              name={mail.opened ? "Eye" : "Check"}
-                              size={14}
-                            />
+                          <span className="thread-read-status" title="Sent" aria-label="Sent">
+                            <Icon name="Check" size={14} />
                           </span>
+                        ) : (
+                          sent &&
+                          !message.pending &&
+                          !mail.sourceId &&
+                          preferences.readReceipts && (
+                            <span
+                              className={`thread-read-status ${mail.opened ? "is-read" : ""}`}
+                              title={mail.opened ? `Opened ${mail.opened}` : "Not opened yet"}
+                              aria-label={mail.opened ? `Opened ${mail.opened}` : "Not opened yet"}
+                            >
+                              <Icon name={mail.opened ? "Eye" : "Check"} size={14} />
+                            </span>
+                          )
                         )}
                         <span className="thread-inline-actions">
                           <IconButton
                             name="ArrowReply"
                             title="Reply (R)"
-                             disabled={!!mail.operationId || !!message.pending || !supportsAction("reply")}
-                             onClick={() => onCompose("reply", false, message.id)}
+                            disabled={
+                              !!mail.operationId || !!message.pending || !supportsAction("reply")
+                            }
+                            onClick={() => onCompose("reply", false, message.id)}
                           />
                           <IconButton
                             name="ArrowForward"
                             title="Forward (F)"
-                             disabled={!!mail.operationId || !!message.pending || !supportsAction("send")}
-                             onClick={() => onCompose("forward", false, message.id)}
+                            disabled={
+                              !!mail.operationId || !!message.pending || !supportsAction("send")
+                            }
+                            onClick={() => onCompose("forward", false, message.id)}
                           />
                         </span>
-                        <time dateTime={message.receivedAt} title={message.receivedAt ? new Date(message.receivedAt).toLocaleString() : message.date}>{message.date}</time>
+                        <time
+                          dateTime={message.receivedAt}
+                          title={
+                            message.receivedAt
+                              ? new Date(message.receivedAt).toLocaleString()
+                              : message.date
+                          }
+                        >
+                          {message.date}
+                        </time>
                         {mail.messages.length > 1 && (
                           <IconButton
                             name="ChevronUp"
@@ -863,9 +1004,7 @@ export default function ThreadView({
                             size={12}
                             onClick={() => {
                               manuallyExpanded.current = true;
-                              setExpanded(
-                                expanded.filter((id) => id !== key),
-                              );
+                              setExpanded(expanded.filter((id) => id !== key));
                             }}
                           />
                         )}
@@ -895,26 +1034,45 @@ export default function ThreadView({
                           </>
                         )}
                         <dt>Date</dt>
-                        <dd>{message.receivedAt ? new Date(message.receivedAt).toLocaleString() : message.date}</dd>
+                        <dd>
+                          {message.receivedAt
+                            ? new Date(message.receivedAt).toLocaleString()
+                            : message.date}
+                        </dd>
                         <dt>Subject</dt>
                         <dd>{mail.subject || "(No subject)"}</dd>
                       </dl>
                     )}
-                    {message.loaded === false ? <div className="message-body-loading" role="status">Loading message…</div> : (
+                    {message.loaded === false ? (
+                      <div className="message-body-loading" role="status">
+                        Loading message…
+                      </div>
+                    ) : (
                       <MessageBody
                         html={message.bodyDocument?.html ?? message.body}
                         styles={message.bodyDocument?.styles}
                         text={message.bodyText}
                         format={message.bodyFormat}
                         fontSize={preferences.fontSize}
-                        onActivate={() => { activeMessage.current = key; reportMessagePins(); }}
-                        onKeyboard={event => bodyKeyboard(event, message.id)}
+                        onActivate={() => {
+                          activeMessage.current = key;
+                          reportMessagePins();
+                        }}
+                        onKeyboard={(event) => bodyKeyboard(event, message.id)}
                         onImageSettings={onImageSettings}
-                        onCanvasColor={color => setMessageCanvases(all => {
-                          const previous = all[message.id];
-                          if (previous === color || previous && color && previous.every((channel, index) => channel === color[index])) return all;
-                          return { ...all, [message.id]: color };
-                        })}
+                        onCanvasColor={(color) =>
+                          setMessageCanvases((all) => {
+                            const previous = all[message.id];
+                            if (
+                              previous === color ||
+                              (previous &&
+                                color &&
+                                previous.every((channel, index) => channel === color[index]))
+                            )
+                              return all;
+                            return { ...all, [message.id]: color };
+                          })
+                        }
                       />
                     )}
                     {isInvitation && (
@@ -937,23 +1095,15 @@ export default function ThreadView({
                                     : "Maybe attend"
                               }
                               aria-pressed={response === value}
-                              className={
-                                response === value ? "is-selected" : ""
-                              }
+                              className={response === value ? "is-selected" : ""}
                               onClick={() => respond(value)}
                             >
-                              {response === value && (
-                                <Icon name="Check" size={13} />
-                              )}{" "}
-                              {label}
+                              {response === value && <Icon name="Check" size={13} />} {label}
                             </button>
                           ))}
                         </div>
                         {response && (
-                          <span
-                            className="thread-invitation-response"
-                            role="status"
-                          >
+                          <span className="thread-invitation-response" role="status">
                             {response}
                           </span>
                         )}
@@ -971,11 +1121,7 @@ export default function ThreadView({
                             onClick={(event) => {
                               if (!file.data) event.preventDefault();
                             }}
-                            title={
-                              file.data
-                                ? `Download ${file.name}`
-                                : "Attachment unavailable"
-                            }
+                            title={file.data ? `Download ${file.name}` : "Attachment unavailable"}
                           >
                             <Icon name="Paperclip" />
                             <span>{file.name}</span>
@@ -1003,17 +1149,13 @@ export default function ThreadView({
               </article>
             );
           })}
-          <div
-            ref={reply}
-            className={draft && !popOut ? "thread-reply-area" : undefined}
-          >
+          <div ref={reply} className={draft && !popOut ? "thread-reply-area" : undefined}>
             {draft && (
               <>
                 <div
                   className={popOut ? "thread-popout-backdrop" : ""}
                   onMouseDown={(event) => {
-                    if (popOut && event.target === event.currentTarget)
-                      setPopOut(false);
+                    if (popOut && event.target === event.currentTarget) setPopOut(false);
                   }}
                 >
                   <div className={popOut ? "thread-popout" : ""}>
@@ -1034,11 +1176,7 @@ export default function ThreadView({
                       autoFocus={false}
                       onFocusChange={setReplyFocused}
                       quickReplies={getQuickReplies(mail)}
-                      focusRequest={
-                        replyRequest === entryReplyRequest.current
-                          ? 0
-                          : replyRequest
-                      }
+                      focusRequest={replyRequest === entryReplyRequest.current ? 0 : replyRequest}
                       snippetRequest={snippetRequest}
                       preferences={preferences}
                       accounts={accounts}
@@ -1050,12 +1188,12 @@ export default function ThreadView({
                       onToggleFocus={onToggleFocus}
                       onNavigate={onNavigate}
                       onSend={async (next, when, options) => {
-                        if (!await onSend(next, when, options)) return false;
+                        if (!(await onSend(next, when, options))) return false;
                         setSnippetRequest(0);
                         return true;
                       }}
                       onDiscard={async () => {
-                        if (!await onDiscard()) return false;
+                        if (!(await onDiscard())) return false;
                         setSnippetRequest(0);
                         return true;
                       }}
@@ -1064,8 +1202,7 @@ export default function ThreadView({
                         setSnippetRequest(0);
                         setPopOut(false);
                         const message = reply.current?.previousElementSibling;
-                        if (message instanceof HTMLElement)
-                          message.focus({ preventScroll: true });
+                        if (message instanceof HTMLElement) message.focus({ preventScroll: true });
                       }}
                       onPopOut={() => setPopOut(!popOut)}
                     />
@@ -1100,10 +1237,26 @@ export default function ThreadView({
                 </header>
                 <p className="thread-comment-body">{comment.body}</p>
                 {pendingCommentDelete === comment.id && (
-                  <div className="thread-comment-delete" role="group" aria-label="Delete local comment">
+                  <div
+                    className="thread-comment-delete"
+                    role="group"
+                    aria-label="Delete local comment"
+                  >
                     <span>Delete this local comment?</span>
-                    <button type="button" className="text-button" onClick={() => setPendingCommentDelete(null)}>Keep comment</button>
-                    <button type="button" className="text-button" onClick={() => deleteComment(comment.id)}>Delete comment</button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setPendingCommentDelete(null)}
+                    >
+                      Keep comment
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => deleteComment(comment.id)}
+                    >
+                      Delete comment
+                    </button>
                   </div>
                 )}
               </article>
@@ -1137,11 +1290,7 @@ export default function ThreadView({
                   })
                 }
                 onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !event.shiftKey &&
-                    !event.nativeEvent.isComposing
-                  ) {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
                     postComment();
                   }
@@ -1154,12 +1303,7 @@ export default function ThreadView({
                 title="Post comment (Enter)"
                 disabled={!commentText.trim()}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  aria-hidden="true"
-                >
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                   <circle cx="8" cy="8" r="8" fill="currentColor" />
                   <path d="M8 11V5m-2.5 2.5L8 5l2.5 2.5" />
                 </svg>

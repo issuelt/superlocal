@@ -60,20 +60,16 @@ function wallTime(instant: string, timezone: string) {
 
 function toInstant(wall: string, timezone: string) {
   const target = Date.parse(`${wall}Z`);
-  if (!Number.isFinite(target))
-    throw new Error("Enter a valid start and end time.");
+  if (!Number.isFinite(target)) throw new Error("Enter a valid start and end time.");
   let instant = target;
   // Resolve a wall-clock input in the selected zone, including daylight-saving offsets.
   for (let attempt = 0; attempt < 4; attempt++) {
     const difference =
-      target -
-      Date.parse(`${wallTime(new Date(instant).toISOString(), timezone)}Z`);
+      target - Date.parse(`${wallTime(new Date(instant).toISOString(), timezone)}Z`);
     if (!difference) return new Date(instant).toISOString();
     instant += difference;
   }
-  throw new Error(
-    "That time does not exist in this time zone. Choose a different time.",
-  );
+  throw new Error("That time does not exist in this time zone. Choose a different time.");
 }
 
 function seedEvents(): CalendarEvent[] {
@@ -107,18 +103,16 @@ function seedEvents(): CalendarEvent[] {
     ],
   ];
   return [
-    ...meetings.map(
-      ([id, title, start, end, location, description, color]) => ({
-        id,
-        title,
-        start: toInstant(start, "America/New_York"),
-        end: toInstant(end, "America/New_York"),
-        location,
-        description,
-        allDay: false,
-        color: color as CalendarEvent["color"],
-      }),
-    ),
+    ...meetings.map(([id, title, start, end, location, description, color]) => ({
+      id,
+      title,
+      start: toInstant(start, "America/New_York"),
+      end: toInstant(end, "America/New_York"),
+      location,
+      description,
+      allDay: false,
+      color: color as CalendarEvent["color"],
+    })),
     {
       id: "labor-day",
       title: "Labor Day",
@@ -151,10 +145,7 @@ function Calendar({
     timezone = "UTC";
   }
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    const saved = loadSaved<CalendarEvent[]>(
-      `calendar:${account}`,
-      seedEvents(),
-    );
+    const saved = loadSaved<CalendarEvent[]>(`calendar:${account}`, seedEvents());
     return Array.isArray(saved)
       ? saved.filter(
           (event) =>
@@ -189,9 +180,7 @@ function Calendar({
   const [bookings, setBookings] = useState<BookingPage[]>(() =>
     loadSaved(`calendar-bookings:${account}`, []),
   );
-  const [sidebarDialog, setSidebarDialog] = useState<
-    "calendar" | "booking" | null
-  >(null);
+  const [sidebarDialog, setSidebarDialog] = useState<"calendar" | "booking" | null>(null);
   const [sidebarTitle, setSidebarTitle] = useState("");
   const [bookingDuration, setBookingDuration] = useState("30");
   const [editor, setEditor] = useState<CalendarEvent | null>(null);
@@ -220,55 +209,32 @@ function Calendar({
   const todayWall = wallTime(now, timezone);
   const today = todayWall.slice(0, 10);
   const weekStart =
-    preferences.startWeek === "Monday"
-      ? 1
-      : preferences.startWeek === "Saturday"
-        ? 6
-        : 0;
+    preferences.startWeek === "Monday" ? 1 : preferences.startWeek === "Saturday" ? 6 : 0;
   const firstOfMonth = `${day.slice(0, 7)}-01`;
   const first =
     view === "day"
       ? day
       : addDays(
           view === "month" ? firstOfMonth : day,
-          -(
-            dateValue(view === "month" ? firstOfMonth : day).getUTCDay() -
-            weekStart +
-            7
-          ) % 7,
+          -(dateValue(view === "month" ? firstOfMonth : day).getUTCDay() - weekStart + 7) % 7,
         );
   const monthEnd = new Date(
-    Date.UTC(
-      dateValue(day).getUTCFullYear(),
-      dateValue(day).getUTCMonth() + 1,
-      0,
-    ),
+    Date.UTC(dateValue(day).getUTCFullYear(), dateValue(day).getUTCMonth() + 1, 0),
   ).getUTCDate();
   const count =
     view === "day"
       ? 1
       : view === "week"
         ? 7
-        : Math.ceil(
-            (((dateValue(firstOfMonth).getUTCDay() - weekStart + 7) % 7) +
-              monthEnd) /
-              7,
-          ) * 7;
-  const days = Array.from({ length: count }, (_, index) =>
-    addDays(first, index),
-  );
-  const miniFirst = addDays(
-    miniMonth,
-    -(dateValue(miniMonth).getUTCDay() - weekStart + 7) % 7,
-  );
-  const miniDays = Array.from({ length: 42 }, (_, index) =>
-    addDays(miniFirst, index),
-  );
+        : Math.ceil((((dateValue(firstOfMonth).getUTCDay() - weekStart + 7) % 7) + monthEnd) / 7) *
+          7;
+  const days = Array.from({ length: count }, (_, index) => addDays(first, index));
+  const miniFirst = addDays(miniMonth, -(dateValue(miniMonth).getUTCDay() - weekStart + 7) % 7);
+  const miniDays = Array.from({ length: 42 }, (_, index) => addDays(miniFirst, index));
   const formattedEvents = events
     .filter(
       (event) =>
-        sources.find((source) => source.id === (event.calendar || account))
-          ?.checked !== false,
+        sources.find((source) => source.id === (event.calendar || account))?.checked !== false,
     )
     .map((event) => ({
       ...event,
@@ -295,15 +261,11 @@ function Calendar({
       : dateLabel(day, { month: "long", year: "numeric" });
 
   useEffect(() => {
-    const timer = window.setInterval(
-      () => setNow(new Date().toISOString()),
-      60000,
-    );
+    const timer = window.setInterval(() => setNow(new Date().toISOString()), 60000);
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (scroller.current)
-      scroller.current.scrollTop = view === "month" ? 0 : 6 * HOUR_HEIGHT - 14;
+    if (scroller.current) scroller.current.scrollTop = view === "month" ? 0 : 6 * HOUR_HEIGHT - 14;
   }, [view]);
   useEffect(() => setMiniMonth(`${day.slice(0, 7)}-01`), [day]);
   const shortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -354,19 +316,12 @@ function Calendar({
   }, []);
 
   function navigate(direction: number) {
-    if (view !== "month")
-      return setDay(addDays(day, direction * (view === "week" ? 7 : 1)));
+    if (view !== "month") return setDay(addDays(day, direction * (view === "week" ? 7 : 1)));
     const date = dateValue(firstOfMonth);
     date.setUTCMonth(date.getUTCMonth() + direction);
     setDay(date.toISOString().slice(0, 10));
   }
-  function createEvent(
-    date = day,
-    minutes = 9 * 60,
-    allDay = false,
-    title = "",
-    duration = 60,
-  ) {
+  function createEvent(date = day, minutes = 9 * 60, allDay = false, title = "", duration = 60) {
     const start = `${date}T${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
     try {
       const instant = allDay ? date : toInstant(start, timezone);
@@ -386,18 +341,12 @@ function Calendar({
       setActionsOpen(false);
       setCalendarError("");
     } catch (cause) {
-      setCalendarError(
-        cause instanceof Error
-          ? cause.message
-          : "Choose a different start time.",
-      );
+      setCalendarError(cause instanceof Error ? cause.message : "Choose a different start time.");
     }
   }
   function saveEvents(next: CalendarEvent[]) {
     if (!writeSaved(`calendar:${account}`, next))
-      throw new Error(
-        "Could not save this event. Browser storage is unavailable.",
-      );
+      throw new Error("Could not save this event. Browser storage is unavailable.");
     setEvents(next);
   }
   function openEvent(event: CalendarEvent) {
@@ -407,21 +356,16 @@ function Calendar({
     return formattedEvents
       .filter(
         (event) =>
-          event.wallStart <
-            (event.allDay ? addDays(date, 1) : `${addDays(date, 1)}T00:00`) &&
+          event.wallStart < (event.allDay ? addDays(date, 1) : `${addDays(date, 1)}T00:00`) &&
           event.wallEnd > (event.allDay ? date : `${date}T00:00`),
       )
       .sort(
-        (a, b) =>
-          Number(b.allDay) - Number(a.allDay) ||
-          a.wallStart.localeCompare(b.wallStart),
+        (a, b) => Number(b.allDay) - Number(a.allDay) || a.wallStart.localeCompare(b.wallStart),
       );
   }
   function changeSources(next: CalendarSource[]) {
     if (!writeSaved(`calendar-sources:${account}`, next))
-      return setCalendarError(
-        "Could not save calendar settings. Browser storage is unavailable.",
-      );
+      return setCalendarError("Could not save calendar settings. Browser storage is unavailable.");
     setSources(next);
   }
 
@@ -523,9 +467,7 @@ function Calendar({
             <div className="calendar-month-content">
               <div className="calendar-month-weekdays">
                 {days.slice(0, 7).map((date) => (
-                  <span key={date}>
-                    {dateLabel(date, { weekday: "short" })}
-                  </span>
+                  <span key={date}>{dateLabel(date, { weekday: "short" })}</span>
                 ))}
               </div>
               <div
@@ -564,9 +506,7 @@ function Calendar({
                         onClick={() => openEvent(event)}
                         title={`${event.title}${event.allDay ? "" : `, ${timeLabel(event.wallStart)}`}`}
                       >
-                        {!event.allDay && (
-                          <span>{timeLabel(event.wallStart)}</span>
-                        )}
+                        {!event.allDay && <span>{timeLabel(event.wallStart)}</span>}
                         <strong>{event.title}</strong>
                       </button>
                     ))}
@@ -595,10 +535,7 @@ function Calendar({
                       aria-label={`Show ${dateLabel(date, { dateStyle: "full" })}`}
                     >
                       <span>
-                        {dateLabel(date, { weekday: "short" }).replace(
-                          "Thu",
-                          "Thur",
-                        )}{" "}
+                        {dateLabel(date, { weekday: "short" }).replace("Thu", "Thur")}{" "}
                         {Number(date.slice(-2))}
                       </span>
                     </button>
@@ -648,15 +585,11 @@ function Calendar({
                       event,
                       start: Math.max(
                         0,
-                        (Date.parse(`${event.wallStart}Z`) -
-                          dateValue(date).getTime()) /
-                          60000,
+                        (Date.parse(`${event.wallStart}Z`) - dateValue(date).getTime()) / 60000,
                       ),
                       end: Math.min(
                         1440,
-                        (Date.parse(`${event.wallEnd}Z`) -
-                          dateValue(date).getTime()) /
-                          60000,
+                        (Date.parse(`${event.wallEnd}Z`) - dateValue(date).getTime()) / 60000,
                       ),
                       lane: 0,
                       lanes: 1,
@@ -695,8 +628,7 @@ function Calendar({
                               date,
                               hour * 60 +
                                 (e.detail &&
-                                e.clientY -
-                                  e.currentTarget.getBoundingClientRect().top >=
+                                e.clientY - e.currentTarget.getBoundingClientRect().top >=
                                   HOUR_HEIGHT / 2
                                   ? 30
                                   : 0),
@@ -710,10 +642,7 @@ function Calendar({
                           className={`calendar-event calendar-color-${event.color} ${end - start <= 30 ? "calendar-event-short" : ""} ${event.end <= now ? "is-past" : ""}`}
                           style={{
                             top: (start / 60) * HOUR_HEIGHT,
-                            height: Math.max(
-                              16,
-                              ((end - start) / 60) * HOUR_HEIGHT - 1,
-                            ),
+                            height: Math.max(16, ((end - start) / 60) * HOUR_HEIGHT - 1),
                             left: `calc(${(lane / lanes) * 100}% + 1px)`,
                             width: `calc(${100 / lanes}% - 4px)`,
                           }}
@@ -723,8 +652,7 @@ function Calendar({
                           <strong>{event.title}</strong>
                           {end - start > 30 && (
                             <span>
-                              {timeLabel(event.wallStart)} -{" "}
-                              {timeLabel(event.wallEnd)}
+                              {timeLabel(event.wallStart)} - {timeLabel(event.wallEnd)}
                             </span>
                           )}
                         </button>
@@ -749,10 +677,7 @@ function Calendar({
           )}
         </div>
       </div>
-      <aside
-        className="aux-owned-sidebar calendar-owned-sidebar"
-        aria-label="Calendar sidebar"
-      >
+      <aside className="aux-owned-sidebar calendar-owned-sidebar" aria-label="Calendar sidebar">
         <IconButton
           name="Close"
           title="Close calendar sidebar"
@@ -762,9 +687,7 @@ function Calendar({
         <div className="calendar-sidebar-content">
           <section className="calendar-mini-month">
             <header>
-              <h2>
-                {dateLabel(miniMonth, { month: "long", year: "numeric" })}
-              </h2>
+              <h2>{dateLabel(miniMonth, { month: "long", year: "numeric" })}</h2>
               <div>
                 <IconButton
                   name="ChevronRight"
@@ -790,9 +713,7 @@ function Calendar({
             <div className="calendar-mini-grid">
               <div className="calendar-mini-weekdays">
                 {miniDays.slice(0, 7).map((date) => (
-                  <span key={date}>
-                    {dateLabel(date, { weekday: "narrow" })}
-                  </span>
+                  <span key={date}>{dateLabel(date, { weekday: "narrow" })}</span>
                 ))}
               </div>
               <div className="calendar-mini-days">
@@ -818,13 +739,7 @@ function Calendar({
             onSubmit={(e) => {
               e.preventDefault();
               if (meet.trim()) {
-                createEvent(
-                  day,
-                  9 * 60,
-                  false,
-                  `Meeting with ${meet.trim()}`,
-                  30,
-                );
+                createEvent(day, 9 * 60, false, `Meeting with ${meet.trim()}`, 30);
                 setMeet("");
               }
             }}
@@ -864,15 +779,7 @@ function Calendar({
               <button
                 className="calendar-booking-link"
                 key={booking.id}
-                onClick={() =>
-                  createEvent(
-                    day,
-                    9 * 60,
-                    false,
-                    booking.title,
-                    booking.duration,
-                  )
-                }
+                onClick={() => createEvent(day, 9 * 60, false, booking.title, booking.duration)}
               >
                 {booking.title}
                 <span>{booking.duration} min</span>
@@ -915,9 +822,7 @@ function Calendar({
                       onChange={(e) =>
                         changeSources(
                           sources.map((item) =>
-                            item.id === source.id
-                              ? { ...item, checked: e.target.checked }
-                              : item,
+                            item.id === source.id ? { ...item, checked: e.target.checked } : item,
                           ),
                         )
                       }
@@ -931,21 +836,13 @@ function Calendar({
         </div>
         <footer className="aux-sidebar-footer">
           {onOpenSettings && (
-            <IconButton
-              name="Gear"
-              title="Calendar settings"
-              onClick={onOpenSettings}
-            />
+            <IconButton name="Gear" title="Calendar settings" onClick={onOpenSettings} />
           )}
         </footer>
       </aside>
       {sidebarDialog && (
         <Modal
-          label={
-            sidebarDialog === "calendar"
-              ? "Add calendar"
-              : "Create booking page"
-          }
+          label={sidebarDialog === "calendar" ? "Add calendar" : "Create booking page"}
           onClose={closeSidebarDialog}
           className="aux-editor calendar-sidebar-dialog"
         >
@@ -981,28 +878,18 @@ function Calendar({
                 }
                 closeSidebarDialog();
               } catch {
-                setCalendarError(
-                  "Could not save. Browser storage is unavailable.",
-                );
+                setCalendarError("Could not save. Browser storage is unavailable.");
               }
             }}
           >
             <div className="aux-editor-heading">
-              <h2>
-                {sidebarDialog === "calendar"
-                  ? "Add calendar"
-                  : "Create booking page"}
-              </h2>
+              <h2>{sidebarDialog === "calendar" ? "Add calendar" : "Create booking page"}</h2>
             </div>
             <div className="aux-editor-fields">
               <label className="calendar-sidebar-name">
                 Name
                 <input
-                  aria-label={
-                    sidebarDialog === "calendar"
-                      ? "Calendar name"
-                      : "Booking page name"
-                  }
+                  aria-label={sidebarDialog === "calendar" ? "Calendar name" : "Booking page name"}
                   required
                   autoFocus
                   value={sidebarTitle}
@@ -1029,11 +916,7 @@ function Calendar({
               )}
             </div>
             <footer className="aux-editor-footer">
-              <button
-                type="button"
-                className="aux-button aux-cancel"
-                onClick={closeSidebarDialog}
-              >
+              <button type="button" className="aux-button aux-cancel" onClick={closeSidebarDialog}>
                 Cancel
               </button>
               <button className="aux-button aux-primary" type="submit">
@@ -1053,16 +936,10 @@ function Calendar({
           onSave={(event) => {
             saveEvents(
               event.id
-                ? events.map((existing) =>
-                    existing.id === event.id ? event : existing,
-                  )
+                ? events.map((existing) => (existing.id === event.id ? event : existing))
                 : [...events, { ...event, id: crypto.randomUUID() }],
             );
-            setDay(
-              event.allDay
-                ? event.start
-                : wallTime(event.start, timezone).slice(0, 10),
-            );
+            setDay(event.allDay ? event.start : wallTime(event.start, timezone).slice(0, 10));
             setEditor(null);
           }}
           onDelete={() => {
@@ -1093,9 +970,7 @@ function EventEditor({
   onDelete: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
-  const [start, setStart] = useState(
-    event.allDay ? event.start : wallTime(event.start, timezone),
-  );
+  const [start, setStart] = useState(event.allDay ? event.start : wallTime(event.start, timezone));
   const [end, setEnd] = useState(
     event.allDay ? addDays(event.end, -1) : wallTime(event.end, timezone),
   );
@@ -1113,8 +988,7 @@ function EventEditor({
       if (!start || !end) throw new Error("Enter a start and end date.");
       const from = allDay ? start : toInstant(start, timezone);
       const to = allDay ? addDays(end, 1) : toInstant(end, timezone);
-      if (Date.parse(to) <= Date.parse(from))
-        throw new Error("The end must be after the start.");
+      if (Date.parse(to) <= Date.parse(from)) throw new Error("The end must be after the start.");
       onSave({
         ...event,
         title: title.trim(),
@@ -1233,9 +1107,7 @@ function EventEditor({
             <select
               aria-label="Event color"
               value={color}
-              onChange={(e) =>
-                setColor(e.target.value as CalendarEvent["color"])
-              }
+              onChange={(e) => setColor(e.target.value as CalendarEvent["color"])}
             >
               <option value="blue">Blue</option>
               <option value="violet">Violet</option>
@@ -1261,9 +1133,7 @@ function EventEditor({
                     try {
                       onDelete();
                     } catch {
-                      setError(
-                        "Could not delete this event. Browser storage is unavailable.",
-                      );
+                      setError("Could not delete this event. Browser storage is unavailable.");
                     }
                   }}
                 >
@@ -1286,11 +1156,7 @@ function EventEditor({
             ))}
           {!confirmDelete && (
             <>
-              <button
-                type="button"
-                className="aux-button aux-cancel"
-                onClick={onClose}
-              >
+              <button type="button" className="aux-button aux-cancel" onClick={onClose}>
                 Cancel <Key>Esc</Key>
               </button>
               <button type="submit" className="aux-button aux-primary">

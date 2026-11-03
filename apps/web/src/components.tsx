@@ -22,9 +22,7 @@ const paths: Record<string, ReactNode> = {
   Close: <path d="m5 5 10 10M15 5 5 15" />,
   Plus: <path d="M10 3v14M3 10h14" />,
   Minus: <path d="M4 10h12" />,
-  Star: (
-    <path d="m10 2 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8Z" />
-  ),
+  Star: <path d="m10 2 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8Z" />,
   Inbox: (
     <>
       <path d="M4 3h12l2 10v4H2v-4Z" />
@@ -232,8 +230,7 @@ export function Modal({
       (
         items.find(
           (e) =>
-            e.tagName === "INPUT" &&
-            !["radio", "checkbox"].includes((e as HTMLInputElement).type),
+            e.tagName === "INPUT" && !["radio", "checkbox"].includes((e as HTMLInputElement).type),
         ) || items[0]
       )?.focus();
     }

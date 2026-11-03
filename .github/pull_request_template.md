@@ -10,7 +10,9 @@ evidence/checks are complete, then obtain reviewer approval before merge/deploy.
 - Change and reason:
 - Review base / before commit:
 - Candidate / after commit:
+
 <!-- Choose exactly one change classification. -->
+
 - [ ] UIPR — visible UI, interaction, loading, motion or rendering can change.
 - [ ] Non-UI only — visual evidence is N/A because:
 
@@ -23,8 +25,8 @@ Embed/link media the reviewer can access, not local paths. Never publish real
 mail (even redacted), credentials, private browser chrome or raw private logs. -->
 
 | Scenario | Before | After |
-| --- | --- | --- |
-| | | |
+| -------- | ------ | ----- |
+|          |        |       |
 
 - Fixture seed/counts and starting state:
 - Viewport, zoom, theme and density:
