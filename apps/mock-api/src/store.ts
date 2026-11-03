@@ -405,10 +405,12 @@ export class MockMailStore {
     return stored
   }
 
+  /** Threads a delivery by its In-Reply-To, then newest References; matches are found in SQL, not by parsing every message. */
   private replyThread(scope: StoreScope, inReplyTo?: string, refs: string[] = []): string {
-    const current = this.snapshot(scope)
+    const matching = this.db.query<{ threadId: string }, [string, string, string]>(
+      "SELECT json_extract(data,'$.threadId') threadId FROM mock_messages WHERE owner=? AND store_id=? AND data IS NOT NULL AND json_extract(data,'$.rfcMessageId')=?")
     for (const reference of [...(inReplyTo ? [inReplyTo] : []), ...[...refs].reverse()]) {
-      const threads = new Set(current.filter(message => message.rfcMessageId === reference).map(message => message.threadId))
+      const threads = new Set(matching.all(scope.owner, scope.storeId, reference).map(row => row.threadId))
       if (threads.size === 1) return [...threads][0]!
       if (threads.size > 1) invalid('Ambiguous reply reference; supply an explicit native thread ID.')
     }

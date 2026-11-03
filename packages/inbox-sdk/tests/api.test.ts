@@ -5,6 +5,8 @@ import { DomUtils, parseDocument } from 'htmlparser2'
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto'
 import { chmod, link, mkdir, mkdtemp, readFile, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
+import { realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { brotliCompressSync, deflateSync, gzipSync } from 'node:zlib'
 import { SaxesParser } from 'saxes'
 import { createInbox } from '../src/core'
@@ -28,7 +30,7 @@ import * as WindowDTO from '../../../apps/shared/inbox-window'
 import { classifyAttention } from '../../../apps/shared/mail-attention'
 import { normalizeSplits } from '../../../apps/shared/splits'
 import { mailFacts } from '../src/mail-facts'
-import { createDataset, inventory, openMailSource } from '../../../apps/local-host/src/classification/store'
+import { createDataset, inventory, normalizeTemplate, openMailSource } from '../../../apps/local-host/src/classification/store'
 import { labelRun, trainExport, refineFile } from '../../../apps/local-host/src/classification/cli'
 import { classifyEmail, InferenceError } from '../../../apps/local-host/src/classification/inference'
 import { sourceFactKeys, taxonomy, validateClassification, type Classification, type ClassificationInput } from '../../../apps/local-host/src/classification/schema'
@@ -58,7 +60,8 @@ import type {
   ProviderFolder, SendInput, SendResult, SyncContext, SyncCursor, SyncOptions, SyncResult,
 } from '../server/sdk/types'
 
-const TEMP_ROOT = '/private/var/folders/2j/6mslx1715gx8frsyn66sf1sh0000gn/T/opencode'
+// Resolved, so macOS /var -> /private/var symlinks don't trip path checks.
+const TEMP_ROOT = realpathSync(tmpdir())
 const FULL = 'reference-mail'
 const RESTRICTED = 'reference-read-only'
 const DYNAMIC = 'unanticipated-provider-2026'
@@ -74,7 +77,41 @@ afterEach(async () => {
   for (const task of tasks) await task()
 })
 
+/**
+ * Puts Date.now on the fixture timeline (EPOCH + 1 day, then real elapsed time) for one test.
+ * The host window service reads the wall clock for the fixed 45-day Important window, while
+ * fixture mail is dated around EPOCH, so without this those tests depend on the calendar day.
+ */
+function anchorWallClock() {
+  const real = Date.now, offset = real() - (EPOCH + 86_400_000)
+  const clock = spyOn(Date, 'now').mockImplementation(() => real() - offset)
+  cleanup.push(async () => { clock.mockRestore() })
+}
+
 describe('offline classification dataset', () => {
+  test('template normalization keeps the original split-group text for addresses, URLs and long tokens', () => {
+    // Literals were produced by the original `[local]+@[\w.-]+` implementation (d3725bc).
+    // Split groups hash this text, so any change here would move existing examples' groups.
+    const cases: Array<[input: string, expected: string]> = [
+      // Ordinary addresses, including digits that would otherwise fold to 0.
+      ['Reply to Ana.Ng+News@Example.test or ops_2@mail.example.test by Friday', 'reply to or by friday'],
+      ['Contact desk-7@example.test for ticket 4821', 'contact for ticket 0'],
+      // Back-to-back addresses: a match never extends into a following `@` or local-part symbol.
+      ['Chain a@b.c@d then x@y/z@w.test and p@q+r@s.test end', 'chain @d then and end'],
+      ['Glued first@example.test,second@example.test;third@example.test', 'glued , ;'],
+      // URL/address overlaps: whichever alternative starts first wins.
+      ['See https://example.test/a@b and www.example.test/x@y then mail@example.test/path', 'see and then /path'],
+      ['Prefix xhttp://example.test@q and user@example.test/https://example.test/z', 'prefix x and /'],
+      // Token boundaries: punctuation, a trailing dot, non-ASCII and NFKC digits before the local part, a bare `@`.
+      ['(team@example.test), <lead@example.test>; "quoted@example.test" tail@example.test.', '( ), < >; " "'],
+      ['Café Ünïcode@Example.test ①②@example.test 😀a@b.test end@', 'café ünï 😀 end@'],
+      // Long tokens with no `@` survive intact (and must stay linear).
+      [`Token ${'x'.repeat(5000)} end`, `token ${'x'.repeat(5000)} end`],
+      [`Blob ${'ab9_'.repeat(1500)}.test without at`, `blob ${'ab0_'.repeat(1500)}.test without at`],
+    ]
+    for (const [input, expected] of cases) expect(normalizeTemplate(input)).toBe(expected)
+  })
+
   test('per-label policies preserve source eligibility, reject model substitutions and require independent groups', () => {
     const actions = Object.keys(taxonomy.actions) as Classification['actions']
     const rows: PolicyRow[] = Array.from({ length: 80 }, (_, index) => ({ exampleId: `policy-${index}`, splitGroup: `group-${index % 8}`,
@@ -2421,6 +2458,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('cold giant conversations with unknown attention stay in Important review, never Other', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     await h.seed('alice', 'unknown-window', Array.from({ length: 620 }, (_, index) => native(`unknown-${index}`, {
       threadId: 'one-giant', receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: BODY_SECRET,
@@ -2453,6 +2491,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('opening a requested inbox page does not wait for a new-arrival assessment hold', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     const { account } = await h.seed('alice', 'requested-page-hold', [native('visible-during-assessment', { bodyText: 'Please confirm the fictional delivery plan.' })])
     const mailboxIds = (await h.inbox.mailboxes('alice')).map(box => box.id)
@@ -2480,6 +2519,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('long conversation page, detail and capture contexts agree before W and reject later content changes', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     const { account, box } = await h.seed('alice', 'long-page-context', Array.from({ length: 120 }, (_, index) => native(`long-context-${index}`, {
       threadId: 'long-context', receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: 'Please confirm the fictional delivery plan.',
@@ -2582,6 +2622,7 @@ describe('bounded host inbox window', () => {
   }, 15000)
 
   test('captured pages make progress across several long conversations without raising the detail-read budget', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     await h.seed('alice', 'long-window-capture', Array.from({ length: 6 * 51 }, (_, index) => native(`long-capture-${index}`, {
       threadId: `long-thread-${Math.floor(index / 51)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -2921,6 +2962,7 @@ describe('bounded host inbox window', () => {
   }, 30000)
 
   test('identical public query openings reconcile independently when changes are interleaved', async () => {
+    anchorWallClock()
     const h = await fixture({ allowProviderWrites: false }), database = new Database(':memory:')
     const { box } = await h.seed('alice', 'independent-query-opens', Array.from({ length: 4 }, (_, index) => native(`query-open-${index}`, {
       threadId: `query-open-thread-${index}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: 'Please confirm the fictional delivery plan.',
@@ -3113,6 +3155,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('small selections retain missing IDs and freeze accepted targets rather than including later replies', async () => {
+    anchorWallClock()
     const h = await fixture()
     const { account, box } = await h.seed('alice', 'window-capture', Array.from({ length: 6 }, (_, index) => native(`capture-${index}`, {
       threadId: `capture-thread-${Math.floor(index / 2)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -3159,6 +3202,7 @@ describe('bounded host inbox window', () => {
   }, 15000)
 
   test('Zero persists review exclusions and credits only owned durable Done, W, Other and Later receipts with conditional Undo and partial replay', async () => {
+    anchorWallClock()
     const h = await fixture()
     await h.seed('alice', 'window-zero', Array.from({ length: 24 }, (_, index) => native(`zero-${index}`, {
       threadId: `zero-thread-${Math.floor(index / 2)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -6191,6 +6235,7 @@ describe('mail HTTP ownership and provider lifecycle', () => {
   })
 
   test('an unknown registered provider works end to end, and unsupported capabilities do not disable local features', async () => {
+    anchorWallClock()
     const h = await fixture()
     const dynamic = await h.seed('alice', 'dynamic', [native('external')], DYNAMIC)
     const readOnly = await h.seed('alice', 'readonly', [
@@ -14614,6 +14659,9 @@ describe('AI triage service', () => {
 
   test('skipped archive inventory bytes and examined rows survive pause and restart and end with a truthful bounded-limit failure', async () => {
     const h = await fixture({ eventRetention: 20 }), database = new Database(':memory:')
+    // The byte budget needs >32 MiB of real SDK summaries, and ingesting them is most of this
+    // test's time. Only the AI database restarts here, so skip the SDK file store's disk commits.
+    await h.restart(new Database(':memory:'))
     await h.seed('alice', 'ai-skipped-budget', Array.from({ length: 15000 }, (_, index) => native(`archived-budget-${index}`, {
       folder: 'archive', subject: `Archived budget ${index} ${'a'.repeat(2048)}`, bodyText: 'Fictional historical copy. '.repeat(12),
     })))
