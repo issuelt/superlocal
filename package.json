@@ -1,10 +1,11 @@
 {
   "name": "superlocal",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "type": "module",
-  "packageManager": "bun@1.4.0",
-  "engines": { "bun": ">=1.4.0" },
-  "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "classify": "bun --no-env-file apps/local-host/src/classification/cli.ts",
     "start": "bun --no-env-file run --cwd apps/web build && bun --no-env-file scripts/dev.ts --built",
@@ -26,6 +27,20 @@
     "build": "bun run --cwd packages/inbox-sdk build",
     "test": "bun run --cwd packages/inbox-sdk test",
     "test:api": "bun run --cwd packages/inbox-sdk test:api",
-    "test:provider": "bun run --cwd packages/inbox-sdk test:provider"
-  }
+    "test:provider": "bun run --cwd packages/inbox-sdk test:provider",
+    "lint": "oxlint --report-unused-disable-directives",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "knip": "knip"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.90.0",
+    "knip": "6.44.1",
+    "oxfmt": "0.76.0",
+    "oxlint": "1.90.0"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "packageManager": "bun@1.4.0"
 }

@@ -1,0 +1,62 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    ".reference/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "data/**",
+    "apps/web/reference/**"
+  ],
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "react", "import"],
+  "jsPlugins": ["./scripts/oxlint-plugin.ts"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "eslint/no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }
+    ],
+    "eslint/no-control-regex": "off",
+    "eslint/no-new": "error",
+    "eslint/no-unneeded-ternary": "error",
+    "oxc/no-accumulating-spread": "error",
+    "react/jsx-key": "error",
+    "react/no-array-index-key": "warn",
+    "react/no-unstable-nested-components": "error",
+    "react/rules-of-hooks": "error",
+    "react-in-jsx-scope": "off",
+    "react/react-in-jsx-scope": "off",
+    "unicorn/no-useless-spread": "error",
+    "unicorn/no-useless-fallback-in-spread": "error",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "unicorn/prefer-set-has": "off",
+    "eslint/no-await-in-loop": "off",
+    "eslint/no-shadow": "off",
+    "eslint/no-underscore-dangle": "off",
+    "eslint/no-unmodified-loop-condition": "off",
+    "oxc/no-map-spread": "off",
+    "import/no-unassigned-import": "off",
+    "import/no-named-as-default": "off",
+    "import/no-named-as-default-member": "off",
+    "react/no-object-type-as-default-prop": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "superlocal/require-suppression-reason": "error"
+  },
+  "overrides": [
+    {
+      "files": ["apps/web/src/**"],
+      "rules": { "superlocal/no-em-dash-copy": "error" }
+    },
+    {
+      "files": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": { "eslint/no-unused-expressions": "off" }
+    }
+  ]
+}

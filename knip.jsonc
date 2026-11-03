@@ -1,0 +1,40 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Exported types document the SDK contract even before they have consumers.
+  "rules": { "types": "off", "nsTypes": "off" },
+  "workspaces": {
+    ".": {
+      // apps/shared has no manifest; the apps import it by relative path.
+      "entry": ["scripts/*.ts", "apps/shared/*.ts"],
+      "project": ["scripts/**/*.ts", "apps/shared/**/*.ts"],
+    },
+    "packages/inbox-sdk": {
+      // core.ts starts the correspondence worker by path through Bun.resolveSync.
+      "entry": [
+        "src/correspondence-worker.ts",
+        "scripts/*.ts",
+        "public/pilot.ts",
+        "tests/*.test.ts",
+      ],
+      "project": [
+        "src/**/*.ts",
+        "server/**/*.ts",
+        "scripts/**/*.ts",
+        "public/**/*.ts",
+        "tests/**/*.ts",
+      ],
+    },
+    "apps/web": {
+      "entry": ["scripts/*.mjs", "tests/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "tests/**/*.ts"],
+      // `node --test tests/*.test.ts` in package.json is a shell glob, not an import.
+      "ignoreUnresolved": ["tests/\\*.test.ts"],
+    },
+    "apps/local-host": {
+      "project": ["src/**/*.ts"],
+    },
+    "apps/mock-api": {
+      "project": ["src/**/*.ts"],
+    },
+  },
+}
