@@ -31,7 +31,9 @@
     "lint": "oxlint --report-unused-disable-directives",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "knip": "knip"
+    "knip": "knip",
+    "check:changed": "bun --no-env-file scripts/check-changed.ts",
+    "sync:repos": "bun --no-env-file scripts/sync-reference-repos.ts"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.90.0",
