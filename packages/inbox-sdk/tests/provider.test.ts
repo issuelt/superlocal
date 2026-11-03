@@ -1778,9 +1778,7 @@ async function imapHarness(smtp: boolean): Promise<ContractHarness> {
         .get(this.account)!
         .get(destination)!
         .set(moved, { ...message, uid: moved });
-      return {
-        ...(behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), moved]]), uidValidity }),
-      };
+      return behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), moved]]), uidValidity };
     }
     async messageCopy(uid: string, destination: string) {
       commands.push({ method: "copy", uid });
@@ -1792,9 +1790,7 @@ async function imapHarness(smtp: boolean): Promise<ContractHarness> {
         .get(this.account)!
         .get(destination)!
         .set(copied, { ...message, uid: copied });
-      return {
-        ...(behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), copied]]), uidValidity }),
-      };
+      return behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), copied]]), uidValidity };
     }
     async append(path: string, source: Buffer) {
       commands.push({ method: "append" });
@@ -3697,9 +3693,9 @@ describe("imap capability boundaries and SDK integration", () => {
     ).toBe(true);
     expect(h.writes!()).toBe(0);
     await h.provider.mutate(h.rootId, { isStarred: true });
-    expect(
-      h.imapPeer!.commands.filter((command) => command.method === "open").at(-1)?.readOnly,
-    ).toBe(false);
+    expect(h.imapPeer!.commands.findLast((command) => command.method === "open")?.readOnly).toBe(
+      false,
+    );
   });
 
   for (const condstore of [true, false])

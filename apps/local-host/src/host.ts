@@ -930,7 +930,7 @@ export async function createLocalHost(
             context.inboxWindow.close(),
           ]),
         );
-        await Promise.allSettled([...pending]);
+        await Promise.allSettled(pending);
         ownerContexts.clear();
         await aiTriage.close();
         await performanceLog.close();

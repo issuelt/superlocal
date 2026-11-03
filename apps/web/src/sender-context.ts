@@ -143,7 +143,7 @@ export function senderContact(
   return {
     name: mail.from,
     email: mail.email,
-    messageId: mail.messages.filter((message) => !message.pending).at(-1)?.id ?? null,
+    messageId: mail.messages.findLast((message) => !message.pending)?.id ?? null,
     role: "sender",
   };
 }

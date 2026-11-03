@@ -69,13 +69,13 @@ function clean(value: string): string {
     value
       .replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "")
       // Bounded labels avoid backtracking across arbitrarily many unmatched '['.
-      .replace(/!?\[([^\]\r\n]{0,512})\]\([^\)\r\n]*(?:\)|$)/g, (match, label: string) =>
+      .replace(/!?\[([^\]\r\n]{0,512})\]\([^)\r\n]*(?:\)|$)/g, (match, label: string) =>
         match.startsWith("!") ? "" : label,
       )
       .replace(/!?\[([^\]\r\n]{0,512})\]\[[^\]\r\n]{0,128}\]/g, (match, label: string) =>
         match.startsWith("!") ? "" : label,
       )
-      .replace(/(?:https?:\/\/|www\.|mailto:)[^\s<>\[\]]+/gi, "")
+      .replace(/(?:https?:\/\/|www\.|mailto:)[^\s<>[\]]+/gi, "")
       .replace(/\[\s*\]|<\s*>|\(\s*\)/g, "")
       .replace(/^[ \t]*\[\d{1,3}\]:[ \t]*$/gm, "")
       .replace(/^[ \t]*[|•·][ \t]*|[ \t]*[|•·][ \t]*$/gm, ""),
