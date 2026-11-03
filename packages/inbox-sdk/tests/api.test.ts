@@ -14636,6 +14636,9 @@ describe('AI triage service', () => {
 
   test('skipped archive inventory bytes and examined rows survive pause and restart and end with a truthful bounded-limit failure', async () => {
     const h = await fixture({ eventRetention: 20 }), database = new Database(':memory:')
+    // The byte budget needs >32 MiB of real SDK summaries, and ingesting them is most of this
+    // test's time. Only the AI database restarts here, so skip the SDK file store's disk commits.
+    await h.restart(new Database(':memory:'))
     await h.seed('alice', 'ai-skipped-budget', Array.from({ length: 15000 }, (_, index) => native(`archived-budget-${index}`, {
       folder: 'archive', subject: `Archived budget ${index} ${'a'.repeat(2048)}`, bodyText: 'Fictional historical copy. '.repeat(12),
     })))
