@@ -18,10 +18,19 @@ type Item = {
   naturalTop: number;
   clone: HTMLElement | null;
 };
+/** The list viewport as read during a capture; holds translate rows, never move or resize it. */
+type Frame = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  scrollTop: number;
+};
 type Snapshot = {
   root: HTMLDivElement;
   items: Map<string, Item>;
   end: number;
+  frame: Frame;
 };
 type Ghost = { node: HTMLElement; top: number; animation: Animation | null };
 type Batch = {
@@ -101,7 +110,18 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
       });
       end = Math.max(end, naturalTop + rect.height);
     }
-    return { root, items, end: end + (parseFloat(padding.paddingBottom) || 0) };
+    return {
+      root,
+      items,
+      end: end + (parseFloat(padding.paddingBottom) || 0),
+      frame: {
+        left: bounds.left + root.clientLeft,
+        top: bounds.top + root.clientTop,
+        width: root.clientWidth,
+        height: root.clientHeight,
+        scrollTop: root.scrollTop,
+      },
+    };
   }
 
   function syncHighlight(snap = false, returning = false) {
@@ -139,20 +159,19 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
     ink.style.transform = visible ? "translateX(0) scaleY(1)" : "translateX(30px) scaleY(.8)";
   }
 
-  function placeGhosts() {
+  /** Reuses the frame captured just before the hold rules were written, so it forces no layout. */
+  function placeGhosts(frame: Frame) {
     const current = scene.current;
     if (!current) return;
-    const { root, clip } = current;
-    const bounds = root.getBoundingClientRect();
-    Object.assign(clip.style, {
-      left: `${bounds.left + root.clientLeft}px`,
-      top: `${bounds.top + root.clientTop}px`,
-      width: `${root.clientWidth}px`,
-      height: `${root.clientHeight}px`,
+    Object.assign(current.clip.style, {
+      left: `${frame.left}px`,
+      top: `${frame.top}px`,
+      width: `${frame.width}px`,
+      height: `${frame.height}px`,
     });
     for (const batch of batches.current) {
       for (const ghost of batch.ghosts.values()) {
-        ghost.node.style.top = `${ghost.top - root.scrollTop}px`;
+        ghost.node.style.top = `${ghost.top - frame.scrollTop}px`;
       }
     }
   }
@@ -189,7 +208,7 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
     const height = [...batches.current].reduce((total, batch) => total + batch.height, 0);
     current.end.style.display = "block";
     current.end.style.top = `${Math.max(0, natural.end + height - 1)}px`;
-    placeGhosts();
+    placeGhosts(natural.frame);
   }
 
   function release(batch: Batch, collapse: boolean) {
@@ -295,7 +314,7 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
       }, 550),
     };
     batches.current.add(batch);
-    const bounds = current.root.getBoundingClientRect();
+    const { frame } = after;
     for (const item of removed) {
       const clone = item.clone;
       if (!clone) continue;
@@ -318,8 +337,8 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
       }
       Object.assign(clone.style, {
         position: "absolute",
-        left: `${item.rect.left - bounds.left - current.root.clientLeft}px`,
-        top: `${item.top - current.root.scrollTop}px`,
+        left: `${item.rect.left - frame.left}px`,
+        top: `${item.top - frame.scrollTop}px`,
         width: `${item.rect.width}px`,
         height: `${item.rect.height}px`,
         margin: "0",
@@ -489,7 +508,9 @@ export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: O
         setHasExits(batches.current.size > 0);
       }
     } else if (batches.current.size) {
-      applyHolds();
+      // Fixed-height rows: with the same rows (and no scroll/resize, which cancel), the holds
+      // still fit. Re-deriving them would force two full layouts on every unrelated render.
+      if (rowsChanged || request) applyHolds();
     } else if (reason === "remove") {
       applyHolds();
       setHasExits(false);
