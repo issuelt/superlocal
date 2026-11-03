@@ -945,19 +945,10 @@ function sanitizeEmailMarkup(
   const clean = sanitizeHtml(html, {
     allowedTags: [...SAFE_EMAIL_TAGS, ...(options.document ? ["html", "body"] : [])],
     allowedAttributes: {
-      "*": [
-        "class",
-        "dir",
-        "lang",
-        "title",
-        "aria-label",
-        "align",
-        "bgcolor",
-        "valign",
-        "role",
-        "style",
-      ],
-      a: ["href", "name", "target", "rel"],
+      // Sender `title`s are dropped: one on an element inside a link would replace the link's
+      // destination tooltip (set below) on hover. The only titles emitted are real destinations.
+      "*": ["class", "dir", "lang", "aria-label", "align", "bgcolor", "valign", "role", "style"],
+      a: ["href", "name", "target", "rel", "title"],
       img: [
         "src",
         "data-openmail-src",
@@ -965,7 +956,6 @@ function sanitizeEmailMarkup(
         "width",
         "height",
         "loading",
-        "title",
         ...(options.document ? ["data-inbox-tracking"] : []),
       ],
       table: ["width", "height", "cellpadding", "cellspacing", "border", "background"],
@@ -1068,7 +1058,7 @@ function sanitizeEmailMarkup(
         bodyWrappers.add(attribs);
         return { tagName: "div", attribs };
       },
-      a: (_tagName, { href, ...attributes }) => {
+      a: (_tagName, { href, title: _senderTitle, ...attributes }) => {
         const resolved = href === undefined ? undefined : resolveCid(href);
         // A resolved CID is this message's own blob; otherwise require a scheme, and an absolute
         // URL for http(s).
@@ -1081,7 +1071,7 @@ function sanitizeEmailMarkup(
                 ? resolved
                 : undefined;
         // Link text can claim one destination and point at another, so hovering an outside link
-        // shows where it really goes. This replaces any sender-supplied title.
+        // shows where it really goes. The sender's title is always dropped.
         const outside = safeHref !== undefined && resolved === href;
         return {
           tagName: "a",
