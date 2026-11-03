@@ -864,6 +864,26 @@ export function createAiTriageService({
       }
     });
   }
+  /**
+   * The halt is the account's problem, not this conversation's: unless newer work replaced
+   * it, the conversation waits in the queue for the halt to end, keeping its attempt count.
+   */
+  function holdForHalt(queue: QueueRow, code: string) {
+    transaction(() => {
+      const requeued = db
+        .query(
+          "UPDATE local_ai_queue SET status='queued',due=? WHERE owner=? AND source=? AND thread=? AND generation=? AND fingerprint=?",
+        )
+        .run(now(), queue.owner, queue.source, queue.thread, queue.generation, queue.fingerprint);
+      const row = decisionRow(queue.owner, queue.source, queue.thread);
+      if (!requeued.changes || !row) return;
+      const decision: AiDecision = JSON.parse(row.data);
+      decision.state = "pending";
+      decision.holdUntil = null;
+      decision.problemCode = code;
+      publish(queue.owner, decision, row.fingerprint, row.sender);
+    });
+  }
   /** Ends a provider halt and resumes the jobs it paused that are still current. */
   function resumeHalted() {
     providerHalt = null;
@@ -2372,6 +2392,11 @@ export function createAiTriageService({
         publish(queue.owner, decision, queue.fingerprint, context!.sender, context!.messages);
       });
     if (!permitted(queue) || controller.signal.aborted) return;
+    // Another request may have started a halt while this one awaited its context.
+    if (providerHalt) {
+      holdForHalt(queue, providerHalt);
+      return;
+    }
     const attempt = beginAttempt(queue, value.model, context.hash);
     let result: AiInferenceResult;
     try {
@@ -2403,22 +2428,7 @@ export function createAiTriageService({
     if (haltCode) {
       halt(haltCode);
       finishAttempt(queue.owner, attempt, result);
-      // The provider refused the account, not this conversation: unless newer work replaced
-      // it, it waits for the halt to end, keeping its attempt count.
-      transaction(() => {
-        const requeued = db
-          .query(
-            "UPDATE local_ai_queue SET status='queued',due=? WHERE owner=? AND source=? AND thread=? AND generation=? AND fingerprint=?",
-          )
-          .run(now(), queue.owner, queue.source, queue.thread, queue.generation, queue.fingerprint);
-        const row = decisionRow(queue.owner, queue.source, queue.thread);
-        if (!requeued.changes || !row) return;
-        const decision: AiDecision = JSON.parse(row.data);
-        decision.state = "pending";
-        decision.holdUntil = null;
-        decision.problemCode = haltCode;
-        publish(queue.owner, decision, row.fingerprint, row.sender);
-      });
+      holdForHalt(queue, haltCode);
       return;
     }
     let current: Context | null = null;

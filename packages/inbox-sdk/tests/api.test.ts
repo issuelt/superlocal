@@ -33489,6 +33489,84 @@ describe("AI triage service", () => {
     expect(calls).toBe(8);
   }, 15000);
 
+  test("a conversation still preparing its context when another request starts a halt is not sent, and resumes with it", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    const { account, box } = await h.seed("alice", "ai-halt-race", [native("halt-race-seed")]);
+    let calls = 0,
+      rejected = true;
+    const held = deferred<void>(),
+      release = deferred<void>();
+    // Hold the second arrival inside prepare() (its thread read) until the first one's 401 lands.
+    const inbox = new Proxy(h.inbox, {
+      get(target, property) {
+        const value = Reflect.get(target, property);
+        if (property !== "thread") return typeof value === "function" ? value.bind(target) : value;
+        return async (...args: Parameters<typeof target.thread>) => {
+          const page = await target.thread(...args);
+          if (page.items.some((item) => item.subject === "Subject halt-race-held")) {
+            held.resolve();
+            await release.promise;
+          }
+          return page;
+        };
+      },
+    });
+    const service = createAiTriageService({
+      database,
+      inbox,
+      configuration: { ...configuration, concurrency: 2 },
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        if (!rejected) return Response.json(response);
+        await held.promise;
+        return new Response(BODY_SECRET, { status: 401 });
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      release.resolve();
+      await service.close();
+      database.close();
+    });
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    box.put(native("halt-race-sent"));
+    box.put(native("halt-race-held"));
+    await h.sync("alice", account.id);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).problemCode !== "AI_AUTH_FAILED") await Bun.sleep(10);
+      })(),
+      "halt from the first arrival",
+    );
+    release.resolve();
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).queue.processing) await Bun.sleep(10);
+      })(),
+      "held arrival settles",
+    );
+    expect(calls).toBe(1);
+    expect((await service.state("alice")).queue).toEqual({ pending: 2, processing: 0, failed: 0 });
+    expect(
+      database
+        .query<{ attempts: number }, []>("SELECT attempts FROM local_ai_queue")
+        .all()
+        .map((row) => row.attempts),
+    ).toEqual([0, 0]);
+    rejected = false;
+    await service.configure("alice", (await service.state("alice")).settings);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).usage.completed !== 2) await Bun.sleep(10);
+      })(),
+      "both arrivals sorted after the settings save",
+    );
+    expect(calls).toBe(3);
+  });
+
   test("in-flight pause and cancel stop application without inventing free usage and an explicit new job can resume work", async () => {
     const h = await fixture(),
       database = new Database(":memory:");
