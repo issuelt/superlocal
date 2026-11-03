@@ -55,9 +55,7 @@ jobs:
         env:
           INBOX_TEST_LIVE: "false"
 
-  # Format is enforced. Lint and knip still have findings that predate them, so
-  # those steps report without failing the job; remove their continue-on-error
-  # once the findings are fixed.
+  # Lint, format and knip are all enforced: any finding fails the job.
   lint:
     name: Lint, format and knip
     runs-on: ubuntu-24.04
@@ -78,12 +76,10 @@ jobs:
       - run: bun --no-env-file install --frozen-lockfile
 
       - name: Lint
-        continue-on-error: true
         run: bun --no-env-file run lint
 
       - name: Format
         run: bun --no-env-file run fmt:check
 
       - name: Unused code
-        continue-on-error: true
         run: bun --no-env-file run knip

@@ -28,7 +28,7 @@
     "test": "bun run --cwd packages/inbox-sdk test",
     "test:api": "bun run --cwd packages/inbox-sdk test:api",
     "test:provider": "bun run --cwd packages/inbox-sdk test:provider",
-    "lint": "oxlint --report-unused-disable-directives",
+    "lint": "oxlint --report-unused-disable-directives --deny-warnings",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "knip": "knip",
