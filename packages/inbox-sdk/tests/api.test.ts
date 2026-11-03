@@ -27654,6 +27654,7 @@ describe("bounded thread ordering", () => {
 });
 
 import {
+  inferAiRule,
   inferAiTriage,
   loadAiInferenceConfig,
   prepareAiText,
@@ -28326,6 +28327,20 @@ describe("AI triage inference and local scoring", () => {
       expect(JSON.stringify(result)).not.toContain(configuration.apiKey);
       expect(JSON.stringify(result)).not.toContain(BODY_SECRET);
     }
+    // Precise retry-after-ms wins over coarse seconds; a gateway 408 is a transient timeout.
+    for (const [status, headers, code, retryAfterMs] of [
+      [429, { "retry-after-ms": "1500.2", "retry-after": "9" }, "AI_RATE_LIMITED", 1501],
+      [503, { "retry-after-ms": "soon", "retry-after": "3" }, "AI_PROVIDER_UNAVAILABLE", 3000],
+      [408, {}, "AI_TIMEOUT", null],
+    ] as const) {
+      expect(
+        await inferAiTriage(input, configuration, {
+          model: "fixture-model",
+          signal: new AbortController().signal,
+          fetcher: (async () => new Response(null, { status, headers })) as unknown as typeof fetch,
+        }),
+      ).toMatchObject({ outcome: "error", code, retryable: true, retryAfterMs });
+    }
     const transportError = await inferAiTriage(input, configuration, {
       model: "fixture-model",
       signal: new AbortController().signal,
@@ -28388,6 +28403,55 @@ describe("AI triage inference and local scoring", () => {
       assessment: null,
     });
     expect(calls).toBe(0);
+  });
+
+  test("rule drafts share the strict Responses parser, so refusals and malformed output are not reported as transport failures", async () => {
+    const draft = (body: unknown, init?: ResponseInit) =>
+      inferAiRule(
+        {
+          note: "These fixture alerts are not important",
+          conversation: {
+            subjects: ["Fixture alert"],
+            senderDomains: ["example.test"],
+            type: "notification",
+            reason: null,
+            topics: [],
+            currentCategory: "Important",
+          },
+        },
+        configuration,
+        {
+          model: "fixture-model",
+          signal: new AbortController().signal,
+          fetcher: (async () =>
+            body === null
+              ? new Response(BODY_SECRET, init)
+              : Response.json(body, init)) as unknown as typeof fetch,
+        },
+      );
+    const message = (content: unknown[]) => ({
+      ...response,
+      output: [{ type: "message", role: "assistant", content }],
+    });
+    const valid = { text: "Fixture alerts are not important.", category: "Other", supersedes: [] };
+    expect(await draft(message([{ type: "output_text", text: JSON.stringify(valid) }]))).toEqual({
+      outcome: "completed",
+      draft: { text: valid.text, category: "Other", supersedes: [] },
+      code: null,
+      usage: expect.objectContaining({ input: 1000, output: 100 }),
+    });
+    for (const [body, code] of [
+      [message([{ type: "refusal", refusal: "No." }]), "AI_RESPONSE_REFUSED"],
+      [message([{ type: "output_text", text: "not json" }]), "AI_RESPONSE_INVALID"],
+      [{ ...response, status: "incomplete" }, "AI_RESPONSE_INCOMPLETE"],
+    ] as const) {
+      const result = await draft(body);
+      expect(result).toMatchObject({ outcome: "error", draft: null, code });
+      // Billed usage is kept even when the draft is unusable.
+      expect(result.usage).toMatchObject({ input: 1000, output: 100 });
+    }
+    expect(await draft(null, { status: 408 })).toMatchObject({ code: "AI_TIMEOUT" });
+    expect(await draft(null, { status: 429 })).toMatchObject({ code: "AI_RATE_LIMITED" });
   });
 
   test("reply-only promotional offers cannot claim a required task outside email even with exact incoming evidence", async () => {

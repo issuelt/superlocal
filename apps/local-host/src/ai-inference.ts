@@ -634,12 +634,84 @@ function estimateCost(usage: AiTokenUsage, rate: AiRateCard | null): AiCostEstim
 
 const metadataId = (value: unknown): string | null =>
   typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,200}$/.test(value) ? value : null;
-function retryDelay(value: string | null): number | null {
-  if (!value || value.length > 100) return null;
-  const milliseconds = /^\d+(?:\.\d+)?$/.test(value)
-    ? Number(value) * 1000
-    : Date.parse(value) - Date.now();
-  return Number.isFinite(milliseconds) ? Math.min(300_000, Math.max(0, milliseconds)) : null;
+/**
+ * Provider-requested wait in whole milliseconds, capped at five minutes. Prefers the precise
+ * `retry-after-ms` (sent by Azure OpenAI, read by the OpenAI SDKs) over `retry-after` seconds
+ * or an HTTP date. Header order adapted from opencode `packages/ai/src/route/executor.ts` (MIT).
+ */
+function retryDelay(headers: Headers): number | null {
+  const decimal = /^\d+(?:\.\d+)?$/;
+  const precise = headers.get("retry-after-ms");
+  const value = headers.get("retry-after");
+  const milliseconds =
+    precise && precise.length <= 20 && decimal.test(precise)
+      ? Number(precise)
+      : !value || value.length > 100
+        ? NaN
+        : decimal.test(value)
+          ? Number(value) * 1000
+          : Date.parse(value) - Date.now();
+  return Number.isFinite(milliseconds)
+    ? Math.min(300_000, Math.max(0, Math.ceil(milliseconds)))
+    : null;
+}
+
+/**
+ * Fixed code for a non-2xx response; the body is never read because gateways echo prompts
+ * and credentials there. 408, 429 and 5xx are transient, as the OpenAI SDKs treat them.
+ */
+function httpFailure(response: Response) {
+  const status = response.status;
+  const retryable = status === 408 || status === 429 || status >= 500;
+  return {
+    code:
+      status === 429
+        ? "AI_RATE_LIMITED"
+        : status === 408
+          ? "AI_TIMEOUT"
+          : status === 401 || status === 403
+            ? "AI_AUTH_FAILED"
+            : status >= 500
+              ? "AI_PROVIDER_UNAVAILABLE"
+              : "AI_HTTP_FAILED",
+    retryable,
+    retryAfterMs: retryable ? retryDelay(response.headers) : null,
+  };
+}
+
+/**
+ * Concatenated assistant text from a Responses `output` array. Reasoning items are skipped;
+ * any refusal wins, and any other item or part shape makes the whole output invalid.
+ */
+function outputText(
+  output: unknown,
+): { kind: "text"; text: string } | { kind: "refused" } | { kind: "invalid" } {
+  if (!Array.isArray(output) || output.length > 64) return { kind: "invalid" };
+  const parts: string[] = [];
+  let refused = false,
+    invalid = false;
+  for (const item of output) {
+    if (object(item) && item.type === "reasoning") continue;
+    if (
+      !object(item) ||
+      item.type !== "message" ||
+      item.role !== "assistant" ||
+      !Array.isArray(item.content) ||
+      item.content.length > 32 ||
+      (item.status !== undefined && item.status !== "completed")
+    ) {
+      invalid = true;
+      continue;
+    }
+    for (const part of item.content) {
+      if (object(part) && part.type === "refusal") refused = true;
+      else if (object(part) && part.type === "output_text" && typeof part.text === "string")
+        parts.push(part.text);
+      else invalid = true;
+    }
+  }
+  if (refused) return { kind: "refused" };
+  return invalid || !parts.length ? { kind: "invalid" } : { kind: "text", text: parts.join("") };
 }
 
 async function responseJson(response: Response, signal: AbortSignal): Promise<unknown> {
@@ -784,19 +856,7 @@ export async function inferAiTriage(
       result.httpStatus = response.status;
       result.requestId = metadataId(response.headers.get("x-request-id"));
       if (!response.ok) {
-        result.code =
-          response.status === 429
-            ? "AI_RATE_LIMITED"
-            : response.status === 401 || response.status === 403
-              ? "AI_AUTH_FAILED"
-              : response.status >= 500
-                ? "AI_PROVIDER_UNAVAILABLE"
-                : "AI_HTTP_FAILED";
-        result.retryable = response.status === 429 || response.status >= 500;
-        result.retryAfterMs = result.retryable
-          ? retryDelay(response.headers.get("retry-after"))
-          : null;
-        // Error bodies may echo prompts and credentials; never read or persist them.
+        Object.assign(result, httpFailure(response));
         void response.body?.cancel().catch(() => {});
         return;
       }
@@ -833,61 +893,14 @@ export async function inferAiTriage(
         result.code = "AI_RESPONSE_FAILED";
         return;
       }
-      if (!Array.isArray(data.output) || data.output.length > 64) {
-        result.outcome = "invalid";
-        result.code = "AI_RESPONSE_INVALID";
-        return;
-      }
-      const parts: string[] = [];
-      let refused = false,
-        invalid = false;
-      for (const item of data.output) {
-        if (!object(item)) {
-          invalid = true;
-          continue;
-        }
-        if (item.type === "reasoning") continue;
-        if (
-          item.type !== "message" ||
-          item.role !== "assistant" ||
-          !Array.isArray(item.content) ||
-          item.content.length > 32
-        ) {
-          invalid = true;
-          continue;
-        }
-        if (item.status !== undefined && item.status !== "completed") {
-          invalid = true;
-          continue;
-        }
-        for (const part of item.content) {
-          if (!object(part)) {
-            invalid = true;
-            continue;
-          }
-          if (part.type === "refusal") {
-            refused = true;
-            continue;
-          }
-          if (part.type !== "output_text" || typeof part.text !== "string") {
-            invalid = true;
-            continue;
-          }
-          parts.push(part.text);
-        }
-      }
-      if (refused) {
-        result.outcome = "refused";
-        result.code = "AI_RESPONSE_REFUSED";
-        return;
-      }
-      if (invalid || !parts.length) {
-        result.outcome = "invalid";
-        result.code = "AI_RESPONSE_INVALID";
+      const output = outputText(data.output);
+      if (output.kind !== "text") {
+        result.outcome = output.kind;
+        result.code = output.kind === "refused" ? "AI_RESPONSE_REFUSED" : "AI_RESPONSE_INVALID";
         return;
       }
       try {
-        result.assessment = validateAiAssessment(JSON.parse(parts.join("")), input);
+        result.assessment = validateAiAssessment(JSON.parse(output.text), input);
       } catch (error) {
         result.outcome = "invalid";
         result.code = error instanceof AiSafeError ? error.code : "AI_ASSESSMENT_INVALID";
@@ -1021,33 +1034,23 @@ export async function inferAiRule(
     });
     if (!response.ok) {
       void response.body?.cancel().catch(() => {});
-      result.code =
-        response.status === 429
-          ? "AI_RATE_LIMITED"
-          : response.status === 401 || response.status === 403
-            ? "AI_AUTH_FAILED"
-            : response.status >= 500
-              ? "AI_PROVIDER_UNAVAILABLE"
-              : "AI_HTTP_FAILED";
+      result.code = httpFailure(response).code;
       return result;
     }
     const data = await responseJson(response, controller.signal);
-    if (!object(data) || data.status !== "completed" || !Array.isArray(data.output)) {
-      result.code = "AI_RESPONSE_INVALID";
-      return result;
-    }
+    if (!object(data)) fail("AI_RESPONSE_INVALID");
     result.usage = usageFrom(data.usage);
-    const text = data.output
-      .flatMap((item) =>
-        object(item) && item.type === "message" && Array.isArray(item.content) ? item.content : [],
-      )
-      .flatMap((part) =>
-        object(part) && part.type === "output_text" && typeof part.text === "string"
-          ? [part.text]
-          : [],
-      )
-      .join("");
-    const parsed: unknown = JSON.parse(text);
+    if (data.status === "incomplete") fail("AI_RESPONSE_INCOMPLETE");
+    if (data.status !== "completed") fail("AI_RESPONSE_INVALID");
+    const output = outputText(data.output);
+    if (output.kind === "refused") fail("AI_RESPONSE_REFUSED");
+    if (output.kind === "invalid") fail("AI_RESPONSE_INVALID");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(output.text);
+    } catch {
+      return fail("AI_RESPONSE_INVALID");
+    }
     if (
       !object(parsed) ||
       typeof parsed.text !== "string" ||
