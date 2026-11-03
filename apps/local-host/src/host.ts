@@ -18,6 +18,7 @@ import { loadAiInferenceConfig, type AiInferenceConfig } from './ai-inference'
 import { createAiTriageService } from './ai-triage'
 import { createInboxWindowService } from './inbox-window'
 import { createZeroSweepService } from './zero-sweep'
+import { inboxWindowPaths } from '../../shared/inbox-window'
 import type { AiSettings, AiFeedbackInput, AiReadingInput, AiTeachInput, AiThreadKey } from '../../shared/ai-triage'
 
 const safeHeaders = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Origin, Cookie' }
@@ -147,7 +148,7 @@ export async function createLocalHost(config: LocalConfig = loadLocalConfig(), e
         senderDomains: createSenderDomainHost({ inbox: liveInbox, owner, offline: config.mode === 'mock' }),
       }
       context = { ...services, inboxWindow: createInboxWindowService({ database: runtime.database, inbox: liveInbox, owner,
-        sessionKey: runtime.sessionKey, allowProviderWrites: config.allowProviderWrites, ai: aiTriage, ...services }),
+        sessionKey: runtime.sessionKey, allowProviderWrites: config.allowProviderWrites, ai: aiTriage, foreground: () => interactive > 0, ...services }),
         zeroSweep: createZeroSweepService({ database: runtime.database, inbox: liveInbox, owner }) }
       ownerContexts.set(owner, context)
     }
@@ -161,6 +162,8 @@ export async function createLocalHost(config: LocalConfig = loadLocalConfig(), e
   const cookieHash = (value: string) => createHmac('sha256', runtime.sessionKey).update(value).digest('hex')
   const streamShutdown = new AbortController()
   const pending = new Set<Promise<Response>>()
+  // In-flight requests other than background count fills, which yield to them.
+  let interactive = 0
   let closed = false
   let closing: Promise<void> | undefined
 
@@ -411,6 +414,8 @@ export async function createLocalHost(config: LocalConfig = loadLocalConfig(), e
       return owner
     },
     fetch(request: Request): Promise<Response> {
+      const foreground = new URL(request.url).pathname !== inboxWindowPaths.counts
+      if (foreground) interactive++
       const task = dispatch(request).then(async response => {
         if (applicationAuth && response.status === 401 && !await applicationAuth.identity(request)) response.headers.set('X-Superlocal-Auth', 'required')
         return response
@@ -421,7 +426,7 @@ export async function createLocalHost(config: LocalConfig = loadLocalConfig(), e
         return problem(status, known && /^[A-Z][A-Z0-9_]{0,79}$/.test(error.code) ? error.code : 'HOST_REQUEST_FAILED', 'The local host request could not be completed.')
       })
       pending.add(task)
-      void task.then(() => pending.delete(task), () => pending.delete(task))
+      void task.finally(() => { pending.delete(task); if (foreground) interactive-- })
       return task
     },
     start() {
