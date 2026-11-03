@@ -77,6 +77,17 @@ afterEach(async () => {
   for (const task of tasks) await task()
 })
 
+/**
+ * Puts Date.now on the fixture timeline (EPOCH + 1 day, then real elapsed time) for one test.
+ * The host window service reads the wall clock for the fixed 45-day Important window, while
+ * fixture mail is dated around EPOCH, so without this those tests depend on the calendar day.
+ */
+function anchorWallClock() {
+  const real = Date.now, offset = real() - (EPOCH + 86_400_000)
+  const clock = spyOn(Date, 'now').mockImplementation(() => real() - offset)
+  cleanup.push(async () => { clock.mockRestore() })
+}
+
 describe('offline classification dataset', () => {
   test('per-label policies preserve source eligibility, reject model substitutions and require independent groups', () => {
     const actions = Object.keys(taxonomy.actions) as Classification['actions']
@@ -2424,6 +2435,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('cold giant conversations with unknown attention stay in Important review, never Other', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     await h.seed('alice', 'unknown-window', Array.from({ length: 620 }, (_, index) => native(`unknown-${index}`, {
       threadId: 'one-giant', receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: BODY_SECRET,
@@ -2456,6 +2468,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('opening a requested inbox page does not wait for a new-arrival assessment hold', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     const { account } = await h.seed('alice', 'requested-page-hold', [native('visible-during-assessment', { bodyText: 'Please confirm the fictional delivery plan.' })])
     const mailboxIds = (await h.inbox.mailboxes('alice')).map(box => box.id)
@@ -2483,6 +2496,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('long conversation page, detail and capture contexts agree before W and reject later content changes', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     const { account, box } = await h.seed('alice', 'long-page-context', Array.from({ length: 120 }, (_, index) => native(`long-context-${index}`, {
       threadId: 'long-context', receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: 'Please confirm the fictional delivery plan.',
@@ -2585,6 +2599,7 @@ describe('bounded host inbox window', () => {
   }, 15000)
 
   test('captured pages make progress across several long conversations without raising the detail-read budget', async () => {
+    anchorWallClock()
     const h = await fixture(), database = new Database(':memory:')
     await h.seed('alice', 'long-window-capture', Array.from({ length: 6 * 51 }, (_, index) => native(`long-capture-${index}`, {
       threadId: `long-thread-${Math.floor(index / 51)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -2924,6 +2939,7 @@ describe('bounded host inbox window', () => {
   }, 30000)
 
   test('identical public query openings reconcile independently when changes are interleaved', async () => {
+    anchorWallClock()
     const h = await fixture({ allowProviderWrites: false }), database = new Database(':memory:')
     const { box } = await h.seed('alice', 'independent-query-opens', Array.from({ length: 4 }, (_, index) => native(`query-open-${index}`, {
       threadId: `query-open-thread-${index}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(), bodyText: 'Please confirm the fictional delivery plan.',
@@ -3116,6 +3132,7 @@ describe('bounded host inbox window', () => {
   })
 
   test('small selections retain missing IDs and freeze accepted targets rather than including later replies', async () => {
+    anchorWallClock()
     const h = await fixture()
     const { account, box } = await h.seed('alice', 'window-capture', Array.from({ length: 6 }, (_, index) => native(`capture-${index}`, {
       threadId: `capture-thread-${Math.floor(index / 2)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -3162,6 +3179,7 @@ describe('bounded host inbox window', () => {
   }, 15000)
 
   test('Zero persists review exclusions and credits only owned durable Done, W, Other and Later receipts with conditional Undo and partial replay', async () => {
+    anchorWallClock()
     const h = await fixture()
     await h.seed('alice', 'window-zero', Array.from({ length: 24 }, (_, index) => native(`zero-${index}`, {
       threadId: `zero-thread-${Math.floor(index / 2)}`, receivedAt: new Date(EPOCH - index * 1000).toISOString(),
@@ -6194,6 +6212,7 @@ describe('mail HTTP ownership and provider lifecycle', () => {
   })
 
   test('an unknown registered provider works end to end, and unsupported capabilities do not disable local features', async () => {
+    anchorWallClock()
     const h = await fixture()
     const dynamic = await h.seed('alice', 'dynamic', [native('external')], DYNAMIC)
     const readOnly = await h.seed('alice', 'readonly', [
