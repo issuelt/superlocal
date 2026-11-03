@@ -3871,6 +3871,9 @@ test("host-service-backed bounded startup pages, lookup and search without brows
   const token = "fictional-window-client-token-only";
   const host = await createMockHost({ dataDir: root, encryptionKey: Buffer.alloc(32, 48).toString("base64"), token, allowProviderWrites: true });
   const database = new Database(join(root, "host-window.sqlite"));
+  // Same journal mode as openLocalRuntime. The default rollback journal fsyncs each of the
+  // window's many small commits, which pushes this test past 60s on Linux disks (macOS fsync is cheap).
+  database.exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");
   const preferences = createInboxViewPreferencesStore(database, host.inbox, host.owner);
   const splits = createSplitPreferencesStore(database, host.owner);
   const categories = createAttentionOverridesStore(database, host.inbox, host.owner);
