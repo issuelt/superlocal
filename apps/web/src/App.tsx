@@ -2691,7 +2691,9 @@ export default function App({
     setSearch(false);
   }
 
-  const onKey = useEffectEvent((e: KeyboardEvent, sequencesOnly = false) => {
+  // Plain handlers so the reader can call them from its own listeners; the window
+  // listeners below go through effect events.
+  function handleKey(e: KeyboardEvent, sequencesOnly = false) {
     // One version bump per keystroke: the capture pass only bumps when it owns the key, otherwise the bubble pass does.
     if (!sequencesOnly) actionNavigationVersion.current++;
     const target = e.target && (e.target as Node).nodeType === 1 ? (e.target as HTMLElement) : null;
@@ -2932,11 +2934,13 @@ export default function App({
         throw new Error(`Unhandled mail shortcut: ${unhandled}`);
       }
     }
-  });
-  const onSequenceKey = useEffectEvent((event: KeyboardEvent) => {
+  }
+  function handleSequenceKey(event: KeyboardEvent) {
     if (event.key.toLowerCase() === "g" || event.key === "0" || sequence.current.key)
-      onKey(event, true);
-  });
+      handleKey(event, true);
+  }
+  const onKey = useEffectEvent(handleKey);
+  const onSequenceKey = useEffectEvent(handleSequenceKey);
   useEffect(() => {
     // Own prefixes before reader/calendar capture handlers can consume their second key.
     const capture = (event: KeyboardEvent) => onSequenceKey(event);
@@ -3184,7 +3188,7 @@ export default function App({
         ) : currentMail ? (
           <ThreadView
             scrollRef={readerScroll}
-            onSequenceKey={onSequenceKey}
+            onSequenceKey={handleSequenceKey}
             onLoadMessage={loadReaderMessage}
             onLoadOlder={loadOlderMessages}
             onResetHistory={inbox.host?.inboxWindow ? resetReaderHistory : undefined}

@@ -424,7 +424,8 @@ export default function ThreadView({
       .filter((link) => link.getClientRects().length > 0);
   }
 
-  const shortcut = useEffectEvent((event: KeyboardEvent, bodyMessage?: HTMLElement) => {
+  // Plain so bodyKeyboard can call it; the document listener uses the effect event.
+  function handleShortcut(event: KeyboardEvent, bodyMessage?: HTMLElement) {
     if (readerPane.current?.closest(".settings-open")) return;
     if (
       event.defaultPrevented ||
@@ -550,7 +551,8 @@ export default function ThreadView({
     } else return;
     event.preventDefault();
     event.stopImmediatePropagation();
-  });
+  }
+  const shortcut = useEffectEvent(handleShortcut);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => shortcut(event);
@@ -565,7 +567,7 @@ export default function ThreadView({
     if (!article) return;
     onSequenceKey?.(event);
     if (event.defaultPrevented) return;
-    shortcut(event, article);
+    handleShortcut(event, article);
     if (event.defaultPrevented || event.key === "Tab") return;
     const target = event.target as HTMLElement | null;
     if (["Enter", " "].includes(event.key) && target?.closest?.("a, button, summary")) return;
