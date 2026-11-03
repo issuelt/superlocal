@@ -32275,6 +32275,8 @@ describe("AI triage service", () => {
       inputTokens: usageBefore.inputTokens + 1000,
       outputTokens: usageBefore.outputTokens + 100,
       reasoningOutputTokens: usageBefore.reasoningOutputTokens + 40,
+      unknownUsage: usageBefore.unknownUsage,
+      unpriced: usageBefore.unpriced,
     });
     expect(taught.state.usage.estimatedMinimumUsd).toBeCloseTo(
       usageBefore.estimatedMinimumUsd * 1.5,
@@ -32379,11 +32381,27 @@ describe("AI triage service", () => {
       category: "Important",
       supersedes: ["ai-taught-rule-1"],
     });
+    // This draft's response reports no usage, so it cannot be priced: the totals turn partial.
+    Object.assign(ruleResponse, { usage: null });
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).usage.completed !== 3) await Bun.sleep(10);
+      })(),
+      "arrival attempt settled",
+    );
+    const usageBeforeCorrection = (await service.state("alice")).usage;
     const corrected = await service.teach("alice", {
       sourceId: account.id,
       threadId: alert.threadId,
       id: "ai-taught-rule-2",
       note: "Actually these matter",
+    });
+    expect(corrected.state.usage).toMatchObject({
+      attempts: usageBeforeCorrection.attempts,
+      unknownUsage: usageBeforeCorrection.unknownUsage + 1,
+      unpriced: usageBeforeCorrection.unpriced + 1,
+      inputTokens: usageBeforeCorrection.inputTokens,
+      estimatedMaximumUsd: usageBeforeCorrection.estimatedMaximumUsd,
     });
     expect(
       requests.findLast((request) => request.schema === "triage_rule_v1")!.content,

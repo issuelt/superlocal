@@ -3408,8 +3408,13 @@ export function createAiTriageService({
           configuration,
           { model: value.model, signal: controller.signal, fetcher },
         );
-        // Drafts are billed but are not triage attempts or decisions, so they add to the totals only.
-        updateUsage(owner, (usage) => addBilled(usage, result));
+        // A draft is a billed request but not a triage attempt or decision. Like an attempt, a
+        // draft without known usage or a price marks the totals partial.
+        updateUsage(owner, (usage) => {
+          if (result.usage.input === null || result.usage.output === null) usage.unknownUsage++;
+          if (!result.estimate) usage.unpriced++;
+          addBilled(usage, result);
+        });
         if (result.outcome !== "completed" || !result.draft)
           fail(result.code ?? "AI_RULE_FAILED", 502);
         rule = {

@@ -208,7 +208,9 @@ export type AiUsageSummary = {
   completed: number;
   failed: number;
   reused: number;
+  /** Billed requests (triage attempts and rule drafts) whose token usage is unknown. */
   unknownUsage: number;
+  /** Billed requests (triage attempts and rule drafts) with no cost estimate. */
   unpriced: number;
   inputTokens: number;
   outputTokens: number;

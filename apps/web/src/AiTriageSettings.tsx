@@ -89,7 +89,7 @@ function Usage({ usage }: { usage: AiUsageSummary }) {
       <p className="settings-note">
         Estimate, not provider bill.{" "}
         {usage.unknownUsage || usage.unpriced
-          ? "Totals are partial; unknown usage and unpriced attempts are excluded, not counted as free."
+          ? "Totals are partial; unknown usage and unpriced requests are excluded, not counted as free."
           : "Known token subtotals only; cached and reasoning tokens are not added twice."}
       </p>
     </>
