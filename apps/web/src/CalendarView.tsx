@@ -140,6 +140,7 @@ function Calendar({
 }: Props) {
   let timezone = preferences.timezone || "America/New_York";
   try {
+    // oxlint-disable-next-line eslint/no-new -- the constructor's RangeError is the time zone check
     new Intl.DateTimeFormat("en-US", { timeZone: timezone });
   } catch {
     timezone = "UTC";

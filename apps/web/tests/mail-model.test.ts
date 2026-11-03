@@ -1583,6 +1583,7 @@ for (const scenario of [
         const restored = restoreZeroRecovery(JSON.parse(JSON.stringify(journal)), session);
         assert.ok(restored);
         let replayCount = 0;
+        // oxlint-disable-next-line eslint/no-new -- constructing must not replay; the instance is unused
         new ZeroActionRecovery(restored!, {
           transport: {} as any,
           save: () => true,

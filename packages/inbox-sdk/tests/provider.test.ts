@@ -3258,6 +3258,7 @@ async function liveProfile(): Promise<ContractProfile> {
         await fresh?.disconnect();
       }
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- snapshot: removeFolder mutates `folders` across awaits
     for (const { folder } of [...folders.values()]) {
       try {
         await removeFolder(folder);
@@ -3389,6 +3390,7 @@ async function liveProfile(): Promise<ContractProfile> {
         return h;
       } catch (error) {
         await close();
+        // oxlint-disable-next-line eslint/preserve-caught-error -- provider payloads stay redacted, so no cause
         throw new Error(
           `Live fixture setup failed after ${attempts} bounded send attempts; provider payloads are redacted. ${
             error instanceof Error &&

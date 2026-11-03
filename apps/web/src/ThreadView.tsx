@@ -1116,6 +1116,7 @@ export default function ThreadView({
                         {message.attachments.map((file, fileIndex) => (
                           <a
                             className="message-attachment"
+                            // oxlint-disable-next-line react/no-array-index-key -- stateless links; file names may repeat
                             key={`${file.name}-${fileIndex}`}
                             href={file.data || undefined}
                             download={file.name}

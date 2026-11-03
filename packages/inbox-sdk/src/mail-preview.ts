@@ -46,6 +46,7 @@ type Preheader = { text: string; explicit: boolean; invalid: boolean };
 function spacing(value: string): string {
   return value
     .replace(
+      // oxlint-disable-next-line eslint/no-misleading-character-class -- U+034F is meant to match on its own
       /[\s\u00ad\u034f\u200b-\u200d\u2060\ufeff]+/gu,
       (run: string, offset: number, all: string) => {
         // A lone joiner within a word or emoji is content; repeated/space-adjacent
@@ -54,6 +55,7 @@ function spacing(value: string): string {
           /^[\u200c\u200d]$/.test(run) &&
           offset > 0 &&
           offset + 1 < all.length &&
+          // oxlint-disable-next-line eslint/no-misleading-character-class -- U+034F is meant to match on its own
           !/[\s\u00ad\u034f\u200b-\u200d\u2060\ufeff]/u.test(all[offset - 1]! + all[offset + 1]!)
         )
           return run;

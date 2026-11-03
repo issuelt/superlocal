@@ -3737,6 +3737,7 @@ export default function App({
               <h2>September 2026</h2>
               <div className="mini-calendar">
                 {"SMTWTFS".split("").map((d, i) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- fixed weekday letters repeat
                   <span key={`day-${i}`} className="day-name">
                     {d}
                   </span>

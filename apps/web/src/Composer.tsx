@@ -176,6 +176,7 @@ function RecipientField({
           <span
             className={`compose-chip ${validAddress(recipient) ? "" : "is-invalid"}`}
             title={recipient}
+            // oxlint-disable-next-line react/no-array-index-key -- stateless chips; a recipient may repeat
             key={`${recipient}-${index}`}
           >
             <span>
@@ -1289,6 +1290,7 @@ export default function Composer({
           {!!draft.attachments.length && (
             <div className="message-attachments compose-attachments">
               {draft.attachments.map((file, index) => (
+                // oxlint-disable-next-line react/no-array-index-key -- stateless rows; file names may repeat
                 <div className="message-attachment" key={`${file.name}-${index}`}>
                   <Icon name="Paperclip" />
                   <span title={file.name}>{file.name}</span>
