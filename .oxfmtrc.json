@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "sortPackageJson": {},
+  "ignorePatterns": [
+    ".reference/**",
+    "data/**",
+    "dist",
+    "node_modules",
+    "bun.lock",
+    "**/package-lock.json",
+    "*.tsbuildinfo",
+    "apps/web/reference/**",
+    "apps/web/public/assets/**",
+    "packages/inbox-sdk/public/fixtures/**",
+    "docs/ui-prs/**",
+    "docs/qa/**"
+  ]
+}

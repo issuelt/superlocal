@@ -1,0 +1,7 @@
+{
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "oxc.unusedDisableDirectives": "warn",
+  "typescript.preferences.autoImportFileExcludePatterns": [".reference/**"],
+  "files.watcherExclude": { ".reference/**": true, "data/**": true },
+  "search.exclude": { ".reference/**": true, "data/**": true }
+}

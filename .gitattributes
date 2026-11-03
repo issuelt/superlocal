@@ -1,0 +1,4 @@
+# core.autocrlf=true would turn LF into CRLF on Windows checkouts, which oxfmt then reports.
+* text=auto eol=lf
+bun.lock linguist-generated
+**/package-lock.json linguist-generated

@@ -1,3 +1,6 @@
+<!-- Title: plain language in the repo's style, such as
+"fix(web): new threads no longer spike CPU". -->
+
 ## Scope
 
 <!-- UI-affecting work uses a draft PR titled `UIPR: <scope>`. See AGENTS.md.
@@ -52,3 +55,5 @@ only test totals. Budgets and required scenarios are in AGENTS.md. -->
 
 <!-- Checkboxes are a review record, not automated GitHub enforcement. Do not
 self-approve, auto-merge, or claim branch protection that has not been configured. -->
+
+<!-- If an agent made the changes, end with the model and harness that did the work. -->

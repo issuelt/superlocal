@@ -256,4 +256,14 @@ bun --no-env-file run typecheck
 bun --no-env-file run build
 ```
 
+Tooling:
+
+| Command | What it does |
+| --- | --- |
+| `bun --no-env-file run check:changed [ref]` | Format, lint, knip, typecheck and tests for files changed since `origin/main` (or `ref`) |
+| `bun --no-env-file run lint` | oxlint over the repo (`.oxlintrc.json`, rules in `scripts/oxlint-plugin.ts`) |
+| `bun --no-env-file run fmt` / `fmt:check` | Format with oxfmt, or check only (`.oxfmtrc.json`) |
+| `bun --no-env-file run knip` | Unused files, dependencies and exports (`knip.jsonc`) |
+| `bun --no-env-file run sync:repos [id...]` | Clone or update the read-only reference repos in `/.reference/` |
+
 Live-provider qualification is separate from deterministic tests. Never commit credentials, private configuration, runtime databases, real mail, or private diagnostic captures.

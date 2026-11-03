@@ -12,5 +12,6 @@ data/
 .DS_Store
 /superlocal.local.json
 /apps/web/reference/
+/.reference/
 /packages/inbox-sdk/OVERNIGHT_NOTES.md
 ai-inference.json
