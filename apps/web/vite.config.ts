@@ -13,6 +13,13 @@ export default defineConfig(() => {
   return {
     plugins: [react()],
     server: {
+      // No other site may frame the app (clickjacking). `vite preview`, which `start` and the
+      // Docker image use, inherits these headers. Email renders in srcdoc frames, which carry no
+      // response headers, so these don't affect them.
+      headers: {
+        "Content-Security-Policy": "frame-ancestors 'none'",
+        "X-Frame-Options": "DENY",
+      },
       host: "127.0.0.1",
       port: Number(process.env.SUPERLOCAL_WEB_PORT || 5178),
       strictPort: true,
