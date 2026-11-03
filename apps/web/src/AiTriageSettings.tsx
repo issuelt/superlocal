@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  aiHaltCodes,
   type AiDecision,
   type AiSettings,
   type AiTriageActions,
@@ -25,6 +26,7 @@ const problemLabels: Record<string, string> = {
   AI_TIMEOUT: "Provider response timed out",
   AI_RATE_LIMITED: "Provider rate limit reached",
   AI_AUTH_FAILED: "Provider credentials were rejected",
+  AI_QUOTA_EXCEEDED: "Provider quota or credit is used up",
   AI_PROVIDER_UNAVAILABLE: "Provider is temporarily unavailable",
   AI_INSUFFICIENT_CONTEXT: "Not enough usable email context",
 };
@@ -88,7 +90,7 @@ function Usage({ usage }: { usage: AiUsageSummary }) {
       <p className="settings-note">
         Estimate, not provider bill.{" "}
         {usage.unknownUsage || usage.unpriced
-          ? "Totals are partial; unknown usage and unpriced attempts are excluded, not counted as free."
+          ? "Totals are partial; unknown usage and unpriced requests are excluded, not counted as free."
           : "Known token subtotals only; cached and reasoning tokens are not added twice."}
       </p>
     </>
@@ -439,7 +441,10 @@ export default function AiTriageSettings({
       )}
       {level !== "off" && (working > 0 || state.queue.failed > 0) && (
         <p className="settings-note" role="status">
-          {working > 0 && `Assessing ${number(working)} conversation${working === 1 ? "" : "s"}…`}
+          {working > 0 &&
+            (aiHaltCodes.has(state.problemCode ?? "")
+              ? `${number(working)} conversation${working === 1 ? "" : "s"} waiting.`
+              : `Assessing ${number(working)} conversation${working === 1 ? "" : "s"}…`)}
           {working > 0 && state.queue.failed > 0 && " "}
           {state.queue.failed > 0 &&
             `${number(state.queue.failed)} could not be assessed and follow the normal rules.`}

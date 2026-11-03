@@ -28408,6 +28408,19 @@ describe("AI triage inference and local scoring", () => {
         }),
       ).toMatchObject({ outcome: "error", code, retryable: true, retryAfterMs });
     }
+    // An exhausted balance, or a 429 the provider says not to retry, will not clear by waiting.
+    for (const [status, headers] of [
+      [402, {}],
+      [429, { "x-should-retry": "false", "retry-after": "2" }],
+    ] as const) {
+      expect(
+        await inferAiTriage(input, configuration, {
+          model: "fixture-model",
+          signal: new AbortController().signal,
+          fetcher: (async () => new Response(null, { status, headers })) as unknown as typeof fetch,
+        }),
+      ).toMatchObject({ code: "AI_QUOTA_EXCEEDED", retryable: false, retryAfterMs: null });
+    }
     const transportError = await inferAiTriage(input, configuration, {
       model: "fixture-model",
       signal: new AbortController().signal,
@@ -28506,6 +28519,7 @@ describe("AI triage inference and local scoring", () => {
       draft: { text: valid.text, category: "Other", supersedes: [] },
       code: null,
       usage: expect.objectContaining({ input: 1000, output: 100 }),
+      estimate: expect.objectContaining({ minimumUsd: expect.any(Number) }),
     });
     for (const [body, code] of [
       [message([{ type: "refusal", refusal: "No." }]), "AI_RESPONSE_REFUSED"],
@@ -32266,12 +32280,28 @@ describe("AI triage service", () => {
     const fenceBefore = database
       .query("SELECT revision FROM local_ai_settings_fence WHERE owner='alice'")
       .get();
+    const usageBefore = (await service.state("alice")).usage;
     const taught = await service.teach("alice", {
       sourceId: account.id,
       threadId: alert.threadId,
       id: "ai-taught-rule-1",
       note: "Do not mark these as important anymore",
     });
+    // The billed draft adds its tokens and cost to the totals but is not a triage attempt.
+    expect(taught.state.usage).toMatchObject({
+      attempts: usageBefore.attempts,
+      completed: usageBefore.completed,
+      failed: usageBefore.failed,
+      inputTokens: usageBefore.inputTokens + 1000,
+      outputTokens: usageBefore.outputTokens + 100,
+      reasoningOutputTokens: usageBefore.reasoningOutputTokens + 40,
+      unknownUsage: usageBefore.unknownUsage,
+      unpriced: usageBefore.unpriced,
+    });
+    expect(taught.state.usage.estimatedMinimumUsd).toBeCloseTo(
+      usageBefore.estimatedMinimumUsd * 1.5,
+      12,
+    );
     // A rule never fences saved decisions: nothing turns stale, so no conversation falls back to normal inbox rules while the re-sort runs.
     expect(
       database.query("SELECT revision FROM local_ai_settings_fence WHERE owner='alice'").get(),
@@ -32371,11 +32401,27 @@ describe("AI triage service", () => {
       category: "Important",
       supersedes: ["ai-taught-rule-1"],
     });
+    // This draft's response reports no usage, so it cannot be priced: the totals turn partial.
+    Object.assign(ruleResponse, { usage: null });
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).usage.completed !== 3) await Bun.sleep(10);
+      })(),
+      "arrival attempt settled",
+    );
+    const usageBeforeCorrection = (await service.state("alice")).usage;
     const corrected = await service.teach("alice", {
       sourceId: account.id,
       threadId: alert.threadId,
       id: "ai-taught-rule-2",
       note: "Actually these matter",
+    });
+    expect(corrected.state.usage).toMatchObject({
+      attempts: usageBeforeCorrection.attempts,
+      unknownUsage: usageBeforeCorrection.unknownUsage + 1,
+      unpriced: usageBeforeCorrection.unpriced + 1,
+      inputTokens: usageBeforeCorrection.inputTokens,
+      estimatedMaximumUsd: usageBeforeCorrection.estimatedMaximumUsd,
     });
     expect(
       requests.findLast((request) => request.schema === "triage_rule_v1")!.content,
@@ -33398,6 +33444,165 @@ describe("AI triage service", () => {
       completed: 6,
       failed: 1,
     });
+  });
+
+  test("rejected credentials pause the whole job after one request, keep every conversation queued, and resume only on an explicit retry or settings save", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    await h.seed(
+      "alice",
+      "ai-rejected",
+      Array.from({ length: 6 }, (_, index) => native(`rejected-${index}`)),
+    );
+    let calls = 0,
+      rejected = true;
+    const service = createAiTriageService({
+      database,
+      inbox: h.inbox,
+      configuration,
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        return rejected ? new Response(BODY_SECRET, { status: 401 }) : Response.json(response);
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      await service.close();
+      database.close();
+    });
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    await service.process("alice", { id: "ai-rejected-history", scope: "inbox", limit: 100 });
+    const halted = async (requests: number, label: string) => {
+      await bounded(
+        (async () => {
+          while ((await service.state("alice")).jobs[0]?.status !== "paused") await Bun.sleep(10);
+        })(),
+        label,
+      );
+      expect(calls).toBe(requests);
+      const state = await service.state("alice");
+      expect(state.problemCode).toBe("AI_AUTH_FAILED");
+      expect(state.jobs[0]).toMatchObject({
+        status: "paused",
+        problemCode: "AI_AUTH_FAILED",
+        queued: 6,
+        completed: 0,
+        failed: 0,
+      });
+      expect(state.queue).toEqual({ pending: 6, processing: 0, failed: 0 });
+      expect(
+        database
+          .query<{ attempts: number }, []>("SELECT attempts FROM local_ai_queue")
+          .all()
+          .map((row) => row.attempts),
+      ).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(
+        (await service.results("alice")).decisions.some((item) => item.state === "failed"),
+      ).toBe(false);
+    };
+    await halted(1, "first rejected request");
+    // No timer retries rejected credentials, however long the clock runs.
+    h.clock.value += 3_600_000;
+    await Bun.sleep(1100);
+    await halted(1, "rejected credentials after an hour");
+    // Retrying with the same bad key costs one request, not one per conversation.
+    await service.control("alice", "ai-rejected-history", "resume");
+    await halted(2, "retried rejected request");
+    rejected = false;
+    await service.configure("alice", (await service.state("alice")).settings);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).jobs[0]?.status !== "completed") await Bun.sleep(10);
+      })(),
+      "sorting after the settings save",
+    );
+    expect((await service.state("alice")).jobs[0]).toMatchObject({
+      completed: 6,
+      failed: 0,
+      problemCode: null,
+    });
+    expect((await service.state("alice")).problemCode).toBeNull();
+    expect(calls).toBe(8);
+  }, 15000);
+
+  test("a conversation still preparing its context when another request starts a halt is not sent, and resumes with it", async () => {
+    const h = await fixture(),
+      database = new Database(":memory:");
+    const { account, box } = await h.seed("alice", "ai-halt-race", [native("halt-race-seed")]);
+    let calls = 0,
+      rejected = true;
+    const held = deferred<void>(),
+      release = deferred<void>();
+    // Hold the second arrival inside prepare() (its thread read) until the first one's 401 lands.
+    const inbox = new Proxy(h.inbox, {
+      get(target, property) {
+        const value = Reflect.get(target, property);
+        if (property !== "thread") return typeof value === "function" ? value.bind(target) : value;
+        return async (...args: Parameters<typeof target.thread>) => {
+          const page = await target.thread(...args);
+          if (page.items.some((item) => item.subject === "Subject halt-race-held")) {
+            held.resolve();
+            await release.promise;
+          }
+          return page;
+        };
+      },
+    });
+    const service = createAiTriageService({
+      database,
+      inbox,
+      configuration: { ...configuration, concurrency: 2 },
+      sessionKey: Buffer.from(KEY, "base64"),
+      now: () => h.clock.value,
+      fetcher: (async () => {
+        calls++;
+        if (!rejected) return Response.json(response);
+        await held.promise;
+        return new Response(BODY_SECRET, { status: 401 });
+      }) as unknown as typeof fetch,
+    });
+    cleanup.push(async () => {
+      release.resolve();
+      await service.close();
+      database.close();
+    });
+    await service.start();
+    await service.configure("alice", { ...(await service.state("alice")).settings, enabled: true });
+    box.put(native("halt-race-sent"));
+    box.put(native("halt-race-held"));
+    await h.sync("alice", account.id);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).problemCode !== "AI_AUTH_FAILED") await Bun.sleep(10);
+      })(),
+      "halt from the first arrival",
+    );
+    release.resolve();
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).queue.processing) await Bun.sleep(10);
+      })(),
+      "held arrival settles",
+    );
+    expect(calls).toBe(1);
+    expect((await service.state("alice")).queue).toEqual({ pending: 2, processing: 0, failed: 0 });
+    expect(
+      database
+        .query<{ attempts: number }, []>("SELECT attempts FROM local_ai_queue")
+        .all()
+        .map((row) => row.attempts),
+    ).toEqual([0, 0]);
+    rejected = false;
+    await service.configure("alice", (await service.state("alice")).settings);
+    await bounded(
+      (async () => {
+        while ((await service.state("alice")).usage.completed !== 2) await Bun.sleep(10);
+      })(),
+      "both arrivals sorted after the settings save",
+    );
+    expect(calls).toBe(3);
   });
 
   test("in-flight pause and cancel stop application without inventing free usage and an explicit new job can resume work", async () => {

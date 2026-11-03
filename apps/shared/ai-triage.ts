@@ -208,7 +208,9 @@ export type AiUsageSummary = {
   completed: number;
   failed: number;
   reused: number;
+  /** Billed requests (triage attempts and rule drafts) whose token usage is unknown. */
   unknownUsage: number;
+  /** Billed requests (triage attempts and rule drafts) with no cost estimate. */
   unpriced: number;
   inputTokens: number;
   outputTokens: number;
@@ -300,6 +302,8 @@ export type AiDiagnostics = {
   activity?: AiDiagnosticActivity[];
   coverage?: AiDiagnosticCoverage;
 };
+/** Provider answers that halt all sorting until the user acts; queued work waits rather than runs. */
+export const aiHaltCodes: ReadonlySet<string> = new Set(["AI_AUTH_FAILED", "AI_QUOTA_EXCEEDED"]);
 export type AiTriageState = {
   configured: boolean;
   provider: { name: string; endpointHost: string; models: AiModel[] } | null;
