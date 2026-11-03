@@ -48,11 +48,15 @@ record and requires that metadata response's `If-Match` ETag. The public client
 performs the conditional exchange:
 
 ```ts
-const state = await client.credentialState(connectionId)
-await client.updateCredentials(connectionId, {
-  accessToken: freshProviderToken,
-  expiresAt: expirationTimestamp,
-}, state.version)
+const state = await client.credentialState(connectionId);
+await client.updateCredentials(
+  connectionId,
+  {
+    accessToken: freshProviderToken,
+    expiresAt: expirationTimestamp,
+  },
+  state.version,
+);
 ```
 
 Replacement fences old requests while retaining source/message/mailbox IDs. It
@@ -163,14 +167,14 @@ filter as an authorization grant to another application user.
 
 ## Package Boundaries
 
-| Import | Purpose |
-| --- | --- |
-| `inbox-sdk` | `createInbox`, core contracts, and built-in provider definitions |
-| `inbox-sdk/http` | `createInboxApi`, the authenticated HTTP/SSE boundary |
-| `inbox-sdk/client` | Framework-independent client, bounded private cache, and SSE consumption |
-| `inbox-sdk/providers` | Gmail, Outlook, IMAP/SMTP, and Inbound definitions |
-| `inbox-sdk/provider` | Adapter interface, normalized failures, and provider-level types |
-| `inbox-sdk/types` | Public v1 resources and operation contracts |
+| Import                | Purpose                                                                  |
+| --------------------- | ------------------------------------------------------------------------ |
+| `inbox-sdk`           | `createInbox`, core contracts, and built-in provider definitions         |
+| `inbox-sdk/http`      | `createInboxApi`, the authenticated HTTP/SSE boundary                    |
+| `inbox-sdk/client`    | Framework-independent client, bounded private cache, and SSE consumption |
+| `inbox-sdk/providers` | Gmail, Outlook, IMAP/SMTP, and Inbound definitions                       |
+| `inbox-sdk/provider`  | Adapter interface, normalized failures, and provider-level types         |
+| `inbox-sdk/types`     | Public v1 resources and operation contracts                              |
 
 Create independent core instances with explicit storage, provider definitions,
 encryption keys, and optional clock/transport dependencies. Importing the package
@@ -190,16 +194,16 @@ The example host separately mounts Google handoff/callback GET routes, protected
 by one-use capabilities and a binding cookie. Its start/status routes remain
 owner-authenticated. A core API mounted without that host has no Google routes.
 
-| Resource | Operations |
-| --- | --- |
-| Providers/accounts | Discovery, connect, inspect, reconnect, disconnect, sync, list/create provider folders |
-| Connections | Versioned credential replacement, host credential hooks, verified candidate discovery |
-| Mailboxes | Configured selectors, canonical union queries, per-membership done/snooze, scoped sync |
-| Messages/threads | Body-free paginated queries, full message content, paginated conversation members |
-| Labels | Local label creation, revision-guarded rename, deletion, and message associations |
-| Blobs/drafts | Byte uploads/downloads, incomplete drafts, reply/forward preparation, revision-guarded edits |
-| Operations | Durable mutations and draft submissions, status, pre-dispatch cancellation, rescheduling, guarded undo |
-| Policy/changes | Image privacy, undo-send delay, resumable changes, SSE events, and OpenAPI |
+| Resource           | Operations                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| Providers/accounts | Discovery, connect, inspect, reconnect, disconnect, sync, list/create provider folders                 |
+| Connections        | Versioned credential replacement, host credential hooks, verified candidate discovery                  |
+| Mailboxes          | Configured selectors, canonical union queries, per-membership done/snooze, scoped sync                 |
+| Messages/threads   | Body-free paginated queries, full message content, paginated conversation members                      |
+| Labels             | Local label creation, revision-guarded rename, deletion, and message associations                      |
+| Blobs/drafts       | Byte uploads/downloads, incomplete drafts, reply/forward preparation, revision-guarded edits           |
+| Operations         | Durable mutations and draft submissions, status, pre-dispatch cancellation, rescheduling, guarded undo |
+| Policy/changes     | Image privacy, undo-send delay, resumable changes, SSE events, and OpenAPI                             |
 
 Use `/v1/openapi.json` for request details. Mutations and submissions use an
 `Idempotency-Key`; draft/label conditional updates use their current `ETag` in
@@ -209,16 +213,16 @@ and local drafts do not imply native synchronization with another mail client.
 The TypeScript client mirrors these operations without an owner parameter:
 
 ```ts
-import { createInboxClient } from 'inbox-sdk/client'
+import { createInboxClient } from "inbox-sdk/client";
 
 const client = createInboxClient({
-  baseUrl: 'http://127.0.0.1:8788',
+  baseUrl: "http://127.0.0.1:8788",
   headers: { Authorization: `Bearer ${process.env.INBOX_API_TOKEN}` },
-  cacheScope: 'local',
-})
+  cacheScope: "local",
+});
 
-const accounts = await client.accounts()
-const page = await client.messages({ accountId: accounts[0]?.id, limit: 50 })
+const accounts = await client.accounts();
+const page = await client.messages({ accountId: accounts[0]?.id, limit: 50 });
 ```
 
 Browser applications must use an appropriate authenticated host/proxy and exact

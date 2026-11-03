@@ -1,31 +1,97 @@
-.mail-window-status { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 20px; color: var(--muted); font-size: 13px; }
-.mail-window-status:empty { display: none; }
-.inbox-refresh { padding: 0; }
-.inbox-refresh[aria-busy="true"] .icon { animation: inbox-refresh-spin 900ms linear 150ms infinite; }
-@keyframes inbox-refresh-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .inbox-refresh[aria-busy="true"] .icon { animation: none; }
+.mail-window-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 20px;
+  color: var(--muted);
+  font-size: 13px;
 }
-.row-recipients { flex: 0 1 160px; max-width: 160px; min-width: 0; margin-inline-start: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
-.mail-row.has-recipients .row-metadata { min-width: 84px; }
+.mail-window-status:empty {
+  display: none;
+}
+.inbox-refresh {
+  padding: 0;
+}
+.inbox-refresh[aria-busy="true"] .icon {
+  animation: inbox-refresh-spin 900ms linear 150ms infinite;
+}
+@keyframes inbox-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inbox-refresh[aria-busy="true"] .icon {
+    animation: none;
+  }
+}
+.row-recipients {
+  flex: 0 1 160px;
+  max-width: 160px;
+  min-width: 0;
+  margin-inline-start: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mail-row.has-recipients .row-metadata {
+  min-width: 84px;
+}
 @media (min-width: 701px) and (max-width: 1024px) {
-  .row-recipients { flex-basis: 100px; max-width: 100px; }
+  .row-recipients {
+    flex-basis: 100px;
+    max-width: 100px;
+  }
 }
 @media (min-width: 701px) {
   /* Highlight swaps metadata (8 + 84) for actions (84 - 6 right margin); 14px keeps the swap width-neutral. */
-  .mail-row.has-recipients .row-actions { margin-left: 14px; }
+  .mail-row.has-recipients .row-actions {
+    margin-left: 14px;
+  }
   .mail-workspace:not([data-folder="Reminders"]):not([data-folder="Scheduled"]) .mail-row {
     --row-status-width: max(93px, calc(9ch + 41px));
   }
-  .mail-workspace:not([data-folder="Reminders"]):not([data-folder="Scheduled"]) .mail-row :is(.row-metadata, .row-actions) {
+  .mail-workspace:not([data-folder="Reminders"]):not([data-folder="Scheduled"])
+    .mail-row
+    :is(.row-metadata, .row-actions) {
     flex: 0 0 var(--row-status-width);
   }
-  .mail-workspace:not([data-folder="Reminders"]):not([data-folder="Scheduled"]) .mail-row .row-actions {
+  .mail-workspace:not([data-folder="Reminders"]):not([data-folder="Scheduled"])
+    .mail-row
+    .row-actions {
     margin-left: 14px;
     justify-content: flex-end;
   }
 }
-.thread-mailbox-origin { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 13px/20px "Helvetica Neue", sans-serif; }
-.message-body-loading { padding: 16px 0; opacity: 0.7; }
-.inbox-setup-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
-.inbox-setup-empty h1 { margin: 0; font: 400 21px/28px "Helvetica Neue", sans-serif; }
+.thread-mailbox-origin {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font:
+    13px/20px "Helvetica Neue",
+    sans-serif;
+}
+.message-body-loading {
+  padding: 16px 0;
+  opacity: 0.7;
+}
+.inbox-setup-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.inbox-setup-empty h1 {
+  margin: 0;
+  font:
+    400 21px/28px "Helvetica Neue",
+    sans-serif;
+}

@@ -17,7 +17,6 @@
       "node": "./src/media.ts"
     }
   },
-  "engines": { "bun": ">=1.4.0" },
   "scripts": {
     "dev": "bun run scripts/dev-bootstrap.ts",
     "start": "bun run server/index.ts",
@@ -29,8 +28,8 @@
     "test:api": "bun test tests/api.test.ts"
   },
   "dependencies": {
-    "effect": "3.22.1",
     "busboy": "^1.6.0",
+    "effect": "3.22.1",
     "hono": "^4.8.0",
     "html-to-text": "^10.0.1",
     "htmlparser2": "^10.1.0",
@@ -52,5 +51,8 @@
     "@types/nodemailer": "^7.0.0",
     "@types/sanitize-html": "^2.16.0",
     "typescript": "^5.8.0"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
   }
 }

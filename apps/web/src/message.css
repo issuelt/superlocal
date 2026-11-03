@@ -153,20 +153,32 @@
   border-radius: 50%;
   /* Keep the visible arrow clickable when a narrow gutter ends before it. */
   pointer-events: auto;
-  transition: background-color 150ms ease-out, transform 120ms ease-out;
+  transition:
+    background-color 150ms ease-out,
+    transform 120ms ease-out;
 }
 .thread-back-gutter:hover::before,
-.thread-back-gutter:focus-visible::before { opacity: 1; }
+.thread-back-gutter:focus-visible::before {
+  opacity: 1;
+}
 .thread-back-gutter:hover .thread-back-arrow,
-.thread-back-gutter:focus-visible .thread-back-arrow { background: var(--panel); }
-.thread-back-gutter:active .thread-back-arrow { transform: scale(0.96); }
-.message-view .thread-back-gutter:focus-visible { outline: none; }
+.thread-back-gutter:focus-visible .thread-back-arrow {
+  background: var(--panel);
+}
+.thread-back-gutter:active .thread-back-arrow {
+  transform: scale(0.96);
+}
+.message-view .thread-back-gutter:focus-visible {
+  outline: none;
+}
 .thread-back-gutter:focus-visible .thread-back-arrow {
   outline: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .thread-back-gutter::before,
-  .thread-back-arrow { transition: none; }
+  .thread-back-arrow {
+    transition: none;
+  }
 }
 .message-view button,
 .compose-view button,
@@ -428,8 +440,12 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.compose-sender-options [role="option"] > .icon { flex-shrink: 0; }
-.compose-sender-options [role="option"].is-active { background: var(--hover); }
+.compose-sender-options [role="option"] > .icon {
+  flex-shrink: 0;
+}
+.compose-sender-options [role="option"].is-active {
+  background: var(--hover);
+}
 .compose-sender-status {
   padding-left: 64px;
   color: var(--muted);
@@ -551,7 +567,9 @@
   height: 1px;
   border: 0;
 }
-.message-html-frame:focus { outline: none; }
+.message-html-frame:focus {
+  outline: none;
+}
 .message-plain-text {
   font-family: "Helvetica Neue", sans-serif;
   white-space: pre-wrap;
@@ -565,7 +583,9 @@
   gap: 8px;
   padding-block: 8px;
   color: var(--muted);
-  font: 13px/1.5 "Helvetica Neue", sans-serif;
+  font:
+    13px/1.5 "Helvetica Neue",
+    sans-serif;
 }
 .message-image-policy button {
   padding: 0;
@@ -657,9 +677,7 @@
   letter-spacing: var(--ui-tracking);
   line-height: 18px;
 }
-:where([data-theme="light"], .thread-message-column.is-marketing)
-  .compose-send-actions
-  > button,
+:where([data-theme="light"], .thread-message-column.is-marketing) .compose-send-actions > button,
 :where([data-theme="light"], .thread-message-column.is-marketing)
   .compose-send-actions
   > .compose-menu-anchor
@@ -1194,13 +1212,11 @@
     mail-focus-enter 128ms linear;
   transition: background-color 66ms linear;
 }
-.thread-message-column.has-inline-draft
-  > .thread-message.is-expanded.is-final::before {
+.thread-message-column.has-inline-draft > .thread-message.is-expanded.is-final::before {
   border-bottom-left-radius: 0;
   animation: none;
 }
-.thread-message-column.is-reply-focused
-  > .thread-message.is-expanded.is-final::before,
+.thread-message-column.is-reply-focused > .thread-message.is-expanded.is-final::before,
 .thread-message-column.is-reply-focused .thread-reply-area::after {
   opacity: 0;
   animation: none;
@@ -1606,9 +1622,21 @@
   }
 }
 @media (max-width: 700px) {
-  .thread-message-header { flex-wrap: wrap; row-gap: 6px; }
-  .thread-message-sender { flex-basis: 100%; }
-  .thread-message-meta { flex: 1; min-width: 0; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .thread-message-header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .thread-message-sender {
+    flex-basis: 100%;
+  }
+  .thread-message-meta {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
   .compose-view.compose-floating {
     right: 12px;
     bottom: 12px;

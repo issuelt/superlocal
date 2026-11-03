@@ -2,7 +2,10 @@ import type { Mail } from "./data.ts";
 import { inFolder } from "./mail-model.ts";
 import { plainText } from "./mail-text.ts";
 
-type SearchExpression = { term: string } | { op: "and" | "or"; left: SearchExpression; right: SearchExpression } | { not: SearchExpression };
+type SearchExpression =
+  | { term: string }
+  | { op: "and" | "or"; left: SearchExpression; right: SearchExpression }
+  | { not: SearchExpression };
 export function parseSearch(query: string): SearchExpression | null {
   if (query.length > 4096) throw new Error("Use a search rule under 4096 characters.");
   if ((query.match(/"/g)?.length ?? 0) % 2) throw new Error("Close the quoted phrase.");
@@ -11,7 +14,8 @@ export function parseSearch(query: string): SearchExpression | null {
   function atom(depth: number): SearchExpression {
     if (depth > 20) throw new Error("Use fewer nested parentheses.");
     const term = tokens[index++];
-    if (!term || [")", "OR", "AND"].includes(term)) throw new Error("Add a filter on both sides of AND or OR.");
+    if (!term || [")", "OR", "AND"].includes(term))
+      throw new Error("Add a filter on both sides of AND or OR.");
     if (term === "-") return { not: atom(depth + 1) };
     if (term === "(") {
       const expression = or(depth + 1);
@@ -30,7 +34,10 @@ export function parseSearch(query: string): SearchExpression | null {
   }
   function or(depth: number): SearchExpression {
     let left = and(depth);
-    while (tokens[index] === "OR") { index++; left = { op: "or", left, right: and(depth) }; }
+    while (tokens[index] === "OR") {
+      index++;
+      left = { op: "or", left, right: and(depth) };
+    }
     return left;
   }
   if (!tokens.length) return null;
@@ -44,20 +51,57 @@ export function splitRuleError(query: string): string | null {
     if (!expression) return "Add a filter, such as from:john@doe.com.";
     function validate(node: SearchExpression): void {
       if ("not" in node) return validate(node.not);
-      if ("op" in node) { validate(node.left); validate(node.right); return; }
-      const term = node.term.replace(/^-/, ""), colon = term.indexOf(":");
+      if ("op" in node) {
+        validate(node.left);
+        validate(node.right);
+        return;
+      }
+      const term = node.term.replace(/^-/, ""),
+        colon = term.indexOf(":");
       if (colon < 0) return;
-      const key = term.slice(0, colon), value = term.slice(colon + 1).replaceAll('"', "");
-      if (!["from", "to", "subject", "in", "label", "is", "has", "before", "after", "older_than", "newer_than"].includes(key) || !value) throw new Error("Use from:, to:, subject:, in:, label:, is:, has:, or date filters.");
-      if (key === "is" && !["read", "unread", "starred"].includes(value) || key === "has" && value !== "attachment") throw new Error("Use is:read, is:unread, is:starred, or has:attachment.");
-      if (["before", "after"].includes(key) && !Number.isFinite(Date.parse(value)) || key.endsWith("_than") && !/^\d+[dmy]$/.test(value)) throw new Error("Use a date or an age such as 3d, 1m, or 1y.");
+      const key = term.slice(0, colon),
+        value = term.slice(colon + 1).replaceAll('"', "");
+      if (
+        ![
+          "from",
+          "to",
+          "subject",
+          "in",
+          "label",
+          "is",
+          "has",
+          "before",
+          "after",
+          "older_than",
+          "newer_than",
+        ].includes(key) ||
+        !value
+      )
+        throw new Error("Use from:, to:, subject:, in:, label:, is:, has:, or date filters.");
+      if (
+        (key === "is" && !["read", "unread", "starred"].includes(value)) ||
+        (key === "has" && value !== "attachment")
+      )
+        throw new Error("Use is:read, is:unread, is:starred, or has:attachment.");
+      if (
+        (["before", "after"].includes(key) && !Number.isFinite(Date.parse(value))) ||
+        (key.endsWith("_than") && !/^\d+[dmy]$/.test(value))
+      )
+        throw new Error("Use a date or an age such as 3d, 1m, or 1y.");
     }
-    validate(expression); return null;
-  } catch (error) { return error instanceof Error ? error.message : "Invalid filter."; }
+    validate(expression);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid filter.";
+  }
 }
 export function compileSearch(query: string, includeBodies = true): (mail: Mail) => boolean {
   let expression: SearchExpression | null;
-  try { expression = parseSearch(query); } catch { return () => false; }
+  try {
+    expression = parseSearch(query);
+  } catch {
+    return () => false;
+  }
   function compileTerm(raw: string): (mail: Mail) => boolean {
     const negative = raw.startsWith("-");
     const term = negative ? raw.slice(1) : raw;
@@ -67,14 +111,26 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
     const match = (m: Mail) => {
       if (rest.length) {
         if (key === "from") {
-          const emails = [m.email, ...m.messages.map(message => message.email)].map(email => email.trim().toLowerCase());
+          const emails = [m.email, ...m.messages.map((message) => message.email)].map((email) =>
+            email.trim().toLowerCase(),
+          );
           if (value.includes("@")) return emails.includes(value);
-          if (value.includes(".")) return emails.some(email => email.split("@")[1] === value || email.split("@")[1]?.endsWith(`.${value}`));
+          if (value.includes("."))
+            return emails.some(
+              (email) =>
+                email.split("@")[1] === value || email.split("@")[1]?.endsWith(`.${value}`),
+            );
           return `${m.from} ${m.email} ${m.messages.map((message) => `${message.from} ${message.email}`).join(" ")}`
             .toLowerCase()
             .includes(value);
         }
-        if (key === "to" && value.includes("@")) return [m.to, ...m.messages.map(message => message.to)].some(to => Array.from(to.toLowerCase().matchAll(/[^\s<>\",;]+@[^\s<>\",;]+/g), match => match[0]).includes(value));
+        if (key === "to" && value.includes("@"))
+          return [m.to, ...m.messages.map((message) => message.to)].some((to) =>
+            Array.from(
+              to.toLowerCase().matchAll(/[^\s<>\",;]+@[^\s<>\",;]+/g),
+              (match) => match[0],
+            ).includes(value),
+          );
         if (key === "to")
           return [m.to, ...m.messages.map((message) => message.to)].some((to) =>
             to.toLowerCase().includes(value),
@@ -82,9 +138,7 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
         if (key === "subject") return m.subject.toLowerCase().includes(value);
         if (key === "in") return inFolder(m, value);
         if (key === "label")
-          return [...m.labels, m.split].some((l) =>
-            l.toLowerCase().includes(value),
-          );
+          return [...m.labels, m.split].some((l) => l.toLowerCase().includes(value));
         if (key === "is")
           return value === "unread"
             ? m.unread
@@ -101,9 +155,7 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
           m.receivedAt ||
           (/^Aug \d+/.test(m.date)
             ? new Date(`${m.date}, 2026`).getTime()
-            : new Date(
-                m.date === "Yesterday" ? "2026-08-31" : "2026-09-01",
-              ).getTime());
+            : new Date(m.date === "Yesterday" ? "2026-08-31" : "2026-09-01").getTime());
         let boundary = Date.parse(value);
         if (key.endsWith("_than")) {
           const duration = value.match(/^(\d+)([dmy])$/);
@@ -111,16 +163,12 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
           boundary =
             Date.now() -
             Number(duration[1]) *
-              (({ d: 1, m: 30, y: 365 } as Record<string, number>)[
-                duration[2]
-              ] || 1) *
+              (({ d: 1, m: 30, y: 365 } as Record<string, number>)[duration[2]] || 1) *
               86400000;
         }
         return (
           Number.isFinite(boundary) &&
-          (key === "before" || key === "older_than"
-            ? received < boundary
-            : received >= boundary)
+          (key === "before" || key === "older_than" ? received < boundary : received >= boundary)
         );
       }
       return `${m.from} ${m.email} ${m.to} ${m.subject} ${m.snippet} ${includeBodies ? m.messages.map((msg) => plainText(msg.body)).join(" ") : ""}`
@@ -135,8 +183,11 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
       const matches = compile(node.not);
       return (mail) => !matches(mail);
     }
-    const left = compile(node.left), right = compile(node.right);
-    return node.op === "and" ? (mail) => left(mail) && right(mail) : (mail) => left(mail) || right(mail);
+    const left = compile(node.left),
+      right = compile(node.right);
+    return node.op === "and"
+      ? (mail) => left(mail) && right(mail)
+      : (mail) => left(mail) || right(mail);
   }
   return expression ? compile(expression) : () => true;
 }

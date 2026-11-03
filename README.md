@@ -61,7 +61,7 @@ and recovery copies remain in the browser; this volume preserves server state.
 ### Published images
 
 Pushes to `main` build and publish **Linux AMD64 and ARM64** images at
-`ghcr.io/r44vc0rp/superlocal:latest`. The workflow can also be run manually on
+`ghcr.io/issuelt/superlocal:latest`. The image name follows the GitHub repository. The workflow can also be run manually on
 `main`. It uses GitHub's built-in `GITHUB_TOKEN` with package-write permission;
 no Docker Hub account or registry password is needed. Images also receive a
 `sha-<full-commit-sha>` tag, and the workflow records the digest for pinned deploys.
@@ -69,7 +69,7 @@ no Docker Hub account or registry password is needed. Images also receive a
 To run or update the published image without building it locally:
 
 ```sh
-SUPERLOCAL_IMAGE=ghcr.io/r44vc0rp/superlocal:latest \
+SUPERLOCAL_IMAGE=ghcr.io/issuelt/superlocal:latest \
   docker compose up -d --no-build --pull always --wait
 ```
 
@@ -177,14 +177,14 @@ The screenshots use only the included fictional mock data, at a slightly enlarge
 
 The goal is **ready-to-connect providers out of the box**: choose a service, complete its authorization, and select mailboxes in the same UI. You will still need the provider account, required permissions, and any domain/DNS setup that service requires.
 
-| Provider | Current state | Direction |
-| --- | --- | --- |
-| Mock mailboxes | Included and offline | Keep the full app usable immediately, without personal credentials. |
-| Gmail | Implemented; host OAuth client configuration required | Make authorization, reconnects, and multi-account setup simpler. |
-| [Inbound.new](https://inbound.new) | Implemented; API-key onboarding and domain/address views | Improve large-domain onboarding, import progress, and recovery within the provider's sync limits. |
-| iCloud / IMAP | In progress | Email + app-specific-password setup for iCloud, secure IMAP/SMTP presets, and end-to-end provider qualification. |
-| [Resend](https://resend.com/docs/dashboard/receiving/introduction) | Planned | Add a sending/receiving adapter using received-email APIs, attachment retrieval, and verified webhook ingestion. |
-| [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) | Planned | Bridge Email Routing / Email Workers into durable SDK mail storage, and integrate supported sending APIs or SMTP. |
+| Provider                                                                     | Current state                                            | Direction                                                                                                         |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Mock mailboxes                                                               | Included and offline                                     | Keep the full app usable immediately, without personal credentials.                                               |
+| Gmail                                                                        | Implemented; host OAuth client configuration required    | Make authorization, reconnects, and multi-account setup simpler.                                                  |
+| [Inbound.new](https://inbound.new)                                           | Implemented; API-key onboarding and domain/address views | Improve large-domain onboarding, import progress, and recovery within the provider's sync limits.                 |
+| iCloud / IMAP                                                                | In progress                                              | Email + app-specific-password setup for iCloud, secure IMAP/SMTP presets, and end-to-end provider qualification.  |
+| [Resend](https://resend.com/docs/dashboard/receiving/introduction)           | Planned                                                  | Add a sending/receiving adapter using received-email APIs, attachment retrieval, and verified webhook ingestion.  |
+| [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) | Planned                                                  | Bridge Email Routing / Email Workers into durable SDK mail storage, and integrate supported sending APIs or SMTP. |
 
 Resend and Cloudflare support email workflows, but that does not automatically give them traditional IMAP folders or native read flags. Their adapters should expose real capabilities while the SDK supplies reusable local workflows.
 
@@ -203,12 +203,12 @@ For current unified-inbox decisions, import limits, and open product questions, 
 Client → Inbox SDK APIs → provider adapters
 ```
 
-| Package | Responsibility |
-| --- | --- |
-| `apps/web` | React client: inbox views, reading, composing, and settings. |
-| `apps/local-host` | Application sessions, provider onboarding, runtime paths, and connection policy. |
+| Package              | Responsibility                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`           | React client: inbox views, reading, composing, and settings.                                                               |
+| `apps/local-host`    | Application sessions, provider onboarding, runtime paths, and connection policy.                                           |
 | `packages/inbox-sdk` | Normalized mail contracts, SQLite storage, encrypted credentials, queries, jobs, drafts, events, and provider translation. |
-| `apps/mock-api` | A fictional upstream and real `InboxProvider` implementation, not a fake SDK HTTP layer. |
+| `apps/mock-api`      | A fictional upstream and real `InboxProvider` implementation, not a fake SDK HTTP layer.                                   |
 
 The SDK currently runs on Bun and SQLite. The host supports explicit local-only sessions or allowlisted Google sign-in with private per-user mailboxes and settings. Shared-mailbox and team roles are not implemented.
 
@@ -231,11 +231,11 @@ Real connections default to normal mail access (`allowProviderWrites.real: true`
 
 Keep the generated `instanceId` with its data. Runtime databases, encryption keys, and session keys live **outside the checkout**:
 
-| Platform | Default location |
-| --- | --- |
-| macOS | `~/Library/Application Support/superlocal/<instanceId>/` |
-| Linux | `$XDG_DATA_HOME/superlocal/<instanceId>/`, defaulting to `~/.local/share` |
-| Windows | `%LOCALAPPDATA%/superlocal/<instanceId>/` |
+| Platform | Default location                                                          |
+| -------- | ------------------------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/superlocal/<instanceId>/`                  |
+| Linux    | `$XDG_DATA_HOME/superlocal/<instanceId>/`, defaulting to `~/.local/share` |
+| Windows  | `%LOCALAPPDATA%/superlocal/<instanceId>/`                                 |
 
 `dataDir` can point to another private directory. Back up the whole instance together: missing or mismatched keys fail closed and are never silently regenerated. Old pilot databases and `.env.local` credentials are not imported automatically.
 
@@ -258,12 +258,12 @@ bun --no-env-file run build
 
 Tooling:
 
-| Command | What it does |
-| --- | --- |
+| Command                                     | What it does                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `bun --no-env-file run check:changed [ref]` | Format, lint, knip, typecheck and tests for files changed since `origin/main` (or `ref`) |
-| `bun --no-env-file run lint` | oxlint over the repo (`.oxlintrc.json`, rules in `scripts/oxlint-plugin.ts`) |
-| `bun --no-env-file run fmt` / `fmt:check` | Format with oxfmt, or check only (`.oxfmtrc.json`) |
-| `bun --no-env-file run knip` | Unused files, dependencies and exports (`knip.jsonc`) |
-| `bun --no-env-file run sync:repos [id...]` | Clone or update the read-only reference repos in `/.reference/` |
+| `bun --no-env-file run lint`                | oxlint over the repo (`.oxlintrc.json`, rules in `scripts/oxlint-plugin.ts`)             |
+| `bun --no-env-file run fmt` / `fmt:check`   | Format with oxfmt, or check only (`.oxfmtrc.json`)                                       |
+| `bun --no-env-file run knip`                | Unused files, dependencies and exports (`knip.jsonc`)                                    |
+| `bun --no-env-file run sync:repos [id...]`  | Clone or update the read-only reference repos in `/.reference/`                          |
 
 Live-provider qualification is separate from deterministic tests. Never commit credentials, private configuration, runtime databases, real mail, or private diagnostic captures.

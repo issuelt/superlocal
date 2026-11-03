@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  canUseQuickReplies,
-  getQuickReplies,
-  quickReplyBody,
-} from "../src/quick-replies.ts";
+import { canUseQuickReplies, getQuickReplies, quickReplyBody } from "../src/quick-replies.ts";
 
 test("quick responses fill only empty replies, never existing writing or forwards", () => {
   const response = { label: "Thanks", body: "Thanks for the update!" };
@@ -33,10 +29,7 @@ test("inserting a canned response escapes markup and preserves line breaks", () 
     label: "Example",
     body: "Thanks <Ryan> & team\nI'll take a look.",
   });
-  assert.equal(
-    html,
-    "<p>Thanks &lt;Ryan&gt; &amp; team<br>I&#39;ll take a look.</p>",
-  );
+  assert.equal(html, "<p>Thanks &lt;Ryan&gt; &amp; team<br>I&#39;ll take a look.</p>");
   assert.equal(draft.body, "");
 });
 

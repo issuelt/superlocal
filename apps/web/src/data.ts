@@ -3,7 +3,10 @@ import type { AttentionDecision } from "../../shared/mail-attention";
 import type { AiDecision, AiCategory } from "../../shared/ai-triage";
 import type { CategoryEntry } from "../../shared/attention-overrides";
 
-export type LoadSendingIdentities = (mailboxId: string, input?: { refresh?: boolean }) => Promise<SendingIdentities>;
+export type LoadSendingIdentities = (
+  mailboxId: string,
+  input?: { refresh?: boolean },
+) => Promise<SendingIdentities>;
 
 export { readSaved as loadSaved } from "./storage.ts";
 
@@ -39,7 +42,14 @@ export type Message = {
   outgoing?: boolean;
   hasAttachments?: boolean;
   operationId?: string;
-  sendStatus?: "pending" | "processing" | "succeeded" | "partial" | "failed" | "cancelled" | "uncertain";
+  sendStatus?:
+    | "pending"
+    | "processing"
+    | "succeeded"
+    | "partial"
+    | "failed"
+    | "cancelled"
+    | "uncertain";
   pending?: boolean;
   nativeFolder?: string;
   isRead?: boolean;
@@ -66,7 +76,15 @@ export type Mail = {
   labels: string[];
   messages: Message[];
   /** Host-authoritative aggregate and captured-context provenance; never inferred from a preview. */
-  window?: Pick<import("../../shared/inbox-window").InboxWindowRow, "counts" | "messagesComplete" | "targets" | "targetsComplete" | "actionContextComplete" | "contextVersion">;
+  window?: Pick<
+    import("../../shared/inbox-window").InboxWindowRow,
+    | "counts"
+    | "messagesComplete"
+    | "targets"
+    | "targetsComplete"
+    | "actionContextComplete"
+    | "contextVersion"
+  >;
   hasAttachments?: boolean;
   historyExhausted?: boolean;
   /** Client-only bounded history recovery, never host action provenance. */
@@ -99,7 +117,17 @@ export type Mail = {
   mailboxNames?: string[];
 };
 /** Commands freeze metadata/receiving context, never retained reader body graphs. */
-export const captureActionMail = (mail: Mail): Mail => ({ ...mail, messages: mail.messages.map(message => ({ ...message, body: "", bodyText: undefined, bodyDocument: undefined, attachments: undefined, loaded: false })) });
+export const captureActionMail = (mail: Mail): Mail => ({
+  ...mail,
+  messages: mail.messages.map((message) => ({
+    ...message,
+    body: "",
+    bodyText: undefined,
+    bodyDocument: undefined,
+    attachments: undefined,
+    loaded: false,
+  })),
+});
 export type Draft = {
   id: string;
   account: string;
@@ -159,7 +187,9 @@ export type Preferences = {
 
 export const accounts = ["mira@example.test", "noah@example.test"];
 /** Name, shortcut key, icon, and the provider capability a source must expose for the folder to be offered (empty: always). */
-export const folders: ReadonlyArray<readonly [name: string, key: string, icon: string, capability?: "star" | "folders" | "trash"]> = [
+export const folders: ReadonlyArray<
+  readonly [name: string, key: string, icon: string, capability?: "star" | "folders" | "trash"]
+> = [
   ["Inbox", "i", "Inbox"],
   ["Starred", "s", "Star", "star"],
   ["Drafts", "d", "PencilSquircle"],
@@ -468,11 +498,7 @@ export function seedMail(): Mail[] {
     const m = mail(
       `${folder}-${i}`,
       ["Alex Morgan", "Jamie Chen", "Linear"][i % 3],
-      [
-        "A quick follow-up",
-        "Project notes and next steps",
-        "Your weekly workspace update",
-      ][i % 3],
+      ["A quick follow-up", "Project notes and next steps", "Your weekly workspace update"][i % 3],
       "Here are the notes from our conversation. Thanks again for making the time.",
       "Important",
       "Aug 28",
@@ -480,20 +506,16 @@ export function seedMail(): Mail[] {
     );
     m.folder = folder;
     m.starred = i === 0;
-    if (folder === "Reminders")
-      m.reminder = i === 3 ? "Tomorrow, 9:00 AM" : "Monday, 9:00 AM";
+    if (folder === "Reminders") m.reminder = i === 3 ? "Tomorrow, 9:00 AM" : "Monday, 9:00 AM";
     result.push(m);
   }
   for (let i = 0; i < 12; i++) {
     const m = mail(
       `work-${i}`,
       ["Jamie Chen", "Alex Morgan", "GitHub", "Linear"][i % 4],
-      [
-        "Studio review",
-        "Re: Launch plans",
-        "Pull request ready for review",
-        "Your team activity",
-      ][i % 4],
+      ["Studio review", "Re: Launch plans", "Pull request ready for review", "Your team activity"][
+        i % 4
+      ],
       "A quick update on what we are working on this week. Let me know if you have any questions.",
       i < 4 ? "Important" : i < 7 ? "Github" : "Other",
       "Yesterday",

@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, IconButton, Modal } from "./components";
-import {
-  readIssueReports,
-  saveIssueReport,
-  type IssueReport,
-} from "./issue-reports";
+import { readIssueReports, saveIssueReport, type IssueReport } from "./issue-reports";
 import "./issue-reporter.css";
 
 export default function IssueReporter({
@@ -33,10 +29,7 @@ export default function IssueReporter({
         if (active) setReports(saved);
       },
       () => {
-        if (active)
-          setError(
-            "Could not load saved issues. Browser storage is unavailable.",
-          );
+        if (active) setError("Could not load saved issues. Browser storage is unavailable.");
       },
     );
     return () => {
@@ -94,8 +87,20 @@ export default function IssueReporter({
         {discardAction && (
           <div className="issue-discard" role="group" aria-label="Unsaved issue report">
             <span>Discard the unsaved changes to this report?</span>
-            <button type="button" className="text-button" onClick={() => setDiscardAction(null)}>Keep editing</button>
-            <button type="button" className="primary-button" onClick={() => { const action = discardAction; setDiscardAction(null); action(); }}>Discard changes</button>
+            <button type="button" className="text-button" onClick={() => setDiscardAction(null)}>
+              Keep editing
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => {
+                const action = discardAction;
+                setDiscardAction(null);
+                action();
+              }}
+            >
+              Discard changes
+            </button>
           </div>
         )}
         {report ? (
@@ -171,10 +176,7 @@ export default function IssueReporter({
                 <pre>
                   {report.logs?.length
                     ? report.logs
-                        .map(
-                          (entry) =>
-                            `${entry.time} [${entry.level}] ${entry.message}`,
-                        )
+                        .map((entry) => `${entry.time} [${entry.level}] ${entry.message}`)
                         .join("\n")
                     : report.logs
                       ? "No browser logs were recorded before this capture."
@@ -189,11 +191,7 @@ export default function IssueReporter({
             </div>
             <footer className="issue-footer">
               <span>Stored in this browser. Nothing is sent.</span>
-              <button
-                className="primary-button"
-                type="submit"
-                disabled={saving || !prompt.trim()}
-              >
+              <button className="primary-button" type="submit" disabled={saving || !prompt.trim()}>
                 {saving ? "Saving..." : "Save locally"}
               </button>
             </footer>

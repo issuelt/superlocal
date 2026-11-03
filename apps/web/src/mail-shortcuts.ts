@@ -91,37 +91,28 @@ export function resolveMailShortcut(
     !context.settings &&
     (!context.modal || context.accountDialog)
   )
-    return event.key === "0" ? { type: "unified" } : { type: "account", index: Number(event.key) - 1 };
+    return event.key === "0"
+      ? { type: "unified" }
+      : { type: "account", index: Number(event.key) - 1 };
 
-  if (
-    mod &&
-    key === "k" &&
-    !event.altKey &&
-    !shift &&
-    !context.richText &&
-    !context.modal
-  )
+  if (mod && key === "k" && !event.altKey && !shift && !context.richText && !context.modal)
     return { type: "command" };
   if (context.modal) return null;
   if (event.key === "Escape") return { type: "escape" };
   if (context.settings) return null;
   if (mod && key === "d" && !event.altKey && !shift && context.floatingDraft)
     return { type: "toggleFocus" };
-  if (
-    context.editing ||
-    event.altKey ||
-    context.mode === "composer"
-  )
-    return null;
+  if (context.editing || event.altKey || context.mode === "composer") return null;
 
   if (!mod && !shift && event.key === "0" && event.repeat) return null;
   if (!mod && !shift && (event.key === "0" || event.key === "2"))
-    return { type: "calendar", view: event.key === "0" && !context.calendarSequence ? "day" : "week" };
+    return {
+      type: "calendar",
+      view: event.key === "0" && !context.calendarSequence ? "day" : "week",
+    };
   if (mod) {
-    if (event.ctrlKey && !event.metaKey && event.key === "/")
-      return { type: "copyLink" };
-    if (list && key === "a" && !context.isDrafts)
-      return { type: "selectAll", fromHere: !shift };
+    if (event.ctrlKey && !event.metaKey && event.key === "/") return { type: "copyLink" };
+    if (list && key === "a" && !context.isDrafts) return { type: "selectAll", fromHere: !shift };
     if (list && (event.key === "ArrowUp" || event.key === "ArrowDown"))
       return { type: "jump", edge: event.key === "ArrowUp" ? "top" : "bottom" };
     return null;
@@ -145,9 +136,7 @@ export function resolveMailShortcut(
       };
     else if (key === "l") intent = { type: "labelMode", mode: "navigate" };
     else {
-      const match = folders.find(
-        ([, shortcut]) => shortcut.toLowerCase() === key,
-      );
+      const match = folders.find(([, shortcut]) => shortcut.toLowerCase() === key);
       if (match) intent = { type: "goFolder", folder: match[0] };
     }
   }
@@ -161,8 +150,7 @@ export function resolveMailShortcut(
     if (event.key === "ArrowRight") return { type: "drawerActivate" };
     return null;
   }
-  if (context.interactive && ["Enter", " ", "Tab"].includes(event.key))
-    return null;
+  if (context.interactive && ["Enter", " ", "Tab"].includes(event.key)) return null;
 
   if (context.mode !== "auxiliary") {
     if (key === "c") intent = { type: "compose", popOut: shift };
@@ -175,22 +163,24 @@ export function resolveMailShortcut(
     else if (event.key === "ArrowLeft" && list) intent = { type: "openDrawer" };
     else if (event.key === "ArrowRight" && list && context.hasHighlightedMail)
       intent = { type: "openConversation", drafts: false };
-    else if (event.key === " " && list)
-      intent = { type: "page", delta: shift ? -1 : 1 };
-    else if (
-      shift &&
-      list &&
-      (key === "u" || key === "s" || key === "i" || key === "r")
-    )
+    else if (event.key === " " && list) intent = { type: "page", delta: shift ? -1 : 1 };
+    else if (shift && list && (key === "u" || key === "s" || key === "i" || key === "r"))
       intent = {
         type: "filter",
-        name: (
-          { u: "Unread", s: "Starred", i: "Important", r: "No reply" } as const
-        )[key],
+        name: ({ u: "Unread", s: "Starred", i: "Important", r: "No reply" } as const)[key],
       };
-    else if (list && !context.isDrafts && shift && ["j", "k"].includes(key) && context.hasHighlightedMail)
+    else if (
+      list &&
+      !context.isDrafts &&
+      shift &&
+      ["j", "k"].includes(key) &&
+      context.hasHighlightedMail
+    )
       intent = { type: "extendSelection", delta: key === "j" ? 1 : -1 };
-    else if (["j", "k"].includes(event.key) || list && ["ArrowDown", "ArrowUp"].includes(event.key))
+    else if (
+      ["j", "k"].includes(event.key) ||
+      (list && ["ArrowDown", "ArrowUp"].includes(event.key))
+    )
       intent = {
         type: "navigateConversation",
         delta: event.key === "j" || event.key === "ArrowDown" ? 1 : -1,
@@ -199,8 +189,7 @@ export function resolveMailShortcut(
       intent = { type: "reply", mode: "replyAll", popOut: shift };
     else if (event.key === "Enter" && list)
       intent = { type: "openConversation", drafts: !!context.isDrafts };
-    else if (event.key === "x" && context.hasHighlightedMail)
-      intent = { type: "toggleSelection" };
+    else if (event.key === "x" && context.hasHighlightedMail) intent = { type: "toggleSelection" };
     else if (key === "v") intent = { type: "labelMode", mode: "move" };
     else if (key === "y" || event.key === "[" || event.key === "]")
       intent = {
@@ -245,8 +234,6 @@ export function resolveMailShortcut(
 
   // Even an unknown second key consumes G, without suppressing its native behavior.
   if (context.sequence)
-    return intent
-      ? { ...intent, clearSequence: true }
-      : { type: "sequence", phase: "clear" };
+    return intent ? { ...intent, clearSequence: true } : { type: "sequence", phase: "clear" };
   return intent;
 }

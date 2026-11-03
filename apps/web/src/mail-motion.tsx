@@ -1,10 +1,4 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import "./mail-motion.css";
 
 type Change = "remove" | "undo" | "search" | "switch" | "return";
@@ -49,10 +43,7 @@ type Scene = {
   dispose: () => void;
 };
 
-export function useMailMotion(
-  list: RefObject<HTMLDivElement | null>,
-  options: Options,
-) {
+export function useMailMotion(list: RefObject<HTMLDivElement | null>, options: Options) {
   const scope = useId();
   const owner = useRef<HTMLDivElement>(null);
   const scene = useRef<Scene | null>(null);
@@ -76,11 +67,7 @@ export function useMailMotion(
     return y;
   }
 
-  function capture(
-    root: HTMLDivElement,
-    cloneVisible = false,
-    held = true,
-  ): Snapshot {
+  function capture(root: HTMLDivElement, cloneVisible = false, held = true): Snapshot {
     const bounds = root.getBoundingClientRect();
     const origin = bounds.top + root.clientTop - root.scrollTop;
     const headings = new Map<string, number>();
@@ -100,11 +87,7 @@ export function useMailMotion(
       const naturalTop = top - (held ? offset(key) : 0);
       const visible =
         rect.bottom > Math.max(bounds.top + root.clientTop, 0) &&
-        rect.top <
-          Math.min(
-            bounds.top + root.clientTop + root.clientHeight,
-            innerHeight,
-          ) &&
+        rect.top < Math.min(bounds.top + root.clientTop + root.clientHeight, innerHeight) &&
         rect.right > Math.max(bounds.left, 0) &&
         rect.left < Math.min(bounds.right, innerWidth);
       items.set(key, {
@@ -114,10 +97,7 @@ export function useMailMotion(
         rect,
         top,
         naturalTop,
-        clone:
-          cloneVisible && id && visible
-            ? (node.cloneNode(true) as HTMLElement)
-            : null,
+        clone: cloneVisible && id && visible ? (node.cloneNode(true) as HTMLElement) : null,
       });
       end = Math.max(end, naturalTop + rect.height);
     }
@@ -132,8 +112,7 @@ export function useMailMotion(
       ':scope > .mail-row[data-motion-id][data-highlighted="true"]',
     );
     const instant = snap || reduced();
-    for (const node of [background, bar, ink])
-      node.style.transition = instant ? "none" : "";
+    for (const node of [background, bar, ink]) node.style.transition = instant ? "none" : "";
     const visible = !!active && latest.current.focused !== false;
     if (active) {
       const bounds = root.getBoundingClientRect();
@@ -155,12 +134,9 @@ export function useMailMotion(
       ink.getBoundingClientRect();
       ink.style.transition = "";
     }
-    background.style.opacity =
-      visible && !active?.classList.contains("selected") ? "1" : "0";
+    background.style.opacity = visible && !active?.classList.contains("selected") ? "1" : "0";
     ink.style.opacity = visible ? "1" : "0";
-    ink.style.transform = visible
-      ? "translateX(0) scaleY(1)"
-      : "translateX(30px) scaleY(.8)";
+    ink.style.transform = visible ? "translateX(0) scaleY(1)" : "translateX(30px) scaleY(.8)";
   }
 
   function placeGhosts() {
@@ -193,9 +169,7 @@ export function useMailMotion(
     }
     const natural = snapshot || capture(current.root, false, false);
     const selector = `.animated-mail-list:has(> [data-mail-motion=${JSON.stringify(scope)}])`;
-    const indices = new Map(
-      Array.from(current.root.children).map((node, i) => [node, i + 1]),
-    );
+    const indices = new Map(Array.from(current.root.children).map((node, i) => [node, i + 1]));
     const rules: string[] = [];
     const groups: { first: number; last: number; y: number }[] = [];
     for (const item of natural.items.values()) {
@@ -203,8 +177,7 @@ export function useMailMotion(
       const index = indices.get(item.node)!;
       if (!y) continue;
       const group = groups.at(-1);
-      if (group && group.last + 1 === index && group.y === y)
-        group.last = index;
+      if (group && group.last + 1 === index && group.y === y) group.last = index;
       else groups.push({ first: index, last: index, y });
     }
     for (const group of groups) {
@@ -213,10 +186,7 @@ export function useMailMotion(
       );
     }
     current.style.textContent = rules.join("\n");
-    const height = [...batches.current].reduce(
-      (total, batch) => total + batch.height,
-      0,
-    );
+    const height = [...batches.current].reduce((total, batch) => total + batch.height, 0);
     current.end.style.display = "block";
     current.end.style.top = `${Math.max(0, natural.end + height - 1)}px`;
     placeGhosts();
@@ -234,8 +204,7 @@ export function useMailMotion(
     }
     if (collapse) {
       for (const pending of batches.current) {
-        for (const [key, ghost] of pending.ghosts)
-          ghost.top -= batch.offsets.get(key) || 0;
+        for (const [key, ghost] of pending.ghosts) ghost.top -= batch.offsets.get(key) || 0;
       }
     }
   }
@@ -261,24 +230,17 @@ export function useMailMotion(
   function prepare(reason: Change, ids?: string[]) {
     if (finishFrame.current !== null) cancelAnimationFrame(finishFrame.current);
     finishFrame.current = null;
-    if (reason === "search" || reason === "switch" || reason === "return")
-      cancel();
+    if (reason === "search" || reason === "switch" || reason === "return") cancel();
     const root = list.current;
-    const snapshot =
-      root && !reduced() ? capture(root, reason === "remove") : null;
+    const snapshot = root && !reduced() ? capture(root, reason === "remove") : null;
     const request = { reason, snapshot, ids: ids ? new Set(ids) : undefined };
     prepared.current = request;
     if (reason === "remove" && snapshot && scene.current) {
       if (!batches.current.size) {
-        order.current = new Map(
-          [...snapshot.items.keys()].map((key, i) => [key, i]),
-        );
+        order.current = new Map([...snapshot.items.keys()].map((key, i) => [key, i]));
       }
       // Preserve scroll extent even between the data commit and its layout effect.
-      const height = [...batches.current].reduce(
-        (total, batch) => total + batch.height,
-        0,
-      );
+      const height = [...batches.current].reduce((total, batch) => total + batch.height, 0);
       scene.current.end.style.display = "block";
       scene.current.end.style.top = `${Math.max(0, snapshot.end + height - 1)}px`;
       setHasExits(true);
@@ -299,9 +261,7 @@ export function useMailMotion(
   function retain(before: Snapshot, after: Snapshot) {
     const current = scene.current;
     if (!current) return;
-    const removed = [...before.items.values()].filter(
-      (item) => !after.items.has(item.key),
-    );
+    const removed = [...before.items.values()].filter((item) => !after.items.has(item.key));
     const ids = new Set(removed.flatMap((item) => (item.id ? [item.id] : [])));
     if (!ids.size) return;
     const offsets = new Map<string, number>();
@@ -312,10 +272,7 @@ export function useMailMotion(
         key,
         removed.reduce(
           (sum, item) =>
-            sum +
-            ((order.current.get(item.key) ?? Infinity) < rank
-              ? item.rect.height
-              : 0),
+            sum + ((order.current.get(item.key) ?? Infinity) < rank ? item.rect.height : 0),
           0,
         ),
       );
@@ -351,11 +308,7 @@ export function useMailMotion(
         node.removeAttribute("data-motion-id");
         node.removeAttribute("data-highlighted");
         node.removeAttribute("autofocus");
-        if (
-          node.matches(
-            "a, button, input, select, textarea, [tabindex], [contenteditable]",
-          )
-        ) {
+        if (node.matches("a, button, input, select, textarea, [tabindex], [contenteditable]")) {
           node.setAttribute("tabindex", "-1");
           node.removeAttribute("contenteditable");
         }
@@ -412,8 +365,7 @@ export function useMailMotion(
     const first = !previous.current;
     const viewChanged = previous.current?.viewKey !== options.viewKey;
     const rowsChanged = previous.current?.rowsKey !== options.rowsKey;
-    const replaced =
-      scene.current?.root !== root || scene.current?.owner !== layer;
+    const replaced = scene.current?.root !== root || scene.current?.owner !== layer;
     if (replaced) {
       clear();
       scene.current?.dispose();
@@ -480,8 +432,7 @@ export function useMailMotion(
     }
     const reason = request?.reason;
     const instant = reduced();
-    const reset =
-      instant || viewChanged || reason === "search" || reason === "switch";
+    const reset = instant || viewChanged || reason === "search" || reason === "switch";
     if (reset || (rowsChanged && !request)) clear();
     const before = request?.snapshot;
     let waitingForChange = false;
@@ -493,27 +444,27 @@ export function useMailMotion(
     ) {
       scene.current.style.textContent = "";
       const after = capture(root, false, false);
-      const restored = [...after.items.values()].filter(
-        (item) => !before.items.has(item.key),
-      );
-      const changed = (reason === "remove"
-        ? [...before.items.values()].filter(item => !after.items.has(item.key))
-        : restored).some(item => item.id && (!request?.ids || request.ids.has(item.id)));
+      const restored = [...after.items.values()].filter((item) => !before.items.has(item.key));
+      const changed = (
+        reason === "remove"
+          ? [...before.items.values()].filter((item) => !after.items.has(item.key))
+          : restored
+      ).some((item) => item.id && (!request?.ids || request.ids.has(item.id)));
       if (!changed) {
         waitingForChange = true;
         if (batches.current.size) applyHolds(after);
         if (rowsChanged && request) {
           request.snapshot = capture(root, reason === "remove");
           if (!batches.current.size) {
-            order.current = new Map([...request.snapshot.items.keys()].map((key, index) => [key, index]));
+            order.current = new Map(
+              [...request.snapshot.items.keys()].map((key, index) => [key, index]),
+            );
             scene.current.end.style.top = `${Math.max(0, request.snapshot.end - 1)}px`;
           }
         }
       } else {
         const canceled = [...batches.current].filter((batch) =>
-          [...after.items.values()].some(
-            (item) => item.id && batch.ids.has(item.id),
-          ),
+          [...after.items.values()].some((item) => item.id && batch.ids.has(item.id)),
         );
         if (reason === "undo") {
           for (const batch of batches.current) {
@@ -522,15 +473,11 @@ export function useMailMotion(
               ghost.top +=
                 restored.reduce(
                   (sum, item) =>
-                    sum +
-                    ((order.current.get(item.key) ?? Infinity) < rank
-                      ? item.rect.height
-                      : 0),
+                    sum + ((order.current.get(item.key) ?? Infinity) < rank ? item.rect.height : 0),
                   0,
                 ) -
                 canceled.reduce(
-                  (sum, canceledBatch) =>
-                    sum + (canceledBatch.offsets.get(key) || 0),
+                  (sum, canceledBatch) => sum + (canceledBatch.offsets.get(key) || 0),
                   0,
                 );
             }

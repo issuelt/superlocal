@@ -105,20 +105,16 @@ export default function Snippets({
   );
   const search = useDeferredValue(query.trim().toLowerCase());
   const visible = snippets.filter((snippet) =>
-    `${snippet.title} ${snippetText(snippet.body)}`
-      .toLowerCase()
-      .includes(search),
+    `${snippet.title} ${snippetText(snippet.body)}`.toLowerCase().includes(search),
   );
-  const active =
-    visible.find((snippet) => snippet.id === selected) || visible[0];
+  const active = visible.find((snippet) => snippet.id === selected) || visible[0];
   const closeEditor = useCallback(() => setEditing(null), []);
   const closeDelete = useCallback(() => {
     setDeleting(null);
     setError("");
   }, []);
   function persist(next: Snippet[]) {
-    if (!writeSaved("snippets", next))
-      throw new Error("Browser storage is unavailable.");
+    if (!writeSaved("snippets", next)) throw new Error("Browser storage is unavailable.");
     setSnippets(next);
   }
   function compose(snippet: Snippet) {
@@ -131,9 +127,7 @@ export default function Snippets({
       },
     };
     if (!writeSaved("snippet-metrics", next))
-      return setError(
-        "Could not save snippet usage. Browser storage is unavailable.",
-      );
+      return setError("Could not save snippet usage. Browser storage is unavailable.");
     setMetrics(next);
     onCompose(
       snippet.id === "ref-call" ? "Following up on our call" : snippet.title,
@@ -151,8 +145,7 @@ export default function Snippets({
     const suffix =
       remainder >= 11 && remainder <= 13
         ? "th"
-        : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[day % 10] ||
-          "th";
+        : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[day % 10] || "th";
     return `${value.toLocaleDateString("en-US", { month: "long" })} ${day}${suffix}, ${value.getFullYear()}`;
   }
   const shortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -163,8 +156,7 @@ export default function Snippets({
     )
       return;
     if (document.querySelector('[role="dialog"]') || event.altKey) return;
-    if (!event.metaKey && !event.ctrlKey && event.key.toLowerCase() === "c")
-      newSnippet();
+    if (!event.metaKey && !event.ctrlKey && event.key.toLowerCase() === "c") newSnippet();
     else if (event.key === ";" && active) compose(active);
     else if (!event.metaKey && !event.ctrlKey && event.key === "Escape") {
       if (sidebarOpen) setSidebarOpen(false);
@@ -197,11 +189,7 @@ export default function Snippets({
           />
           <h1>Snippets</h1>
           <div className="aux-header-actions">
-            <IconButton
-              name="PencilSquircle"
-              title="Compose"
-              onClick={() => onCompose("", "")}
-            />
+            <IconButton name="PencilSquircle" title="Compose" onClick={() => onCompose("", "")} />
             <IconButton
               name="Search"
               title="Search snippets"
@@ -264,9 +252,7 @@ export default function Snippets({
                 <strong>{snippet.title}</strong>
                 <span className="snippet-row-body">
                   {snippet.id === "ref-call" && (
-                    <span className="snippet-row-subject">
-                      Following up on our call
-                    </span>
+                    <span className="snippet-row-subject">Following up on our call</span>
                   )}
                   {snippetText(snippet.body).replaceAll("\n", " ")}
                 </span>
@@ -279,23 +265,15 @@ export default function Snippets({
           {!visible.length && (
             <div className="aux-empty">
               <Icon name="Snippet" size={24} />
-              <p>
-                {query ? "No snippets match your search." : "No snippets yet."}
-              </p>
-              <button
-                className="aux-button"
-                onClick={() => (query ? setQuery("") : newSnippet())}
-              >
+              <p>{query ? "No snippets match your search." : "No snippets yet."}</p>
+              <button className="aux-button" onClick={() => (query ? setQuery("") : newSnippet())}>
                 {query ? "Clear search" : "Create snippet"}
               </button>
             </div>
           )}
         </div>
       </div>
-      <aside
-        className="aux-owned-sidebar snippet-owned-sidebar"
-        aria-label="Snippet details"
-      >
+      <aside className="aux-owned-sidebar snippet-owned-sidebar" aria-label="Snippet details">
         <IconButton
           name="Close"
           title="Close snippet details"
@@ -311,9 +289,7 @@ export default function Snippets({
                   <IconButton
                     name="PencilSquircle"
                     title={`Edit ${active.title}`}
-                    onClick={() =>
-                      setEditing({ ...active, body: snippetText(active.body) })
-                    }
+                    onClick={() => setEditing({ ...active, body: snippetText(active.body) })}
                   />
                   <IconButton
                     name="Trash"
@@ -322,9 +298,7 @@ export default function Snippets({
                   />
                 </div>
               </header>
-              <div className="snippet-detail-body">
-                {snippetText(active.body)}
-              </div>
+              <div className="snippet-detail-body">{snippetText(active.body)}</div>
               <dl className="snippet-metadata">
                 <div>
                   <dt>Modified</dt>
@@ -333,9 +307,7 @@ export default function Snippets({
                 <div>
                   <dt title="Last used in a draft">Last used</dt>
                   <dd>
-                    {activeMetrics?.lastUsed
-                      ? formattedDate(activeMetrics.lastUsed)
-                      : "Never"}
+                    {activeMetrics?.lastUsed ? formattedDate(activeMetrics.lastUsed) : "Never"}
                   </dd>
                 </div>
               </dl>
@@ -346,17 +318,11 @@ export default function Snippets({
               <span>Create Snippet</span>
               <Key>C</Key>
             </button>
-            <button
-              disabled={!active}
-              onClick={() => active && compose(active)}
-            >
+            <button disabled={!active} onClick={() => active && compose(active)}>
               <span>Use Snippet Inline</span>
               <Key>;</Key>
             </button>
-            <button
-              disabled={!active}
-              onClick={() => active && compose(active)}
-            >
+            <button disabled={!active} onClick={() => active && compose(active)}>
               <span>Use Snippet</span>
               <span>
                 <Key>⌘</Key> <Key>;</Key>
@@ -370,9 +336,7 @@ export default function Snippets({
           )}
         </div>
         <footer className="aux-sidebar-footer">
-          {onOpenSettings && (
-            <IconButton name="Gear" title="Settings" onClick={onOpenSettings} />
-          )}
+          {onOpenSettings && <IconButton name="Gear" title="Settings" onClick={onOpenSettings} />}
         </footer>
       </aside>
       {editing && (
@@ -387,9 +351,7 @@ export default function Snippets({
             };
             persist(
               snippet.id
-                ? snippets.map((item) =>
-                    item.id === snippet.id ? saved : item,
-                  )
+                ? snippets.map((item) => (item.id === snippet.id ? saved : item))
                 : [...snippets, saved],
             );
             const next = {
@@ -403,9 +365,7 @@ export default function Snippets({
             if (writeSaved("snippet-metrics", next)) {
               setMetrics(next);
             } else {
-              setError(
-                "Snippet saved, but its modification date could not be saved.",
-              );
+              setError("Snippet saved, but its modification date could not be saved.");
             }
             setSelected(saved.id);
             setQuery("");
@@ -437,9 +397,7 @@ export default function Snippets({
                   persist(snippets.filter((item) => item.id !== deleting.id));
                   closeDelete();
                 } catch {
-                  setError(
-                    "Could not delete this snippet. Browser storage is unavailable.",
-                  );
+                  setError("Could not delete this snippet. Browser storage is unavailable.");
                 }
               }}
             >
@@ -466,8 +424,7 @@ function SnippetEditor({
   const [error, setError] = useState("");
   function save(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !body.trim())
-      return setError("Add a name and message for this snippet.");
+    if (!title.trim() || !body.trim()) return setError("Add a name and message for this snippet.");
     try {
       onSave({ id: snippet.id, title: title.trim(), body });
     } catch {
@@ -516,11 +473,7 @@ function SnippetEditor({
           </p>
         )}
         <footer className="aux-editor-footer">
-          <button
-            type="button"
-            className="aux-button aux-cancel"
-            onClick={onClose}
-          >
+          <button type="button" className="aux-button aux-cancel" onClick={onClose}>
             Cancel <Key>Esc</Key>
           </button>
           <button type="submit" className="aux-button aux-primary">

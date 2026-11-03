@@ -203,4 +203,6 @@
   padding: 12px 24px;
 }
 
-.issue-discard span { flex: 1 1 180px; }
+.issue-discard span {
+  flex: 1 1 180px;
+}

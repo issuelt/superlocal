@@ -4,7 +4,8 @@ export function validApplicationScope(scope: unknown): scope is string {
 
 /** One owner for the lifetime of a document, including its delayed work. */
 export function createApplicationScope(scope: string | null) {
-  if (scope !== null && !validApplicationScope(scope)) throw new Error("Invalid application scope.");
+  if (scope !== null && !validApplicationScope(scope))
+    throw new Error("Invalid application scope.");
   const controller = new AbortController();
   return Object.freeze({
     scope,
@@ -19,7 +20,9 @@ let documentScope: ApplicationScope | undefined;
 
 // Standalone/local consumers retain the original keys. The application gate
 // binds before mounting any private UI; it never reads storage before access.
-export function getApplicationScope(): ApplicationScope { return documentScope ?? loopback; }
+export function getApplicationScope(): ApplicationScope {
+  return documentScope ?? loopback;
+}
 
 export function bindApplicationScope(scope: string | null): ApplicationScope {
   if (documentScope && (documentScope.scope !== scope || documentScope.signal.aborted)) {

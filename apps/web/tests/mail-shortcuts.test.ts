@@ -21,10 +21,28 @@ test("W records a negative-feedback action distinct from E, respecting editing a
   assert.deepEqual(resolve("e"), { type: "triage", action: "done" });
   assert.deepEqual(resolve("w"), { type: "triage", action: "not-important" });
   assert.deepEqual(resolve("w", { mode: "reader" }), { type: "triage", action: "not-important" });
-  for (const context of [{ editing: true }, { modal: true }, { settings: true }, { mode: "composer" }, { mode: "auxiliary" }, { navigation: true }] as const) assert.equal(resolve("w", context), null);
+  for (const context of [
+    { editing: true },
+    { modal: true },
+    { settings: true },
+    { mode: "composer" },
+    { mode: "auxiliary" },
+    { navigation: true },
+  ] as const)
+    assert.equal(resolve("w", context), null);
   assert.equal(resolve("w", {}, { metaKey: true }), null);
-  assert.deepEqual(resolve("i", { sequence: true }), { type: "goFolder", folder: "Inbox", split: "Important", clearSequence: true });
-  assert.deepEqual(resolve("o", { sequence: true }), { type: "goFolder", folder: "Inbox", split: "Other", clearSequence: true });
+  assert.deepEqual(resolve("i", { sequence: true }), {
+    type: "goFolder",
+    folder: "Inbox",
+    split: "Important",
+    clearSequence: true,
+  });
+  assert.deepEqual(resolve("o", { sequence: true }), {
+    type: "goFolder",
+    folder: "Inbox",
+    split: "Other",
+    clearSequence: true,
+  });
 });
 
 test("selection shortcuts distinguish the list, drafts, readers, and text editing", () => {
@@ -125,21 +143,28 @@ test("Control account numbers work in inputs and the account dialog, but not oth
       ),
       { type: "account", index },
     );
-    assert.equal(
-      resolve(key, { modal: true, editing: true }, { ctrlKey: true }),
-      null,
-    );
+    assert.equal(resolve(key, { modal: true, editing: true }, { ctrlKey: true }), null);
     assert.equal(resolve(key, {}, { ctrlKey: true, altKey: true }), null);
     assert.equal(resolve(key, {}, { ctrlKey: true, metaKey: true }), null);
     assert.equal(resolve(key, {}, { metaKey: true }), null);
   }
   assert.deepEqual(resolve("0", {}, { ctrlKey: true }), { type: "unified" });
-  assert.deepEqual(resolve("0", { editing: true, modal: true, accountDialog: true }, { ctrlKey: true }), { type: "unified" });
+  assert.deepEqual(
+    resolve("0", { editing: true, modal: true, accountDialog: true }, { ctrlKey: true }),
+    { type: "unified" },
+  );
   assert.equal(resolve("0", { modal: true }, { ctrlKey: true }), null);
   assert.equal(resolve("0", {}, { metaKey: true }), null);
   for (let index = 0; index <= 9; index++) {
     assert.equal(resolve(String(index), { settings: true }, { ctrlKey: true }), null);
-    assert.equal(resolve(String(index), { settings: true, editing: true, modal: true, accountDialog: true }, { ctrlKey: true }), null);
+    assert.equal(
+      resolve(
+        String(index),
+        { settings: true, editing: true, modal: true, accountDialog: true },
+        { ctrlKey: true },
+      ),
+      null,
+    );
   }
   assert.deepEqual(resolve("1", {}, { ctrlKey: true, shiftKey: true }), {
     type: "account",
@@ -149,24 +174,22 @@ test("Control account numbers work in inputs and the account dialog, but not oth
 
 test("command and floating draft focus shortcuts precede editing guards, but settings owns mail focus", () => {
   for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
-    assert.deepEqual(resolve("k", { settings: true, editing: true }, modifier), { type: "command" });
+    assert.deepEqual(resolve("k", { settings: true, editing: true }, modifier), {
+      type: "command",
+    });
     assert.equal(resolve("d", { settings: true, floatingDraft: true }, modifier), null);
-    assert.equal(resolve("d", { settings: true, floatingDraft: true, editing: true }, modifier), null);
+    assert.equal(
+      resolve("d", { settings: true, floatingDraft: true, editing: true }, modifier),
+      null,
+    );
     assert.deepEqual(resolve("k", { editing: true }, modifier), {
       type: "command",
     });
-    assert.deepEqual(
-      resolve("K", { mode: "composer", editing: true }, modifier),
-      { type: "command" },
-    );
-    assert.equal(
-      resolve("k", { settings: true }, { ...modifier, altKey: true }),
-      null,
-    );
-    assert.equal(
-      resolve("k", { editing: true, richText: true }, modifier),
-      null,
-    );
+    assert.deepEqual(resolve("K", { mode: "composer", editing: true }, modifier), {
+      type: "command",
+    });
+    assert.equal(resolve("k", { settings: true }, { ...modifier, altKey: true }), null);
+    assert.equal(resolve("k", { editing: true, richText: true }, modifier), null);
     assert.equal(resolve("k", { modal: true }, modifier), null);
     assert.equal(resolve("K", {}, { ...modifier, shiftKey: true }), null);
     assert.deepEqual(
@@ -183,21 +206,11 @@ test("command and floating draft focus shortcuts precede editing guards, but set
       { type: "toggleFocus" },
     );
     assert.equal(
-      resolve(
-        "d",
-        { floatingDraft: true, settings: true },
-        { ...modifier, altKey: true },
-      ),
+      resolve("d", { floatingDraft: true, settings: true }, { ...modifier, altKey: true }),
       null,
     );
-    assert.equal(
-      resolve("d", { floatingDraft: true, modal: true }, modifier),
-      null,
-    );
-    assert.equal(
-      resolve("d", { floatingDraft: true }, { ...modifier, shiftKey: true }),
-      null,
-    );
+    assert.equal(resolve("d", { floatingDraft: true, modal: true }, modifier), null);
+    assert.equal(resolve("d", { floatingDraft: true }, { ...modifier, shiftKey: true }), null);
     assert.equal(resolve("d", {}, modifier), null);
   }
 });
@@ -218,21 +231,7 @@ test("Escape is global except for modal, composing, and already-handled events",
 });
 
 test("browser and operating system modifier combinations are left native", () => {
-  for (const key of [
-    "f",
-    "p",
-    "t",
-    "r",
-    "w",
-    "c",
-    "v",
-    "x",
-    "z",
-    "[",
-    "]",
-    "{",
-    "}",
-  ])
+  for (const key of ["f", "p", "t", "r", "w", "c", "v", "x", "z", "[", "]", "{", "}"])
     for (const shiftKey of [false, true])
       for (const modifier of [{ metaKey: true }, { ctrlKey: true }])
         assert.equal(
@@ -249,9 +248,15 @@ test("browser and operating system modifier combinations are left native", () =>
 
 test("G sequences choose explicit Inbox splits, labels, and shared folder destinations", () => {
   assert.deepEqual(resolve("g"), { type: "sequence", phase: "start" });
-  assert.deepEqual(resolve("G", {}, { shiftKey: true }), { type: "jump", edge: "bottom", clearSequence: true });
+  assert.deepEqual(resolve("G", {}, { shiftKey: true }), {
+    type: "jump",
+    edge: "bottom",
+    clearSequence: true,
+  });
   assert.deepEqual(resolve("g", { sequence: true }), {
-    type: "jump", edge: "top", clearSequence: true,
+    type: "jump",
+    edge: "top",
+    clearSequence: true,
   });
   assert.deepEqual(resolve("i", { sequence: true }), {
     type: "goFolder",
@@ -368,14 +373,13 @@ test("drawer navigation overrides mail keys but follows global modifier and cale
     type: "drawerNavigate",
     delta: -1,
   });
-  assert.deepEqual(
-    resolve("ArrowRight", { navigation: true, interactive: true }),
-    { type: "drawerActivate" },
-  );
-  assert.deepEqual(
-    resolve("ArrowUp", { navigation: true }, { metaKey: true }),
-    { type: "jump", edge: "top" },
-  );
+  assert.deepEqual(resolve("ArrowRight", { navigation: true, interactive: true }), {
+    type: "drawerActivate",
+  });
+  assert.deepEqual(resolve("ArrowUp", { navigation: true }, { metaKey: true }), {
+    type: "jump",
+    edge: "top",
+  });
   assert.deepEqual(resolve("a", { navigation: true }, { metaKey: true }), {
     type: "selectAll",
     fromHere: true,
@@ -410,14 +414,11 @@ test("list movement, paging, splits, and opening retain their distinct contexts"
     });
   assert.deepEqual(resolve("J", {}, { shiftKey: true }), { type: "extendSelection", delta: 1 });
   assert.deepEqual(resolve("K", {}, { shiftKey: true }), { type: "extendSelection", delta: -1 });
-  assert.deepEqual(
-    resolve("ArrowDown", { isDrafts: true }, { ctrlKey: true }),
-    { type: "jump", edge: "bottom" },
-  );
-  assert.equal(
-    resolve("ArrowDown", { mode: "reader" }, { ctrlKey: true }),
-    null,
-  );
+  assert.deepEqual(resolve("ArrowDown", { isDrafts: true }, { ctrlKey: true }), {
+    type: "jump",
+    edge: "bottom",
+  });
+  assert.equal(resolve("ArrowDown", { mode: "reader" }, { ctrlKey: true }), null);
   assert.deepEqual(resolve(" "), { type: "page", delta: 1 });
   assert.deepEqual(resolve(" ", {}, { shiftKey: true }), {
     type: "page",
@@ -434,20 +435,46 @@ test("list movement, paging, splits, and opening retain their distinct contexts"
 });
 
 test("reader horizontal arrows switch conversations while vertical arrows stay within the reader", () => {
-  for (const [key, delta] of [["ArrowLeft", -1], ["ArrowRight", 1], ["k", -1], ["j", 1]] as const)
+  for (const [key, delta] of [
+    ["ArrowLeft", -1],
+    ["ArrowRight", 1],
+    ["k", -1],
+    ["j", 1],
+  ] as const)
     assert.deepEqual(resolve(key, { mode: "reader" }), { type: "navigateConversation", delta });
   // ThreadView owns message reveal/focus, including keys forwarded from its HTML iframe.
   for (const key of ["ArrowUp", "ArrowDown", "n", "p"])
     assert.equal(resolve(key, { mode: "reader" }), null, key);
   for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
-    for (const context of [{ editing: true }, { settings: true }, { modal: true }, { mode: "composer" }, { mode: "auxiliary" }] as const)
+    for (const context of [
+      { editing: true },
+      { settings: true },
+      { modal: true },
+      { mode: "composer" },
+      { mode: "auxiliary" },
+    ] as const)
       assert.equal(resolve(key, { mode: "reader", ...context }), null, key);
-    for (const event of [{ shiftKey: true }, { metaKey: true }, { ctrlKey: true }, { altKey: true }, { isComposing: true }, { defaultPrevented: true }])
+    for (const event of [
+      { shiftKey: true },
+      { metaKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { isComposing: true },
+      { defaultPrevented: true },
+    ])
       assert.equal(resolve(key, { mode: "reader" }, event), null, key);
   }
-  assert.deepEqual(resolve("ArrowUp", { mode: "reader", navigation: true }), { type: "drawerNavigate", delta: -1 });
-  assert.deepEqual(resolve("ArrowDown", { mode: "reader", navigation: true }), { type: "drawerNavigate", delta: 1 });
-  assert.deepEqual(resolve("ArrowRight", { mode: "reader", navigation: true }), { type: "drawerActivate" });
+  assert.deepEqual(resolve("ArrowUp", { mode: "reader", navigation: true }), {
+    type: "drawerNavigate",
+    delta: -1,
+  });
+  assert.deepEqual(resolve("ArrowDown", { mode: "reader", navigation: true }), {
+    type: "drawerNavigate",
+    delta: 1,
+  });
+  assert.deepEqual(resolve("ArrowRight", { mode: "reader", navigation: true }), {
+    type: "drawerActivate",
+  });
 });
 
 test("mail actions retain exact shifted key semantics", () => {
@@ -514,11 +541,7 @@ test("mail actions retain exact shifted key semantics", () => {
     delta: -1,
   });
   for (const key of ["{", "}", "U", "S", "L", "H"])
-    assert.equal(
-      resolve(key, { mode: "reader" }, { shiftKey: true }),
-      null,
-      key,
-    );
+    assert.equal(resolve(key, { mode: "reader" }, { shiftKey: true }), null, key);
   assert.deepEqual(resolve("z"), { type: "undo" });
   assert.equal(resolve("Z", {}, { shiftKey: true }), null);
   assert.equal(resolve("?", {}, { shiftKey: true }), null);
@@ -556,38 +579,35 @@ test("ordinary typing and mail shortcuts do not leak from editors, settings, or 
       { mode: "composer" },
     ] as const)
       assert.equal(resolve(key, context), null, key);
-  for (const key of [
-    "a",
-    "b",
-    "d",
-    "f",
-    "i",
-    "m",
-    "n",
-    "o",
-    "p",
-    "q",
-    "r",
-    "t",
-    "1",
-    "9",
-    "?",
-  ])
+  for (const key of ["a", "b", "d", "f", "i", "m", "n", "o", "p", "q", "r", "t", "1", "9", "?"])
     assert.equal(resolve(key), null, key);
 });
 
-
 test("gg and Shift+G jump in list and reader without stealing editing or repeating G", () => {
   for (const mode of ["list", "reader"] as const) {
-    assert.deepEqual(resolve("g", { mode, sequence: true }), { type: "jump", edge: "top", clearSequence: true });
-    assert.deepEqual(resolve("G", { mode, sequence: true }, { shiftKey: true }), { type: "jump", edge: "bottom", clearSequence: true });
+    assert.deepEqual(resolve("g", { mode, sequence: true }), {
+      type: "jump",
+      edge: "top",
+      clearSequence: true,
+    });
+    assert.deepEqual(resolve("G", { mode, sequence: true }, { shiftKey: true }), {
+      type: "jump",
+      edge: "bottom",
+      clearSequence: true,
+    });
     assert.equal(resolve("g", { mode, sequence: true }, { repeat: true }), null);
     for (const context of [{ editing: true }, { modal: true }, { settings: true }]) {
       assert.equal(resolve("g", { mode, sequence: true, ...context }), null);
       assert.equal(resolve("G", { mode, ...context }, { shiftKey: true }), null);
     }
   }
-  for (const event of [{ altKey: true }, { metaKey: true }, { ctrlKey: true }, { isComposing: true }, { defaultPrevented: true }])
+  for (const event of [
+    { altKey: true },
+    { metaKey: true },
+    { ctrlKey: true },
+    { isComposing: true },
+    { defaultPrevented: true },
+  ])
     assert.equal(resolve("g", { sequence: true }, event), null);
   assert.equal(resolve("G", { mode: "composer" }, { shiftKey: true }), null);
 });
@@ -596,18 +616,47 @@ test("folder prefixes work with a drawer open and take priority over reader acti
   assert.deepEqual(resolve("g", { navigation: true }), { type: "sequence", phase: "start" });
   for (const mode of ["list", "reader", "auxiliary"] as const) {
     for (const navigation of [false, true]) {
-      assert.deepEqual(resolve("i", { mode, navigation, sequence: true }), { type: "goFolder", folder: "Inbox", split: "Important", clearSequence: true });
-      assert.deepEqual(resolve("o", { mode, navigation, sequence: true }), { type: "goFolder", folder: "Inbox", split: "Other", clearSequence: true });
-      assert.deepEqual(resolve("m", { mode, navigation, sequence: true }), { type: "goFolder", folder: "Muted", clearSequence: true });
-      assert.deepEqual(resolve("t", { mode, navigation, sequence: true }), { type: "goFolder", folder: "Sent", clearSequence: true });
+      assert.deepEqual(resolve("i", { mode, navigation, sequence: true }), {
+        type: "goFolder",
+        folder: "Inbox",
+        split: "Important",
+        clearSequence: true,
+      });
+      assert.deepEqual(resolve("o", { mode, navigation, sequence: true }), {
+        type: "goFolder",
+        folder: "Inbox",
+        split: "Other",
+        clearSequence: true,
+      });
+      assert.deepEqual(resolve("m", { mode, navigation, sequence: true }), {
+        type: "goFolder",
+        folder: "Muted",
+        clearSequence: true,
+      });
+      assert.deepEqual(resolve("t", { mode, navigation, sequence: true }), {
+        type: "goFolder",
+        folder: "Sent",
+        clearSequence: true,
+      });
     }
   }
 });
 
 test("Shift+J/K add to selection only in a selectable mail list", () => {
-  for (const [key, delta] of [["J", 1], ["K", -1]] as const) {
+  for (const [key, delta] of [
+    ["J", 1],
+    ["K", -1],
+  ] as const) {
     assert.deepEqual(resolve(key, {}, { shiftKey: true }), { type: "extendSelection", delta });
-    for (const context of [{ editing: true }, { isDrafts: true }, { navigation: true }, { modal: true }, { mode: "reader" }, { mode: "composer" }, { hasHighlightedMail: false }] as const)
+    for (const context of [
+      { editing: true },
+      { isDrafts: true },
+      { navigation: true },
+      { modal: true },
+      { mode: "reader" },
+      { mode: "composer" },
+      { hasHighlightedMail: false },
+    ] as const)
       assert.equal(resolve(key, context, { shiftKey: true }), null);
   }
 });
@@ -616,7 +665,9 @@ test("00 opens week while preserving day, legacy week, and account zero", () => 
   assert.deepEqual(resolve("0"), { type: "calendar", view: "day" });
   assert.deepEqual(resolve("0", { calendarSequence: true }), { type: "calendar", view: "week" });
   assert.deepEqual(resolve("2"), { type: "calendar", view: "week" });
-  assert.deepEqual(resolve("0", { calendarSequence: true }, { ctrlKey: true }), { type: "unified" });
+  assert.deepEqual(resolve("0", { calendarSequence: true }, { ctrlKey: true }), {
+    type: "unified",
+  });
   assert.equal(resolve("0", { editing: true, calendarSequence: true }), null);
   assert.equal(resolve("0", { calendarSequence: true }, { repeat: true }), null);
 });

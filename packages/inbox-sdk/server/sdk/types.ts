@@ -1,5 +1,5 @@
-import { compile } from 'html-to-text'
-import type { MailScope } from './mail-sources'
+import { compile } from "html-to-text";
+import type { MailScope } from "./mail-sources";
 import type {
   Attachment,
   MailAccount,
@@ -8,7 +8,7 @@ import type {
   MailThread,
   Participant,
   ProviderCapabilities,
-} from '../../src/types'
+} from "../../src/types";
 
 export type {
   MailScope,
@@ -19,215 +19,228 @@ export type {
   MailThread,
   Participant,
   ProviderCapabilities,
-}
+};
 
-export type InboxProviderType = MailAccount['provider']
+export type InboxProviderType = MailAccount["provider"];
 
 export interface ProviderCredentials {
-  accountId: string
-  email?: string
-  name?: string
-  userId?: string
-  color?: string
-  baseUrl?: string
-  timeoutMs?: number
-  fetch?: typeof globalThis.fetch
+  accountId: string;
+  email?: string;
+  name?: string;
+  userId?: string;
+  color?: string;
+  baseUrl?: string;
+  timeoutMs?: number;
+  fetch?: typeof globalThis.fetch;
   /** Trusted runtime cancellation; never persisted as credential data. */
-  signal?: AbortSignal
+  signal?: AbortSignal;
 }
 
 export interface SyncCursor {
-  provider: InboxProviderType
-  kind: 'history' | 'delta' | 'uid' | 'page'
-  value: string
-  folder?: MailFolder
-  metadata?: Record<string, string>
+  provider: InboxProviderType;
+  kind: "history" | "delta" | "uid" | "page";
+  value: string;
+  folder?: MailFolder;
+  metadata?: Record<string, string>;
 }
 
 /** SDK runtime hints; separate from a provider's validated operation options. */
 export interface SyncContext {
   /** Latest refreshes start at the head; backfill resumes a durable older-page cursor. */
-  lane?: 'latest' | 'backfill'
+  lane?: "latest" | "backfill";
   /** This exact checkpoint scope already completed its older-history walk. */
-  snapshotComplete?: boolean
+  snapshotComplete?: boolean;
   /** Previously stored native identities, not proof of absence from a partial listing.
    * Providers may intersect this untruncated hint with a bounded page instead of copying it all. */
-  knownMessageIds?: string[]
+  knownMessageIds?: string[];
   /** Last confirmed upstream flags/folder, not optimistic state or mailbox-local Done/snooze. */
-  knownMessageStates?: Array<{ id: string; isRead: boolean; isStarred: boolean; folder?: MailFolder }>
+  knownMessageStates?: Array<{
+    id: string;
+    isRead: boolean;
+    isStarred: boolean;
+    folder?: MailFolder;
+  }>;
 }
 
 export interface SyncOptions extends SyncContext {
-  folder?: MailFolder
-  limit?: number
-  mailboxScopes?: MailScope[]
+  folder?: MailFolder;
+  limit?: number;
+  mailboxScopes?: MailScope[];
 }
 
 export interface SyncResult {
-  messages: MailMessage[]
-  threads: MailThread[]
-  deletedMessageIds: string[]
+  messages: MailMessage[];
+  threads: MailThread[];
+  deletedMessageIds: string[];
   /** Durable continuation for backfill or native incremental history. */
-  cursor: SyncCursor | null
-  hasMore: boolean
-  fullSync: boolean
+  cursor: SyncCursor | null;
+  hasMore: boolean;
+  fullSync: boolean;
   /** Native history boundary for the next latest poll, independent of older backfill pages.
    * Without one, a fullSync latest refresh starts at the head every poll and follows hasMore
    * only within that bounded poll. Return no changed messages and hasMore:false at a known,
    * unchanged head to become quiet; never depend on an instance-local snapshot token. */
-  recentCursor?: SyncCursor | null
-  removedMessageIds?: string[]
+  recentCursor?: SyncCursor | null;
+  removedMessageIds?: string[];
   /** Older-history coverage, not whether a latest head refresh has more changed pages.
    * A page-only latest refresh preserves SyncContext.snapshotComplete after backfill finishes. */
-  snapshotComplete?: boolean
+  snapshotComplete?: boolean;
   /** Mailbox-scoped instances that no longer exist, not a claim of global message deletion. */
-  retiredMessageIds?: string[]
+  retiredMessageIds?: string[];
 }
 
-export type Recipient = string | Participant
+export type Recipient = string | Participant;
 
 export interface SendAttachment {
-  filename: string
-  content: string | Uint8Array | ArrayBuffer
-  contentType?: string
-  encoding?: 'base64' | 'utf8'
-  contentId?: string
-  inline?: boolean
+  filename: string;
+  content: string | Uint8Array | ArrayBuffer;
+  contentType?: string;
+  encoding?: "base64" | "utf8";
+  contentId?: string;
+  inline?: boolean;
 }
 
 export interface SendInput {
-  accountId?: string
-  from?: Recipient
-  to: Recipient | Recipient[]
-  cc?: Recipient | Recipient[]
-  bcc?: Recipient | Recipient[]
-  subject: string
-  body?: string
-  text?: string
-  html?: string
-  bodyText?: string
-  bodyHtml?: string
-  attachments?: SendAttachment[]
-  threadId?: string
-  sourceMessageId?: string
-  inReplyTo?: string
-  references?: string[]
-  replyAll?: boolean
-  scheduledAt?: string
-  headers?: Record<string, string>
+  accountId?: string;
+  from?: Recipient;
+  to: Recipient | Recipient[];
+  cc?: Recipient | Recipient[];
+  bcc?: Recipient | Recipient[];
+  subject: string;
+  body?: string;
+  text?: string;
+  html?: string;
+  bodyText?: string;
+  bodyHtml?: string;
+  attachments?: SendAttachment[];
+  threadId?: string;
+  sourceMessageId?: string;
+  inReplyTo?: string;
+  references?: string[];
+  replyAll?: boolean;
+  scheduledAt?: string;
+  headers?: Record<string, string>;
 }
 
 export interface SendResult {
-  id: string
-  providerMessageId?: string
-  threadId?: string
-  messageId?: string
-  accepted?: string[]
-  rejected?: string[]
-  scheduledAt?: string
+  id: string;
+  providerMessageId?: string;
+  threadId?: string;
+  messageId?: string;
+  accepted?: string[];
+  rejected?: string[];
+  scheduledAt?: string;
   /** SMTP accepted the message, but saving its Sent copy could not be confirmed. Do not resend. */
-  sentCopyUnconfirmed?: boolean
+  sentCopyUnconfirmed?: boolean;
 }
 
 export interface MessageMutation {
-  isRead?: boolean
-  isStarred?: boolean
-  isArchived?: boolean
-  folder?: MailFolder
-  addLabels?: string[]
-  removeLabels?: string[]
-  snoozedUntil?: string | null
-  deletePermanently?: boolean
+  isRead?: boolean;
+  isStarred?: boolean;
+  isArchived?: boolean;
+  folder?: MailFolder;
+  addLabels?: string[];
+  removeLabels?: string[];
+  snoozedUntil?: string | null;
+  deletePermanently?: boolean;
 }
 
 export interface ListOptions {
-  folder?: MailFolder
-  cursor?: string | null
-  limit?: number
-  search?: string
-  unreadOnly?: boolean
-  mailboxScopes?: MailScope[]
+  folder?: MailFolder;
+  cursor?: string | null;
+  limit?: number;
+  search?: string;
+  unreadOnly?: boolean;
+  mailboxScopes?: MailScope[];
 }
 
 export interface ProviderListResult<T> {
-  items: T[]
-  nextCursor: string | null
-  hasMore: boolean
-  total?: number
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total?: number;
 }
 
 export interface ProviderFolder {
-  id: string
-  name: string
-  folder: MailFolder
-  kind?: 'folder' | 'label'
-  path?: string
-  custom?: boolean
-  unreadCount?: number
-  totalCount?: number
+  id: string;
+  name: string;
+  folder: MailFolder;
+  kind?: "folder" | "label";
+  path?: string;
+  custom?: boolean;
+  unreadCount?: number;
+  totalCount?: number;
 }
 
 export interface AttachmentData {
-  attachment: Attachment
-  content: Uint8Array
-  filename: string
-  contentType: string
+  attachment: Attachment;
+  content: Uint8Array;
+  filename: string;
+  contentType: string;
 }
 
 export interface SendingIdentity {
-  email: string
-  isPrimary: boolean
-  isDefault: boolean
+  email: string;
+  isPrimary: boolean;
+  isDefault: boolean;
 }
 
 export interface InboxProvider {
-  readonly type: InboxProviderType
-  readonly accountId: string
-  readonly capabilities: Readonly<ProviderCapabilities>
-  getAccount(): Promise<MailAccount>
+  readonly type: InboxProviderType;
+  readonly accountId: string;
+  readonly capabilities: Readonly<ProviderCapabilities>;
+  getAccount(): Promise<MailAccount>;
   /** Verified senders and optional selectable receiving scopes; omitted receiving means the whole source.
    * Without this hook the SDK uses getAccount().email and aliases as the sending catalog. */
-  identities?(): Promise<{ sending: readonly SendingIdentity[]; receiving?: readonly MailScope[] }>
-  listFolders(): Promise<ProviderFolder[]>
-  createFolder(name: string): Promise<ProviderFolder>
-  listMessages(options?: ListOptions): Promise<ProviderListResult<MailMessage>>
-  listThreads(options?: ListOptions): Promise<ProviderListResult<MailThread>>
-  getMessage(messageId: string): Promise<MailMessage>
-  getThread(threadId: string): Promise<MailThread>
-  sync(cursor?: SyncCursor | string | null, options?: SyncOptions, context?: SyncContext): Promise<SyncResult>
-  send(input: SendInput): Promise<SendResult>
-  mutate(messageId: string, mutation: MessageMutation): Promise<MailMessage | null>
-  getAttachment(messageId: string, attachmentId: string, contentId?: string,
-    metadata?: Pick<Attachment, 'filename' | 'contentType' | 'inline'>): Promise<AttachmentData>
-  disconnect(): Promise<void>
+  identities?(): Promise<{ sending: readonly SendingIdentity[]; receiving?: readonly MailScope[] }>;
+  listFolders(): Promise<ProviderFolder[]>;
+  createFolder(name: string): Promise<ProviderFolder>;
+  listMessages(options?: ListOptions): Promise<ProviderListResult<MailMessage>>;
+  listThreads(options?: ListOptions): Promise<ProviderListResult<MailThread>>;
+  getMessage(messageId: string): Promise<MailMessage>;
+  getThread(threadId: string): Promise<MailThread>;
+  sync(
+    cursor?: SyncCursor | string | null,
+    options?: SyncOptions,
+    context?: SyncContext,
+  ): Promise<SyncResult>;
+  send(input: SendInput): Promise<SendResult>;
+  mutate(messageId: string, mutation: MessageMutation): Promise<MailMessage | null>;
+  getAttachment(
+    messageId: string,
+    attachmentId: string,
+    contentId?: string,
+    metadata?: Pick<Attachment, "filename" | "contentType" | "inline">,
+  ): Promise<AttachmentData>;
+  disconnect(): Promise<void>;
 }
 
 export type ProviderErrorCode =
-  | 'AUTHENTICATION'
-  | 'AUTHORIZATION'
-  | 'NOT_FOUND'
-  | 'RATE_LIMITED'
-  | 'INVALID_CURSOR'
-  | 'UNSUPPORTED_OPERATION'
-  | 'VALIDATION'
-  | 'NETWORK'
-  | 'UPSTREAM'
+  | "AUTHENTICATION"
+  | "AUTHORIZATION"
+  | "NOT_FOUND"
+  | "RATE_LIMITED"
+  | "INVALID_CURSOR"
+  | "UNSUPPORTED_OPERATION"
+  | "VALIDATION"
+  | "NETWORK"
+  | "UPSTREAM";
 
 export interface ProviderErrorOptions {
-  status?: number
-  retryable?: boolean
-  retryAfter?: number
-  details?: unknown
-  cause?: unknown
+  status?: number;
+  retryable?: boolean;
+  retryAfter?: number;
+  details?: unknown;
+  cause?: unknown;
 }
 
 export class ProviderError extends Error {
-  readonly provider: InboxProviderType
-  readonly code: ProviderErrorCode
-  readonly status?: number
-  readonly retryable: boolean
-  readonly retryAfter?: number
-  readonly details?: unknown
+  readonly provider: InboxProviderType;
+  readonly code: ProviderErrorCode;
+  readonly status?: number;
+  readonly retryable: boolean;
+  readonly retryAfter?: number;
+  readonly details?: unknown;
 
   constructor(
     provider: InboxProviderType,
@@ -235,147 +248,195 @@ export class ProviderError extends Error {
     message: string,
     options: ProviderErrorOptions = {},
   ) {
-    super(message, options.cause === undefined ? undefined : { cause: options.cause })
-    this.name = this.constructor.name
-    this.provider = provider
-    this.code = code
-    this.status = options.status
-    this.retryable = options.retryable ?? false
-    this.retryAfter = options.retryAfter
-    this.details = options.details
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = this.constructor.name;
+    this.provider = provider;
+    this.code = code;
+    this.status = options.status;
+    this.retryable = options.retryable ?? false;
+    this.retryAfter = options.retryAfter;
+    this.details = options.details;
   }
 }
 
 export class ProviderAuthenticationError extends ProviderError {
-  constructor(provider: InboxProviderType, message = 'Provider authentication failed', options: ProviderErrorOptions = {}) {
-    super(provider, 'AUTHENTICATION', message, { ...options, status: options.status ?? 401 })
+  constructor(
+    provider: InboxProviderType,
+    message = "Provider authentication failed",
+    options: ProviderErrorOptions = {},
+  ) {
+    super(provider, "AUTHENTICATION", message, { ...options, status: options.status ?? 401 });
   }
 }
 
 export class ProviderAuthorizationError extends ProviderError {
-  constructor(provider: InboxProviderType, message = 'Provider access was denied', options: ProviderErrorOptions = {}) {
-    super(provider, 'AUTHORIZATION', message, { ...options, status: options.status ?? 403 })
+  constructor(
+    provider: InboxProviderType,
+    message = "Provider access was denied",
+    options: ProviderErrorOptions = {},
+  ) {
+    super(provider, "AUTHORIZATION", message, { ...options, status: options.status ?? 403 });
   }
 }
 
 export class ProviderNotFoundError extends ProviderError {
-  constructor(provider: InboxProviderType, message = 'Provider resource was not found', options: ProviderErrorOptions = {}) {
-    super(provider, 'NOT_FOUND', message, { ...options, status: options.status ?? 404 })
+  constructor(
+    provider: InboxProviderType,
+    message = "Provider resource was not found",
+    options: ProviderErrorOptions = {},
+  ) {
+    super(provider, "NOT_FOUND", message, { ...options, status: options.status ?? 404 });
   }
 }
 
 export class ProviderRateLimitError extends ProviderError {
-  constructor(provider: InboxProviderType, message = 'Provider rate limit exceeded', options: ProviderErrorOptions = {}) {
-    super(provider, 'RATE_LIMITED', message, { ...options, status: options.status ?? 429, retryable: true })
+  constructor(
+    provider: InboxProviderType,
+    message = "Provider rate limit exceeded",
+    options: ProviderErrorOptions = {},
+  ) {
+    super(provider, "RATE_LIMITED", message, {
+      ...options,
+      status: options.status ?? 429,
+      retryable: true,
+    });
   }
 }
 
 export class ProviderCursorExpiredError extends ProviderError {
-  constructor(provider: InboxProviderType, message = 'Provider sync cursor has expired', options: ProviderErrorOptions = {}) {
-    super(provider, 'INVALID_CURSOR', message, options)
+  constructor(
+    provider: InboxProviderType,
+    message = "Provider sync cursor has expired",
+    options: ProviderErrorOptions = {},
+  ) {
+    super(provider, "INVALID_CURSOR", message, options);
   }
 }
 
 /** A multi-command mutation made progress but could not finish. Never retry it blindly. */
 export class ProviderMutationError extends ProviderError {
-  constructor(provider: InboxProviderType, readonly confirmedMessage?: MailMessage, readonly sourceRetired = false) {
-    super(provider, 'UPSTREAM', 'The mailbox change was only partly confirmed. Synchronize before trying again.')
+  constructor(
+    provider: InboxProviderType,
+    readonly confirmedMessage?: MailMessage,
+    readonly sourceRetired = false,
+  ) {
+    super(
+      provider,
+      "UPSTREAM",
+      "The mailbox change was only partly confirmed. Synchronize before trying again.",
+    );
   }
 }
 
 export class UnsupportedOperationError extends ProviderError {
-  readonly operation: string
+  readonly operation: string;
 
   constructor(provider: InboxProviderType, operation: string) {
-    super(provider, 'UNSUPPORTED_OPERATION', `${provider} does not support ${operation}`)
-    this.operation = operation
+    super(provider, "UNSUPPORTED_OPERATION", `${provider} does not support ${operation}`);
+    this.operation = operation;
   }
 }
 
 export function parseParticipant(value: Recipient | null | undefined): Participant {
-  if (!value) return { name: '', email: '' }
-  if (typeof value !== 'string') return { name: value.name || value.email, email: value.email, ...(value.avatar === undefined ? {} : { avatar: value.avatar }) }
+  if (!value) return { name: "", email: "" };
+  if (typeof value !== "string")
+    return {
+      name: value.name || value.email,
+      email: value.email,
+      ...(value.avatar === undefined ? {} : { avatar: value.avatar }),
+    };
 
-  const match = value.trim().match(/^(.*?)\s*<([^>]+)>$/)
-  const email = (match?.[2] ?? value).trim().replace(/^mailto:/i, '')
-  const name = (match?.[1] ?? '').trim().replace(/^"|"$/g, '')
-  return { name: name || email, email }
+  const match = value.trim().match(/^(.*?)\s*<([^>]+)>$/);
+  const email = (match?.[2] ?? value).trim().replace(/^mailto:/i, "");
+  const name = (match?.[1] ?? "").trim().replace(/^"|"$/g, "");
+  return { name: name || email, email };
 }
 
-export function parseParticipants(value: Recipient | Recipient[] | null | undefined): Participant[] {
-  if (!value) return []
+export function parseParticipants(
+  value: Recipient | Recipient[] | null | undefined,
+): Participant[] {
+  if (!value) return [];
   const values: Recipient[] = Array.isArray(value)
     ? value
-    : typeof value === 'string'
-      ? value.match(/(?:"[^"]*"|[^,])+/g) ?? []
-      : [value]
-  return values.map((item) => parseParticipant(item)).filter((item) => item.email.length > 0)
+    : typeof value === "string"
+      ? (value.match(/(?:"[^"]*"|[^,])+/g) ?? [])
+      : [value];
+  return values.map((item) => parseParticipant(item)).filter((item) => item.email.length > 0);
 }
 
 export function formatParticipant(value: Recipient): string {
-  const participant = parseParticipant(value)
-  if (!participant.name || participant.name === participant.email) return participant.email
-  const escaped = participant.name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-  return `"${escaped}" <${participant.email}>`
+  const participant = parseParticipant(value);
+  if (!participant.name || participant.name === participant.email) return participant.email;
+  const escaped = participant.name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `"${escaped}" <${participant.email}>`;
 }
 
 export function attachmentContent(attachment: SendAttachment): Buffer {
-  if (typeof attachment.content === 'string') {
-    return Buffer.from(attachment.content, attachment.encoding === 'base64' ? 'base64' : 'utf8')
+  if (typeof attachment.content === "string") {
+    return Buffer.from(attachment.content, attachment.encoding === "base64" ? "base64" : "utf8");
   }
-  if (attachment.content instanceof ArrayBuffer) return Buffer.from(attachment.content)
-  return Buffer.from(attachment.content)
+  if (attachment.content instanceof ArrayBuffer) return Buffer.from(attachment.content);
+  return Buffer.from(attachment.content);
 }
 
 export function encodeBase64Url(value: string | Uint8Array): string {
-  return Buffer.from(value).toString('base64url')
+  return Buffer.from(value).toString("base64url");
 }
 
 export function decodeBase64Url(value: string): Buffer {
-  return Buffer.from(value, 'base64url')
+  return Buffer.from(value, "base64url");
 }
 
 export function normalizeDate(value: string | number | Date | null | undefined): string {
-  if (value === null || value === undefined || value === '') return new Date(0).toISOString()
-  const date = value instanceof Date ? value : new Date(typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value)
-  return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString()
+  if (value === null || value === undefined || value === "") return new Date(0).toISOString();
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value);
+  return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString();
 }
 
 const convertEmailHtml = compile({
   wordwrap: false,
   selectors: [
-    ...['head', 'script', 'style', 'textarea', 'option', 'xmp', 'noscript', 'template']
-      .map((selector) => ({ selector, format: 'skip' })),
+    ...["head", "script", "style", "textarea", "option", "xmp", "noscript", "template"].map(
+      (selector) => ({ selector, format: "skip" }),
+    ),
     ...[
-      '[hidden]',
+      "[hidden]",
       '[aria-hidden="true" i]',
       '[style*="display:none" i]',
       '[style*="display: none" i]',
       '[style*="visibility:hidden" i]',
       '[style*="visibility: hidden" i]',
-    ].map((selector) => ({ selector, format: 'skip' })),
-    { selector: 'a', options: { ignoreHref: true } },
-    { selector: 'img', format: 'skip' },
-    { selector: 'ul', format: 'block' },
-    { selector: 'ol', format: 'block' },
-    { selector: 'li', format: 'block', options: { leadingLineBreaks: 2, trailingLineBreaks: 2 } },
-    ...['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
-      .map((selector) => ({ selector, options: { uppercase: false } })),
-    { selector: 'hr', format: 'block' },
+    ].map((selector) => ({ selector, format: "skip" })),
+    { selector: "a", options: { ignoreHref: true } },
+    { selector: "img", format: "skip" },
+    { selector: "ul", format: "block" },
+    { selector: "ol", format: "block" },
+    { selector: "li", format: "block", options: { leadingLineBreaks: 2, trailingLineBreaks: 2 } },
+    ...["h1", "h2", "h3", "h4", "h5", "h6"].map((selector) => ({
+      selector,
+      options: { uppercase: false },
+    })),
+    { selector: "hr", format: "block" },
   ],
-})
+});
 
 export function htmlToPlainText(html: string): string {
-  return convertEmailHtml(html)
+  return convertEmailHtml(html);
 }
 
 export function previewText(value: string, limit = 200): string {
-  const html = /<(?:\/?(?:html|head|body|address|article|aside|blockquote|div|dl|dt|dd|fieldset|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|tbody|tfoot|th|thead|tr|td|ul|br|a|span|strong|em|b|i|u|img)\b|!doctype\b)/i.test(value)
-  return (html ? htmlToPlainText(value) : value).replace(/\s+/g, ' ').trim().slice(0, limit)
+  const html =
+    /<(?:\/?(?:html|head|body|address|article|aside|blockquote|div|dl|dt|dd|fieldset|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|tbody|tfoot|th|thead|tr|td|ul|br|a|span|strong|em|b|i|u|img)\b|!doctype\b)/i.test(
+      value,
+    );
+  return (html ? htmlToPlainText(value) : value).replace(/\s+/g, " ").trim().slice(0, limit);
 }
 
 export function attachmentUrl(accountId: string, messageId: string, attachmentId: string): string {
-  return `/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`
+  return `/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
 }
 
 export function createMailAccount(
@@ -383,36 +444,38 @@ export function createMailAccount(
   credentials: ProviderCredentials,
   overrides: Partial<MailAccount> = {},
 ): MailAccount {
-  const email = overrides.email ?? credentials.email ?? ''
+  const email = overrides.email ?? credentials.email ?? "";
   return {
     id: credentials.accountId,
     ...(credentials.userId ? { userId: credentials.userId } : {}),
     name: credentials.name ?? email,
     email,
     provider,
-    color: credentials.color ?? '#64748b',
-    syncStatus: 'connected',
+    color: credentials.color ?? "#64748b",
+    syncStatus: "connected",
     unreadCount: 0,
     ...overrides,
-  }
+  };
 }
 
 export function buildThreads(messages: MailMessage[]): MailThread[] {
-  const grouped = new Map<string, MailMessage[]>()
+  const grouped = new Map<string, MailMessage[]>();
   for (const message of messages) {
-    const group = grouped.get(message.threadId)
-    if (group) group.push(message)
-    else grouped.set(message.threadId, [message])
+    const group = grouped.get(message.threadId);
+    if (group) group.push(message);
+    else grouped.set(message.threadId, [message]);
   }
 
   return [...grouped.entries()]
     .map(([id, threadMessages]): MailThread => {
-      const ordered = [...threadMessages].sort((left, right) => left.receivedAt.localeCompare(right.receivedAt))
-      const latest = ordered[ordered.length - 1]!
-      const participants = new Map<string, Participant>()
+      const ordered = [...threadMessages].sort((left, right) =>
+        left.receivedAt.localeCompare(right.receivedAt),
+      );
+      const latest = ordered[ordered.length - 1]!;
+      const participants = new Map<string, Participant>();
       for (const message of ordered) {
         for (const participant of [message.from, ...message.to, ...message.cc]) {
-          if (participant.email) participants.set(participant.email.toLowerCase(), participant)
+          if (participant.email) participants.set(participant.email.toLowerCase(), participant);
         }
       }
 
@@ -432,53 +495,62 @@ export function buildThreads(messages: MailMessage[]): MailThread[] {
         hasAttachments: ordered.some((message) => message.attachments.length > 0),
         ...(latest.snoozedUntil ? { snoozedUntil: latest.snoozedUntil } : {}),
         ...(latest.scheduledAt ? { scheduledAt: latest.scheduledAt } : {}),
-      }
+      };
     })
-    .sort((left, right) => right.lastMessageAt.localeCompare(left.lastMessageAt))
+    .sort((left, right) => right.lastMessageAt.localeCompare(left.lastMessageAt));
 }
 
-export function requireThread(provider: InboxProviderType, messages: MailMessage[], threadId: string): MailThread {
-  const thread = buildThreads(messages)[0]
-  if (!thread) throw new ProviderNotFoundError(provider, `Thread ${threadId} was not found`)
-  return thread
+export function requireThread(
+  provider: InboxProviderType,
+  messages: MailMessage[],
+  threadId: string,
+): MailThread {
+  const thread = buildThreads(messages)[0];
+  if (!thread) throw new ProviderNotFoundError(provider, `Thread ${threadId} was not found`);
+  return thread;
 }
 
 export function normalizeCursor(
   provider: InboxProviderType,
   cursor: SyncCursor | string | null | undefined,
-  kind: SyncCursor['kind'],
+  kind: SyncCursor["kind"],
 ): SyncCursor | null {
-  if (!cursor) return null
-  if (typeof cursor === 'string') return { provider, kind, value: cursor }
+  if (!cursor) return null;
+  if (typeof cursor === "string") return { provider, kind, value: cursor };
   if (cursor.provider !== provider) {
-    throw new ProviderCursorExpiredError(provider, `Cannot use a ${cursor.provider} cursor with ${provider}`)
+    throw new ProviderCursorExpiredError(
+      provider,
+      `Cannot use a ${cursor.provider} cursor with ${provider}`,
+    );
   }
-  return cursor
+  return cursor;
 }
 
 export function clampLimit(value: number | undefined, fallback = 50, maximum = 100): number {
-  return Math.min(maximum, Math.max(1, Number.isFinite(value) ? Math.trunc(value!) : fallback))
+  return Math.min(maximum, Math.max(1, Number.isFinite(value) ? Math.trunc(value!) : fallback));
 }
 
 function responseMessage(details: unknown, fallback: string): string {
-  if (typeof details === 'string' && details.trim()) return details.trim().slice(0, 500)
-  if (!details || typeof details !== 'object') return fallback
-  const record = details as Record<string, unknown>
-  if (typeof record.message === 'string') return record.message
-  if (typeof record.error === 'string') return record.error
-  if (record.error && typeof record.error === 'object') {
-    const nested = record.error as Record<string, unknown>
-    if (typeof nested.message === 'string') return nested.message
+  if (typeof details === "string" && details.trim()) return details.trim().slice(0, 500);
+  if (!details || typeof details !== "object") return fallback;
+  const record = details as Record<string, unknown>;
+  if (typeof record.message === "string") return record.message;
+  if (typeof record.error === "string") return record.error;
+  if (record.error && typeof record.error === "object") {
+    const nested = record.error as Record<string, unknown>;
+    if (typeof nested.message === "string") return nested.message;
   }
-  return fallback
+  return fallback;
 }
 
 function retryAfterSeconds(value: string | null): number | undefined {
-  if (!value) return undefined
-  const seconds = Number(value)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds)
-  const timestamp = Date.parse(value)
-  return Number.isNaN(timestamp) ? undefined : Math.max(0, Math.ceil((timestamp - Date.now()) / 1000))
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds);
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp)
+    ? undefined
+    : Math.max(0, Math.ceil((timestamp - Date.now()) / 1000));
 }
 
 export async function providerRequest(
@@ -489,60 +561,76 @@ export async function providerRequest(
   timeoutMs = 30_000,
   maxBytes?: number,
 ): Promise<Response> {
-  let response: Response
+  let response: Response;
   try {
     response = await fetcher(url, {
       ...init,
       signal: init.signal
         ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
         : AbortSignal.timeout(timeoutMs),
-    })
+    });
   } catch (error) {
-    throw new ProviderError(provider, 'NETWORK', `${provider} request failed`, {
+    throw new ProviderError(provider, "NETWORK", `${provider} request failed`, {
       retryable: true,
       cause: error,
-    })
+    });
   }
 
-  if (response.ok) return response
+  if (response.ok) return response;
 
-  const text = new TextDecoder().decode(await providerBytes(provider, response, maxBytes))
-  let details: unknown = text
+  const text = new TextDecoder().decode(await providerBytes(provider, response, maxBytes));
+  let details: unknown = text;
   if (text) {
     try {
-      details = JSON.parse(text) as unknown
+      details = JSON.parse(text) as unknown;
     } catch {
-      details = text
+      details = text;
     }
   }
 
-  const message = responseMessage(details, `${provider} request failed with HTTP ${response.status}`)
+  const message = responseMessage(
+    details,
+    `${provider} request failed with HTTP ${response.status}`,
+  );
   const options: ProviderErrorOptions = {
     status: response.status,
     details,
-    retryAfter: retryAfterSeconds(response.headers.get('retry-after')),
-  }
+    retryAfter: retryAfterSeconds(response.headers.get("retry-after")),
+  };
 
-  if (response.status === 401) throw new ProviderAuthenticationError(provider, message, options)
+  if (response.status === 401) throw new ProviderAuthenticationError(provider, message, options);
   if (response.status === 403) {
-    const reasons = typeof details === 'object' && details !== null
-      ? (details as { error?: { errors?: Array<{ reason?: string }> } }).error?.errors
-      : undefined
-    if (provider === 'gmail' && Array.isArray(reasons) && reasons.some((error) =>
-      error && ['rateLimitExceeded', 'userRateLimitExceeded', 'dailyLimitExceeded', 'quotaExceeded'].includes(error.reason ?? ''))) {
-      throw new ProviderRateLimitError(provider, message, options)
+    const reasons =
+      typeof details === "object" && details !== null
+        ? (details as { error?: { errors?: Array<{ reason?: string }> } }).error?.errors
+        : undefined;
+    if (
+      provider === "gmail" &&
+      Array.isArray(reasons) &&
+      reasons.some(
+        (error) =>
+          error &&
+          [
+            "rateLimitExceeded",
+            "userRateLimitExceeded",
+            "dailyLimitExceeded",
+            "quotaExceeded",
+          ].includes(error.reason ?? ""),
+      )
+    ) {
+      throw new ProviderRateLimitError(provider, message, options);
     }
-    throw new ProviderAuthorizationError(provider, message, options)
+    throw new ProviderAuthorizationError(provider, message, options);
   }
-  if (response.status === 404) throw new ProviderNotFoundError(provider, message, options)
-  if (response.status === 429) throw new ProviderRateLimitError(provider, message, options)
+  if (response.status === 404) throw new ProviderNotFoundError(provider, message, options);
+  if (response.status === 429) throw new ProviderRateLimitError(provider, message, options);
   if (response.status === 400 || response.status === 422) {
-    throw new ProviderError(provider, 'VALIDATION', message, options)
+    throw new ProviderError(provider, "VALIDATION", message, options);
   }
-  throw new ProviderError(provider, 'UPSTREAM', message, {
+  throw new ProviderError(provider, "UPSTREAM", message, {
     ...options,
     retryable: response.status === 408 || response.status === 409 || response.status >= 500,
-  })
+  });
 }
 
 export async function providerJson<T>(
@@ -553,49 +641,67 @@ export async function providerJson<T>(
   timeoutMs?: number,
   maxBytes?: number,
 ): Promise<T> {
-  const response = await providerRequest(provider, fetcher, url, init, timeoutMs, maxBytes)
-  if (response.status === 204 || maxBytes === undefined && response.headers.get('content-length') === '0') return undefined as T
-  const body = new TextDecoder().decode(await providerBytes(provider, response, maxBytes))
-  if (!body.trim()) return undefined as T
+  const response = await providerRequest(provider, fetcher, url, init, timeoutMs, maxBytes);
+  if (
+    response.status === 204 ||
+    (maxBytes === undefined && response.headers.get("content-length") === "0")
+  )
+    return undefined as T;
+  const body = new TextDecoder().decode(await providerBytes(provider, response, maxBytes));
+  if (!body.trim()) return undefined as T;
   try {
-    return JSON.parse(body) as T
+    return JSON.parse(body) as T;
   } catch (error) {
-    throw new ProviderError(provider, 'UPSTREAM', `${provider} returned invalid JSON`, {
+    throw new ProviderError(provider, "UPSTREAM", `${provider} returned invalid JSON`, {
       status: response.status,
       cause: error,
-    })
+    });
   }
 }
 
-export async function providerBytes(provider: InboxProviderType, response: Response, maxBytes?: number): Promise<Uint8Array> {
+export async function providerBytes(
+  provider: InboxProviderType,
+  response: Response,
+  maxBytes?: number,
+): Promise<Uint8Array> {
   try {
-    if (maxBytes === undefined) return new Uint8Array(await response.arrayBuffer())
-    const reader = response.body?.getReader()
-    if (!reader) return new Uint8Array()
-    const chunks: Uint8Array[] = []
-    let size = 0
+    if (maxBytes === undefined) return new Uint8Array(await response.arrayBuffer());
+    const reader = response.body?.getReader();
+    if (!reader) return new Uint8Array();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
     try {
       for (;;) {
-        const next = await reader.read()
-        if (next.done) break
-        size += next.value.byteLength
+        const next = await reader.read();
+        if (next.done) break;
+        size += next.value.byteLength;
         if (size > maxBytes) {
-          await reader.cancel().catch(() => {})
-          throw new ProviderError(provider, 'UPSTREAM', `${provider} response exceeds the supported size limit`, { status: response.status })
+          await reader.cancel().catch(() => {});
+          throw new ProviderError(
+            provider,
+            "UPSTREAM",
+            `${provider} response exceeds the supported size limit`,
+            { status: response.status },
+          );
         }
-        chunks.push(next.value)
+        chunks.push(next.value);
       }
-    } finally { reader.releaseLock() }
-    const bytes = new Uint8Array(size)
-    let offset = 0
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
-    return bytes
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
   } catch (cause) {
-    if (maxBytes !== undefined && cause instanceof ProviderError) throw cause
-    throw new ProviderError(provider, 'NETWORK', `${provider} response body was interrupted`, {
+    if (maxBytes !== undefined && cause instanceof ProviderError) throw cause;
+    throw new ProviderError(provider, "NETWORK", `${provider} response body was interrupted`, {
       status: response.status,
       retryable: true,
       cause,
-    })
+    });
   }
 }

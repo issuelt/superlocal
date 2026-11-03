@@ -110,12 +110,12 @@ app is newer; a newer checkout does not prove the running app serves that build.
 Reference acceptance budgets on comparable local hardware, with mail already
 cached in SQLite:
 
-| Scenario | Budget |
-| --- | --- |
-| Cached open, at both ~6.5k and 50k messages | 100ms |
-| E/W completion, at both sizes | 150ms |
-| Fresh navigation to usable inbox, ~6.5k–10k messages | 1.5s |
-| Fresh navigation to usable inbox, 50k messages | 4s |
+| Scenario                                             | Budget |
+| ---------------------------------------------------- | ------ |
+| Cached open, at both ~6.5k and 50k messages          | 100ms  |
+| E/W completion, at both sizes                        | 150ms  |
+| Fresh navigation to usable inbox, ~6.5k–10k messages | 1.5s   |
+| Fresh navigation to usable inbox, 50k messages       | 4s     |
 
 These are measured acceptance targets, not brittle wall-clock unit assertions.
 For changes to queries, reconciliation, caching, selectors, virtualization or

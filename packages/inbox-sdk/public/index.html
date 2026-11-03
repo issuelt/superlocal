@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Inbox SDK</title>
-    <link rel="stylesheet" href="/pilot.css">
+    <link rel="stylesheet" href="/pilot.css" />
     <script type="module" src="/pilot.js"></script>
   </head>
   <body>
@@ -20,12 +20,14 @@
       <p id="status" role="status" aria-live="polite"></p>
       <section aria-labelledby="connections-heading">
         <h2 id="connections-heading">Connections</h2>
-        <ul id="connections"><li>Loading...</li></ul>
+        <ul id="connections">
+          <li>Loading...</li>
+        </ul>
         <details id="inbound">
           <summary>Connect Inbound</summary>
           <form id="inbound-form" class="actions">
             <label for="inbound-key">API key</label>
-            <input id="inbound-key" type="password" autocomplete="off" required>
+            <input id="inbound-key" type="password" autocomplete="off" required />
             <button type="submit">Connect Inbound</button>
           </form>
         </details>
@@ -38,7 +40,7 @@
         <h2 id="messages-heading">Messages</h2>
         <form id="search-form" class="actions">
           <label for="search">Search</label>
-          <input id="search" type="search" placeholder="Search cached messages">
+          <input id="search" type="search" placeholder="Search cached messages" />
           <button type="submit">Search</button>
           <button id="sync" type="button" disabled>Sync selected</button>
           <button id="backfill" type="button" disabled>Import older mail</button>

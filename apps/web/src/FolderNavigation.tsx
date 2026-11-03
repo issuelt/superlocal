@@ -55,9 +55,7 @@ function FolderNavigation({
               <button
                 className={`folder-item ${folder === currentFolder ? "active" : ""}`}
                 key={folder}
-                onClick={() =>
-                  folder === "Snippets" ? onSnippets() : onFolder(folder)
-                }
+                onClick={() => (folder === "Snippets" ? onSnippets() : onFolder(folder))}
               >
                 <span>
                   {folder}
@@ -121,7 +119,4 @@ function FolderNavigation({
 }
 
 // Closed contents are inert; always take fresh data and handlers when reopening.
-export default memo(
-  FolderNavigation,
-  (previous, next) => !previous.open && !next.open,
-);
+export default memo(FolderNavigation, (previous, next) => !previous.open && !next.open);

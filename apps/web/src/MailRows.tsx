@@ -1,15 +1,13 @@
-import {
-  useEffect,
-  useEffectEvent,
-  useLayoutEffect,
-  useState,
-  type RefObject,
-} from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useState, type RefObject } from "react";
 import MailRow from "./MailRow";
 import type { MailListEntry } from "./mail-view";
 
 type MailRowsProps = {
-  getWindow: (top: number, height: number, virtualized: boolean) => { start: number; end: number; entries: MailListEntry[] };
+  getWindow: (
+    top: number,
+    height: number,
+    virtualized: boolean,
+  ) => { start: number; end: number; entries: MailListEntry[] };
   getHighlighted: (index: number) => MailListEntry | undefined;
   totalHeight: number;
   rowHeight: number;
@@ -47,10 +45,7 @@ export default function MailRows({
   const visible = range.entries;
   const leading = visible[0]?.top || 0;
   const last = visible.at(-1);
-  const trailing = Math.max(
-    0,
-    totalHeight - (last ? last.top + last.height : 0),
-  );
+  const trailing = Math.max(0, totalHeight - (last ? last.top + last.height : 0));
   const measure = useEffectEvent(() => {
     const root = container.current;
     if (!root || !virtualized) return;
@@ -58,9 +53,7 @@ export default function MailRows({
     setViewport((previous) => {
       const before = getWindow(previous.top, previous.height, true);
       const after = getWindow(next.top, next.height, true);
-      return before.start === after.start && before.end === after.end
-        ? previous
-        : next;
+      return before.start === after.start && before.end === after.end ? previous : next;
     });
   });
   const refreshHighlight = useEffectEvent(onWindowCommit);
@@ -99,9 +92,7 @@ export default function MailRows({
   }, [range.start, range.end]);
   return (
     <>
-      {virtualized && leading > 0 && (
-        <div aria-hidden="true" style={{ height: leading }} />
-      )}
+      {virtualized && leading > 0 && <div aria-hidden="true" style={{ height: leading }} />}
       {visible.map((entry) =>
         entry.group ? (
           <h2 className="mail-group-heading" key={entry.key}>
@@ -119,9 +110,7 @@ export default function MailRows({
           />
         ),
       )}
-      {virtualized && trailing > 0 && (
-        <div aria-hidden="true" style={{ height: trailing }} />
-      )}
+      {virtualized && trailing > 0 && <div aria-hidden="true" style={{ height: trailing }} />}
     </>
   );
 }

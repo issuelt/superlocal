@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
-import { performanceActions, type PerformanceAction, type PerformanceSample } from "../../shared/performance.ts";
+import {
+  performanceActions,
+  type PerformanceAction,
+  type PerformanceSample,
+} from "../../shared/performance.ts";
 import { privateFetch } from "./application-auth.ts";
 
 let performanceEnabled = false;
@@ -16,64 +20,107 @@ async function flushPerformance(): Promise<void> {
   try {
     // Never await this transport from a mail action. Failed telemetry is dropped,
     // not retried, and this fetch is deliberately outside request instrumentation.
-    await privateFetch("/host/performance", { method: "POST", credentials: "include", keepalive: true,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ samples }), signal: AbortSignal.timeout(3000) });
-  } catch { /* Timing capture must not produce user errors or recursive logging. */ }
-  finally { performanceSending = false; schedulePerformance(); }
+    await privateFetch("/host/performance", {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ samples }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    /* Timing capture must not produce user errors or recursive logging. */
+  } finally {
+    performanceSending = false;
+    schedulePerformance();
+  }
 }
 
 function schedulePerformance() {
   if (!performanceEnabled || performanceTimer || !performanceQueue.length) return;
-  performanceTimer = setTimeout(() => { performanceTimer = undefined; void flushPerformance(); }, 1000);
+  performanceTimer = setTimeout(() => {
+    performanceTimer = undefined;
+    void flushPerformance();
+  }, 1000);
 }
 
 export function configurePerformanceLogging(enabled: boolean) {
   performanceEnabled = enabled;
   if (enabled) {
-    performanceTab ??= crypto.randomUUID(); schedulePerformance();
+    performanceTab ??= crypto.randomUUID();
+    schedulePerformance();
     // Event Timing includes input that waited behind a busy main thread. No key,
     // DOM target, or typed value is retained. Unsupported browsers simply omit it.
-    if (!inputTimings && typeof PerformanceObserver !== "undefined" && PerformanceObserver.supportedEntryTypes?.includes("event")) {
+    if (
+      !inputTimings &&
+      typeof PerformanceObserver !== "undefined" &&
+      PerformanceObserver.supportedEntryTypes?.includes("event")
+    ) {
       try {
-        inputTimings = new PerformanceObserver(list => {
+        inputTimings = new PerformanceObserver((list) => {
           for (const item of list.getEntries()) {
             const entry = item as PerformanceEventTiming & { interactionId?: number };
             if (!entry.interactionId) continue;
-            enqueuePerformance({ kind: "input", outcome: "ok", at: Date.now() - Math.max(0, performance.now() - entry.startTime),
-              durationMs: entry.duration, queueMs: Math.max(0, entry.processingStart - entry.startTime), processingMs: Math.max(0, entry.processingEnd - entry.processingStart) });
+            enqueuePerformance({
+              kind: "input",
+              outcome: "ok",
+              at: Date.now() - Math.max(0, performance.now() - entry.startTime),
+              durationMs: entry.duration,
+              queueMs: Math.max(0, entry.processingStart - entry.startTime),
+              processingMs: Math.max(0, entry.processingEnd - entry.processingStart),
+            });
           }
         });
         inputTimings.observe({ type: "event", durationThreshold: 40 } as PerformanceObserverInit);
-      } catch { inputTimings?.disconnect(); inputTimings = undefined; }
+      } catch {
+        inputTimings?.disconnect();
+        inputTimings = undefined;
+      }
     }
   } else {
-    clearTimeout(performanceTimer); performanceTimer = undefined; performanceQueue.length = 0;
-    inputTimings?.disconnect(); inputTimings = undefined;
+    clearTimeout(performanceTimer);
+    performanceTimer = undefined;
+    performanceQueue.length = 0;
+    inputTimings?.disconnect();
+    inputTimings = undefined;
   }
 }
 
 type TimingFields = Omit<PerformanceSample, "tab" | "id" | "at" | "durationMs">;
 const rounded = (value: number) => Math.max(0, Math.round(value * 10) / 10);
-const safeAction = (action: string): PerformanceAction => performanceActions.includes(action as PerformanceAction) ? action as PerformanceAction : "other";
+const safeAction = (action: string): PerformanceAction =>
+  performanceActions.includes(action as PerformanceAction)
+    ? (action as PerformanceAction)
+    : "other";
 
 function enqueuePerformance(sample: Omit<PerformanceSample, "tab" | "id">) {
   if (!performanceEnabled || !performanceTab) return;
   if (performanceQueue.length >= 200) performanceQueue.shift();
-  performanceQueue.push({ ...sample, tab: performanceTab, id: crypto.randomUUID() }); schedulePerformance();
+  performanceQueue.push({ ...sample, tab: performanceTab, id: crypto.randomUUID() });
+  schedulePerformance();
 }
 
 /** Captures only whitelisted counts/enums; never accept mail objects or text. */
 export function measurePerformance(fields: Omit<TimingFields, "outcome">) {
-  const start = performance.now(), at = Date.now();
+  const start = performance.now(),
+    at = Date.now();
   let finished = false;
   return (extra: Partial<TimingFields> = {}) => {
     if (finished) return;
     finished = true;
-    enqueuePerformance({ ...fields, outcome: "ok", ...extra, at, durationMs: rounded(performance.now() - start) });
+    enqueuePerformance({
+      ...fields,
+      outcome: "ok",
+      ...extra,
+      at,
+      durationMs: rounded(performance.now() - start),
+    });
   };
 }
 
-export function measureWork(action: string) { return measurePerformance({ kind: "work", action: safeAction(action) }); }
+export function measureWork(action: string) {
+  return measurePerformance({ kind: "work", action: safeAction(action) });
+}
 
 /** Handler-to-next-frame estimate, not a browser paint/INP measurement. */
 export function measureAction(action: string, conversations = 0) {
@@ -81,31 +128,75 @@ export function measureAction(action: string, conversations = 0) {
   const finish = measurePerformance({ kind: "action", action: safeAction(action), conversations });
   let acceptedMs: number | undefined;
   return {
-    accepted() { acceptedMs = rounded(performance.now() - start); },
+    accepted() {
+      acceptedMs = rounded(performance.now() - start);
+    },
     finish(outcome: PerformanceSample["outcome"] = "ok") {
-      if (!performanceEnabled || outcome === "ignored" || typeof requestAnimationFrame !== "function") { finish({ outcome, acceptedMs }); return; }
-      if (document.visibilityState !== "visible") { finish({ outcome: "hidden", acceptedMs }); return; }
-      let first = 0, second = 0;
-      const fallback = setTimeout(() => { cancelAnimationFrame(first); cancelAnimationFrame(second); finish({ outcome: "hidden", acceptedMs }); }, 2000);
-      first = requestAnimationFrame(() => { second = requestAnimationFrame(() => { clearTimeout(fallback); finish({ outcome, acceptedMs }); }); });
+      if (
+        !performanceEnabled ||
+        outcome === "ignored" ||
+        typeof requestAnimationFrame !== "function"
+      ) {
+        finish({ outcome, acceptedMs });
+        return;
+      }
+      if (document.visibilityState !== "visible") {
+        finish({ outcome: "hidden", acceptedMs });
+        return;
+      }
+      let first = 0,
+        second = 0;
+      const fallback = setTimeout(() => {
+        cancelAnimationFrame(first);
+        cancelAnimationFrame(second);
+        finish({ outcome: "hidden", acceptedMs });
+      }, 2000);
+      first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => {
+          clearTimeout(fallback);
+          finish({ outcome, acceptedMs });
+        });
+      });
     },
   };
 }
 
 export function measureRequest(path: string, method: string) {
-  const route: PerformanceSample["route"] = ["/v1/mailbox-messages", "/v1/mailbox-snapshot", "/v1/mailbox-changes"].includes(path) ? "mailbox-page"
-    : path.includes("/mailbox-actions") || path.endsWith("/state") ? "mailbox-action"
-    : path.startsWith("/host/attention-feedback") ? "feedback"
-    : path.startsWith("/v1/operations") ? "operation"
-    : /\/messages\/[^/]+$/.test(path) ? "message-body"
-    : path.startsWith("/v1/drafts") ? "draft"
-    : path === "/v1/mailboxes" ? "mailboxes" : "other";
-  const finish = measurePerformance({ kind: "request", route,
-    method: (["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD"].includes(method) ? method : "GET") as PerformanceSample["method"] });
+  const route: PerformanceSample["route"] = [
+    "/v1/mailbox-messages",
+    "/v1/mailbox-snapshot",
+    "/v1/mailbox-changes",
+  ].includes(path)
+    ? "mailbox-page"
+    : path.includes("/mailbox-actions") || path.endsWith("/state")
+      ? "mailbox-action"
+      : path.startsWith("/host/attention-feedback")
+        ? "feedback"
+        : path.startsWith("/v1/operations")
+          ? "operation"
+          : /\/messages\/[^/]+$/.test(path)
+            ? "message-body"
+            : path.startsWith("/v1/drafts")
+              ? "draft"
+              : path === "/v1/mailboxes"
+                ? "mailboxes"
+                : "other";
+  const finish = measurePerformance({
+    kind: "request",
+    route,
+    method: (["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD"].includes(method)
+      ? method
+      : "GET") as PerformanceSample["method"],
+  });
   const start = performance.now();
   return (status: number) => {
     // Refresh summaries retain page/network totals; don't log every fast GET.
-    if (method !== "GET" && route !== "mailbox-page" || status >= 400 || performance.now() - start >= 100) finish({ status, outcome: status && status < 400 ? "ok" : "error" });
+    if (
+      (method !== "GET" && route !== "mailbox-page") ||
+      status >= 400 ||
+      performance.now() - start >= 100
+    )
+      finish({ status, outcome: status && status < 400 ? "ok" : "error" });
   };
 }
 
@@ -120,10 +211,7 @@ export type BrowserLog = {
 const logs: BrowserLog[] = [];
 const maxMessageLength = 4000;
 const credentialKey = /authorization|password|token|secret|cookie|api[-_]?key/i;
-const nativeStackGetter = Object.getOwnPropertyDescriptor(
-  new Error(),
-  "stack",
-)?.get;
+const nativeStackGetter = Object.getOwnPropertyDescriptor(new Error(), "stack")?.get;
 let stopCapture: (() => void) | undefined;
 let recording = false;
 
@@ -136,9 +224,7 @@ function redact(text: string): string {
           ? `${separator}${key}=[REDACTED]`
           : match;
       } catch {
-        return credentialKey.test(key)
-          ? `${separator}${key}=[REDACTED]`
-          : match;
+        return credentialKey.test(key) ? `${separator}${key}=[REDACTED]` : match;
       }
     },
   );
@@ -155,17 +241,12 @@ function record(level: BrowserLog["level"], values: unknown[]): void {
     function format(value: unknown, depth = 0): string {
       if (--remainingValues < 0) return "[Truncated]";
       try {
-        if (typeof value === "string")
-          return redact(value.slice(0, maxMessageLength));
-        if (
-          value === null ||
-          (typeof value !== "object" && typeof value !== "function")
-        ) {
+        if (typeof value === "string") return redact(value.slice(0, maxMessageLength));
+        if (value === null || (typeof value !== "object" && typeof value !== "function")) {
           return typeof value === "bigint" ? `${value}n` : String(value);
         }
         if (typeof value === "function") return "[Function]";
-        if (typeof Node !== "undefined" && value instanceof Node)
-          return "[DOM node]";
+        if (typeof Node !== "undefined" && value instanceof Node) return "[DOM node]";
         if (seen.has(value)) return "[Circular]";
         if (depth >= 4) return "[Object]";
         seen.add(value);
@@ -173,15 +254,7 @@ function record(level: BrowserLog["level"], values: unknown[]): void {
           const isArray = Array.isArray(value);
           const keys =
             value instanceof Error
-              ? [
-                  ...new Set([
-                    "name",
-                    "message",
-                    "stack",
-                    "cause",
-                    ...Object.keys(value),
-                  ]),
-                ]
+              ? [...new Set(["name", "message", "stack", "cause", ...Object.keys(value)])]
               : Object.keys(value);
           const parts: string[] = [];
           for (const key of keys.slice(0, 20)) {
@@ -193,10 +266,7 @@ function record(level: BrowserLog["level"], values: unknown[]): void {
             // Never invoke application getters, toJSON, or read DOM contents.
             const descriptor = Object.getOwnPropertyDescriptor(value, key);
             if (!descriptor) continue;
-            let content =
-              "value" in descriptor
-                ? format(descriptor.value, depth + 1)
-                : "[Getter]";
+            let content = "value" in descriptor ? format(descriptor.value, depth + 1) : "[Getter]";
             if (
               key === "stack" &&
               nativeStackGetter &&
@@ -207,34 +277,24 @@ function record(level: BrowserLog["level"], values: unknown[]): void {
               const safeErrorText = ["name", "message"].every((field) => {
                 let target: object | null = value;
                 for (let hop = 0; target && hop < 5; hop++) {
-                  const property = Object.getOwnPropertyDescriptor(
-                    target,
-                    field,
-                  );
+                  const property = Object.getOwnPropertyDescriptor(target, field);
                   if (property)
                     return (
                       "value" in property &&
-                      (property.value === undefined ||
-                        typeof property.value === "string")
+                      (property.value === undefined || typeof property.value === "string")
                     );
                   target = Object.getPrototypeOf(target);
                 }
                 return target === null;
               });
               if (safeErrorText)
-                content = format(
-                  Reflect.apply(nativeStackGetter, value, []),
-                  depth + 1,
-                );
+                content = format(Reflect.apply(nativeStackGetter, value, []), depth + 1);
             }
             parts.push(
-              isArray
-                ? content
-                : `${JSON.stringify(redact(key.slice(0, 100)))}: ${content}`,
+              isArray ? content : `${JSON.stringify(redact(key.slice(0, 100)))}: ${content}`,
             );
           }
-          if (keys.length > 20 || remainingValues <= 0)
-            parts.push("[Truncated]");
+          if (keys.length > 20 || remainingValues <= 0) parts.push("[Truncated]");
           return isArray ? `[${parts.join(", ")}]` : `{${parts.join(", ")}}`;
         } finally {
           seen.delete(value);
@@ -317,8 +377,10 @@ if (import.meta.hot) {
   // Iterating on the dev app must not silently turn an active timing session off.
   performanceTab = import.meta.hot.data.performanceTab;
   if (import.meta.hot.data.performanceEnabled === true) configurePerformanceLogging(true);
-  import.meta.hot.dispose(data => {
-    data.performanceEnabled = performanceEnabled; data.performanceTab = performanceTab;
-    stopCapture?.(); configurePerformanceLogging(false);
+  import.meta.hot.dispose((data) => {
+    data.performanceEnabled = performanceEnabled;
+    data.performanceTab = performanceTab;
+    stopCapture?.();
+    configurePerformanceLogging(false);
   });
 }

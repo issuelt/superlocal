@@ -1,10 +1,6 @@
 .thread-comment-scroll {
-  scroll-padding-bottom: calc(
-    17px + 24px * var(--thread-comment-rows, 1) + 2 * var(--reader-unit)
-  );
-  padding-bottom: calc(
-    17px + 24px * var(--thread-comment-rows, 1) + 2 * var(--reader-unit)
-  );
+  scroll-padding-bottom: calc(17px + 24px * var(--thread-comment-rows, 1) + 2 * var(--reader-unit));
+  padding-bottom: calc(17px + 24px * var(--thread-comment-rows, 1) + 2 * var(--reader-unit));
 }
 
 .thread-comment-footer {
@@ -25,8 +21,7 @@
   box-sizing: border-box;
   width: calc(100% + 2px);
   margin-left: -1px;
-  padding: 8px calc(2 * var(--reader-unit) - 12px) 8px
-    calc(2 * var(--reader-unit));
+  padding: 8px calc(2 * var(--reader-unit) - 12px) 8px calc(2 * var(--reader-unit));
   border: 1px solid var(--border);
   border-bottom: 0;
   border-radius: 4px 4px 0 0;

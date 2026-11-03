@@ -30,16 +30,24 @@ function openIssueDatabase(name: string): Promise<IDBDatabase> {
     };
     request.onsuccess = () => {
       const database = request.result;
-      database.onversionchange = () => { database.close(); databases.delete(name); };
+      database.onversionchange = () => {
+        database.close();
+        databases.delete(name);
+      };
       resolve(database);
     };
   });
   databases.set(name, pending);
-  void pending.catch(() => { if (databases.get(name) === pending) databases.delete(name); });
+  void pending.catch(() => {
+    if (databases.get(name) === pending) databases.delete(name);
+  });
   return pending;
 }
 
-export async function saveIssueReport(report: IssueReport, storage = getApplicationStorage()): Promise<void> {
+export async function saveIssueReport(
+  report: IssueReport,
+  storage = getApplicationStorage(),
+): Promise<void> {
   // Resolve the immutable database name before the first async boundary.
   const database = await openIssueDatabase(storage.issueDatabaseName);
   await new Promise<void>((resolve, reject) => {
@@ -58,18 +66,14 @@ export async function readIssueReports(storage = getApplicationStorage()): Promi
     const request = transaction.objectStore("reports").getAll();
     transaction.oncomplete = () =>
       resolve(
-        (request.result as IssueReport[]).sort((a, b) =>
-          b.updatedAt.localeCompare(a.updatedAt),
-        ),
+        (request.result as IssueReport[]).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       );
     transaction.onabort = () => reject(transaction.error);
     transaction.onerror = () => reject(transaction.error);
   });
 }
 
-export async function captureIssueReport(
-  element: HTMLElement,
-): Promise<IssueReport> {
+export async function captureIssueReport(element: HTMLElement): Promise<IssueReport> {
   // Let the command palette unmount and its focus cleanup settle before cloning.
   await new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
@@ -104,12 +108,10 @@ export async function captureIssueReport(
     onCloneNode: (clone) => {
       if (!(clone instanceof HTMLElement)) return;
       // Fixed clone heights suppress the collapsing margins between recent items.
-      clone
-        .querySelectorAll<HTMLElement>(".recent-list > div")
-        .forEach((item) => {
-          item.style.height = "auto";
-          item.style.blockSize = "auto";
-        });
+      clone.querySelectorAll<HTMLElement>(".recent-list > div").forEach((item) => {
+        item.style.height = "auto";
+        item.style.blockSize = "auto";
+      });
       // Pseudo-element image URLs are not embedded by the renderer. Materialize
       // the backdrop only in the clone so its photo and current transform survive.
       if (backdrop.content !== "none" && backdrop.backgroundImage !== "none") {
@@ -125,10 +127,7 @@ export async function captureIssueReport(
           "transform-origin",
           "opacity",
         ]) {
-          layer.style.setProperty(
-            property,
-            backdrop.getPropertyValue(property),
-          );
+          layer.style.setProperty(property, backdrop.getPropertyValue(property));
         }
         clone.prepend(layer);
         const style = document.createElement("style");
