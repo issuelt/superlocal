@@ -33677,6 +33677,17 @@ describe("AI triage service", () => {
     expect(calls).toBe(1);
     expect((await service.state("alice")).queue).toEqual({ pending: 2, processing: 0, failed: 0 });
     expect(attempts()).toEqual([0, 1]);
+    // The held conversation waits as pending, not processing or failed.
+    const heldRow = database
+      .query<{ source: string; thread: string }, []>(
+        "SELECT source,thread FROM local_ai_queue WHERE attempts=0",
+      )
+      .get()!;
+    expect(
+      (await service.results("alice")).decisions.find(
+        (item) => item.sourceId === heldRow.source && item.threadId === heldRow.thread,
+      ),
+    ).toMatchObject({ state: "pending", problemCode: null });
     h.clock.value += 31_000;
     await bounded(
       (async () => {
