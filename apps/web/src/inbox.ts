@@ -674,8 +674,15 @@ function draftHtml(value: string): string {
   return template.innerHTML;
 }
 
-/** Day-level group heading: "September 4th", plus the year once it differs from today's. */
-export function dayGroup(time: Date, today = new Date()) {
+/**
+ * Day-level group heading: "September 4th", plus the year once it differs from today's.
+ * Pass one `month` formatter per pass; building it is far costlier than formatting.
+ */
+export function dayGroup(
+  time: Date,
+  today = new Date(),
+  month = new Intl.DateTimeFormat([], { month: "long" }),
+) {
   const day = time.getDate(),
     rest = day % 100;
   const suffix =
@@ -688,8 +695,7 @@ export function dayGroup(time: Date, today = new Date()) {
           : day % 10 === 3
             ? "rd"
             : "th";
-  const month = time.toLocaleDateString([], { month: "long" });
-  return `${month} ${day}${suffix}${time.getFullYear() === today.getFullYear() ? "" : `, ${time.getFullYear()}`}`;
+  return `${month.format(time)} ${day}${suffix}${time.getFullYear() === today.getFullYear() ? "" : `, ${time.getFullYear()}`}`;
 }
 
 function displayTimes() {
@@ -703,7 +709,9 @@ function displayTimes() {
   const yesterdayLabel = yesterday.toDateString();
   const clock = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
   const date = new Intl.DateTimeFormat([], { month: "short", day: "numeric" });
-  const values = new Map<string, { date: string; group: string }>();
+  const month = new Intl.DateTimeFormat([], { month: "long" });
+  const values = new Map<string, { date: string; group: string }>(),
+    groups = new Map<string, string>();
   const locale = clock.resolvedOptions();
   return {
     key: `${locale.locale}\0${locale.timeZone}\0${todayLabel}`,
@@ -713,10 +721,17 @@ function displayTimes() {
       const time = new Date(value),
         day = time.toDateString(),
         sameDay = day === todayLabel;
-      const formatted = {
-        date: sameDay ? clock.format(time) : date.format(time),
-        group: sameDay ? "Today" : day === yesterdayLabel ? "Yesterday" : dayGroup(time, today),
-      };
+      let group = groups.get(day);
+      if (group === undefined)
+        groups.set(
+          day,
+          (group = sameDay
+            ? "Today"
+            : day === yesterdayLabel
+              ? "Yesterday"
+              : dayGroup(time, today, month)),
+        );
+      const formatted = { date: sameDay ? clock.format(time) : date.format(time), group };
       values.set(value, formatted);
       return formatted;
     },
