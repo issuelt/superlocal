@@ -17529,6 +17529,17 @@ describe("blob privacy and draft editing", () => {
         "https://v1/openapi.json",
         "https://host/config",
       ]);
+      // Outside links show their real destination on hover; the message's own blobs don't need it.
+      expect(urls("a", "title")).toEqual([
+        null,
+        null,
+        null,
+        null,
+        "https://example.test/a",
+        "mailto:a@example.test",
+        "https://v1/openapi.json",
+        "https://host/config",
+      ]);
     }
   });
 

@@ -1080,11 +1080,15 @@ function sanitizeEmailMarkup(
               : URL_SCHEME.test(resolved.trim())
                 ? resolved
                 : undefined;
+        // Link text can claim one destination and point at another, so hovering an outside link
+        // shows where it really goes. This replaces any sender-supplied title.
+        const outside = safeHref !== undefined && resolved === href;
         return {
           tagName: "a",
           attribs: {
             ...attributes,
             ...(safeHref === undefined ? {} : { href: safeHref }),
+            ...(outside ? { title: safeHref } : {}),
             rel: "noopener noreferrer",
             target: "_blank",
           },
