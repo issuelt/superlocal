@@ -11635,7 +11635,7 @@ describe("live bounded mailbox reads", () => {
       inReplyTo: mail.rfcMessageId,
     }));
     await h.seed("alice", "batch-originals", originals);
-    const forwarded = await h.seed("alice", "batch-copies", copies);
+    await h.seed("alice", "batch-copies", copies);
     await h.seed(
       "alice",
       "batch-ordinary",
@@ -20032,7 +20032,7 @@ describe("worker leases, sync checkpoints, and delayed actions", () => {
 
   test("page-only latest polls stay complete and idle after durable backfill, without losing arrival reasons", async () => {
     const h = await fixture({ syncIntervalMs: 1000 });
-    const { account, box } = await h.connect("alice", "page-only-quiet");
+    const { box } = await h.connect("alice", "page-only-quiet");
     const mailbox = (await h.inbox.mailboxes("alice"))[0]!;
     const input = { mailboxIds: [mailbox.id] };
     box.nextSync(

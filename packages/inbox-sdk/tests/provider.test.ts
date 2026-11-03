@@ -1226,7 +1226,7 @@ async function httpHarness(id: Exclude<BuiltIn, "imap">): Promise<ContractHarnes
             text: body.text ?? "",
             html: body.html ?? "",
             attachments: files.map((file: Wire) => {
-              const { content, ...metadata } = file;
+              const { content: _content, ...metadata } = file;
               return { ...metadata, size: fileContents.get(file.filename)!.length };
             }),
           });
@@ -2888,7 +2888,7 @@ async function liveProfile(): Promise<ContractProfile> {
         accountId: typeof second.accountId === "string" ? second.accountId : `${token}-secondary`,
       }
     : undefined;
-  let raw: InboxProvider;
+  let raw: InboxProvider | undefined;
   let rawOther: InboxProvider | undefined;
   let account: Awaited<ReturnType<InboxProvider["getAccount"]>>;
   let otherAccount: Awaited<ReturnType<InboxProvider["getAccount"]>> | undefined;
@@ -2901,7 +2901,7 @@ async function liveProfile(): Promise<ContractProfile> {
       otherAccount = await rawOther.getAccount();
     }
   } catch {
-    await Promise.allSettled([raw!?.disconnect(), rawOther?.disconnect()]);
+    await Promise.allSettled([raw?.disconnect(), rawOther?.disconnect()]);
     throw new Error(
       "Live preflight failed while creating or authenticating the registered adapter; no test mail was sent and credentials are redacted",
     );

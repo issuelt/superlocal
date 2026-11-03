@@ -6773,7 +6773,7 @@ test("previously persisted thread-level schedules remain deliverable", () => {
   const legacy: Mail = {
     ...pending,
     folder: "Done",
-    messages: pending.messages.map(({ scheduledAt, ...message }) => message),
+    messages: pending.messages.map(({ scheduledAt: _scheduledAt, ...message }) => message),
   };
   const normalized = normalizeSchedule(legacy);
   assert.equal(normalized.messages.at(-1)?.scheduledAt, deadline);
@@ -7937,7 +7937,7 @@ test("demand-driven host windows bound automatic requests and render unknown tot
           renderedAi = ai;
           renderedAiError = error;
           const current = render(),
-            hints = [...current.matchAll(/<button\b[^>]*aria-label="Settings — ([^"]+)"[^>]*>/g)];
+            hints = [...current.matchAll(/<button\b[^>]*aria-label="Settings: ([^"]+)"[^>]*>/g)];
           assert.deepEqual(
             hints.map((match) => match[1]),
             label ? [label, label] : [],
@@ -7950,7 +7950,7 @@ test("demand-driven host windows bound automatic requests and render unknown tot
           );
           for (const [button] of hints)
             assert.ok(
-              button.includes(`title="Settings — ${label}"`),
+              button.includes(`title="Settings: ${label}"`),
               "the tooltip matches the accessible gear name",
             );
           assert.doesNotMatch(current, /ai-sorting-warning|Sorting details/);

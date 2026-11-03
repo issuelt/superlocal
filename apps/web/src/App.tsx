@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
   useState,
-  startTransition,
   type MouseEvent,
   type PointerEvent,
 } from "react";
@@ -28,7 +27,7 @@ import {
   type Preferences,
   type SendOptions,
 } from "./data";
-import { Icon, IconButton, Key, Modal } from "./components";
+import { Icon, IconButton, Modal } from "./components";
 import Composer from "./Composer";
 import ThreadView from "./ThreadView";
 import Settings from "./Settings";
@@ -1752,30 +1751,27 @@ export default function App({
             mail.id === draft.threadId && mail.account === draft.account && !mail.operationId,
         ))
       : undefined;
-    try {
-      const operation = await store.submit(draft, when);
-      if (options?.markDone && draft.threadId) {
-        const original = conversation ?? mail.find((mail) => mail.id === draft.threadId);
-        if (original) await store.action([original], "done");
-      }
-      const current = readRoute();
-      if (conversation) {
-        if (current.draft === draft.id)
-          navigate({
-            account: conversation.account,
-            draft: undefined,
-            thread: conversation.id,
-            view: undefined,
-          });
-      } else if (current.draft === draft.id)
-        navigate({ draft: undefined, thread: undefined, view: undefined });
-      setNotice(null);
-      setSendFeedback({ id: operation.id, threadId: conversation?.id, scheduled: when });
-      return true;
-    } catch (error) {
-      // Composer owns persistent send feedback; a toast alone disappears while the draft stays open.
-      throw error;
+    // Failures propagate: Composer owns persistent send feedback; a toast alone
+    // disappears while the draft stays open.
+    const operation = await store.submit(draft, when);
+    if (options?.markDone && draft.threadId) {
+      const original = conversation ?? mail.find((mail) => mail.id === draft.threadId);
+      if (original) await store.action([original], "done");
     }
+    const current = readRoute();
+    if (conversation) {
+      if (current.draft === draft.id)
+        navigate({
+          account: conversation.account,
+          draft: undefined,
+          thread: conversation.id,
+          view: undefined,
+        });
+    } else if (current.draft === draft.id)
+      navigate({ draft: undefined, thread: undefined, view: undefined });
+    setNotice(null);
+    setSendFeedback({ id: operation.id, threadId: conversation?.id, scheduled: when });
+    return true;
   }
   async function selectAllMail() {
     if (!inbox.host?.inboxWindow) {
@@ -3042,7 +3038,7 @@ export default function App({
         <div className="rail-mobile-actions">
           <IconButton
             name="Gear"
-            title={sortingIssue ? `Settings — ${sortingIssue}` : "Settings"}
+            title={sortingIssue ? `Settings: ${sortingIssue}` : "Settings"}
             className={settings ? "active" : ""}
             data-sorting-issue={sortingIssue ? true : undefined}
             onClick={() =>
@@ -3224,7 +3220,7 @@ export default function App({
             supportsAction={(action) =>
               zero.active && (zero.busy || !!zero.retry)
                 ? false
-                : !!currentMail.operationId
+                : currentMail.operationId
                   ? action === "trash"
                   : store.supports(action, currentMail.mailboxId ?? currentMail.account)
             }
@@ -3815,7 +3811,7 @@ export default function App({
             />
             <IconButton
               name="Gear"
-              title={sortingIssue ? `Settings — ${sortingIssue}` : "Settings"}
+              title={sortingIssue ? `Settings: ${sortingIssue}` : "Settings"}
               className={settings ? "active" : ""}
               data-sorting-issue={sortingIssue ? true : undefined}
               onClick={() =>
