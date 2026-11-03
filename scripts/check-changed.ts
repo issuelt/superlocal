@@ -111,7 +111,7 @@ if (present.length > 0) {
 if (presentCode.length > 0) {
   steps.push({
     name: "lint",
-    cmd: ["oxlint", "--report-unused-disable-directives", ...presentCode],
+    cmd: ["oxlint", "--report-unused-disable-directives", "--deny-warnings", ...presentCode],
   });
 }
 if (code.length > 0 || changed.some((file) => file.endsWith("package.json"))) {

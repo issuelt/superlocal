@@ -55,9 +55,9 @@ app is newer; a newer checkout does not prove the running app serves that build.
   `origin/main` (or `ref`), runs knip, and typechecks and tests the affected
   workspaces in parallel.
 - Repo-wide checks: `lint` (oxlint, `.oxlintrc.json`), `fmt` / `fmt:check`
-  (oxfmt, `.oxfmtrc.json`) and `knip` (`knip.jsonc`). The codebase predates
-  them and still has findings, so judge new code by `check:changed`; do not
-  mass-fix or reformat unrelated files.
+  (oxfmt, `.oxfmtrc.json`) and `knip` (`knip.jsonc`). The repo is clean on
+  all three and CI fails on any finding. Keep `check:changed` as the
+  pre-handoff check, and do not reformat unrelated files.
 - Lint rules of our own live in `scripts/oxlint-plugin.ts`. A suppression must
   say why: `// oxlint-disable-next-line <rule> -- reason`.
 - Workspace tsconfigs extend `tsconfig.base.json`; put shared compiler options
