@@ -15,6 +15,20 @@ import { SaxesParser } from "saxes";
 import { isTrackingImage } from "../src/email-images.ts";
 
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,[a-z\d+/=\s]+$/i;
+// Email has no base URL. In the srcdoc frame a relative URL resolves against the app origin,
+// so image and link URLs must carry a scheme; resolved CIDs are the only app paths emitted.
+const URL_SCHEME = /^[a-z][a-z\d+.-]*:/i;
+const HTTP_SCHEME = /^https?:/i;
+// A scheme alone isn't enough for http(s): against an https base, `https:/v1/x` and `https:host/x`
+// are relative. Parsing without a base turns them into absolute URLs (`https://v1/x`), so emitted
+// http(s) URLs never depend on the address the email is shown at. Unparsable ones are dropped.
+const absoluteHttpUrl = (value: string) => {
+  try {
+    return new URL(value.trim()).href;
+  } catch {
+    return undefined;
+  }
+};
 const MAX_EMAIL_STYLE_INPUT_BYTES = 256 * 1024;
 const MAX_EMAIL_STYLE_OUTPUT_BYTES = 128 * 1024;
 const MAX_EMAIL_STYLE_RULES = 512;
@@ -1054,31 +1068,44 @@ function sanitizeEmailMarkup(
         bodyWrappers.add(attribs);
         return { tagName: "div", attribs };
       },
-      a: (_tagName, attributes) => ({
-        tagName: "a",
-        attribs: {
-          ...attributes,
-          ...(attributes.href ? { href: resolveCid(attributes.href) } : {}),
-          rel: "noopener noreferrer",
-          target: "_blank",
-        },
-      }),
+      a: (_tagName, { href, ...attributes }) => {
+        const resolved = href === undefined ? undefined : resolveCid(href);
+        // A resolved CID is this message's own blob; otherwise require a scheme, and an absolute
+        // URL for http(s).
+        const safeHref =
+          resolved === undefined || resolved !== href
+            ? resolved
+            : HTTP_SCHEME.test(resolved.trim())
+              ? absoluteHttpUrl(resolved)
+              : URL_SCHEME.test(resolved.trim())
+                ? resolved
+                : undefined;
+        return {
+          tagName: "a",
+          attribs: {
+            ...attributes,
+            ...(safeHref === undefined ? {} : { href: safeHref }),
+            rel: "noopener noreferrer",
+            target: "_blank",
+          },
+        };
+      },
       img: (_tagName, attributes) => {
         const sanitized = { ...attributes };
         delete sanitized["data-openmail-src"];
         delete sanitized["data-inbox-tracking"];
         const source = sanitized.src?.trim() ?? "";
         // URL parsers also accept forms such as https:host/path. They must not escape image policy.
-        // Reject browser-normalized control/backslash forms while retaining valid wrapped data images.
-        const malformed = /[\\\u0000-\u001f\u007f]/.test(source) && !SAFE_DATA_IMAGE.test(source);
-        const remote = /^https?:/i.test(source);
-        let trackingSource = source;
-        if (remote)
-          try {
-            trackingSource = new URL(source).href;
-          } catch {
-            /* Invalid destinations fail closed at serving. */
-          }
+        // Reject browser-normalized control/backslash forms while retaining valid wrapped data images,
+        // and relative URLs, which would request app-origin paths whatever the image policy.
+        // Remote sources are emitted as their absolute form; unparsable ones are dropped.
+        const remote = HTTP_SCHEME.test(source);
+        const absolute = remote ? absoluteHttpUrl(source) : undefined;
+        const malformed =
+          (/[\\\u0000-\u001f\u007f]/.test(source) && !SAFE_DATA_IMAGE.test(source)) ||
+          !URL_SCHEME.test(source) ||
+          (remote && absolute === undefined);
+        const trackingSource = absolute ?? source;
         const style: Record<string, string> = {};
         if (remote && sanitized.style) {
           try {
@@ -1112,15 +1139,17 @@ function sanitizeEmailMarkup(
           sanitized["data-inbox-tracking"] = "true";
           delete sanitized.src;
         } else if (remote && (!remoteImages || (blockTracking && trackingPixel))) {
-          sanitized["data-openmail-src"] = source;
+          sanitized["data-openmail-src"] = trackingSource;
           delete sanitized.src;
         } else if (/^data:/i.test(source) && !SAFE_DATA_IMAGE.test(source)) {
           delete sanitized.src;
           delete sanitized["data-openmail-src"];
         }
-        if (sanitized.src) sanitized.src = resolveCid(sanitized.src);
-        if (sanitized.src && remote && options.remoteImage)
-          sanitized.src = options.remoteImage(sanitized.src.trim());
+        if (sanitized.src && remote)
+          sanitized.src = options.remoteImage
+            ? options.remoteImage(trackingSource)
+            : trackingSource;
+        else if (sanitized.src) sanitized.src = resolveCid(sanitized.src);
 
         return { tagName: "img", attribs: sanitized };
       },
