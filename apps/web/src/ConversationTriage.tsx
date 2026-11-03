@@ -42,11 +42,7 @@ export type ConversationTriageProps = {
   onFeedback?: (input: AiFeedbackInput) => Promise<AiDecision>;
 };
 
-export function ConversationTriage({
-  decision,
-  mode = "preview",
-  onFeedback,
-}: ConversationTriageProps) {
+function ConversationTriage({ decision, mode = "preview", onFeedback }: ConversationTriageProps) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState<AiDecision>();
@@ -380,6 +376,7 @@ export function ConversationTriage({
                       </summary>
                       <div className="ai-evidence">
                         {assessment.evidence.map((item, index) => (
+                          // oxlint-disable-next-line react/no-array-index-key -- read-only excerpts with no identity
                           <div key={index}>
                             <span className="ai-secondary">
                               {aiLabel(item.field)} · {item.messageRef}
@@ -422,6 +419,7 @@ export function ConversationTriage({
                       </summary>
                       <dl className="ai-key-values">
                         {score.contributions.map((part, index) => (
+                          // oxlint-disable-next-line react/no-array-index-key -- read-only parts; names may repeat
                           <div className="ai-key-pair" key={`${part.name}:${index}`}>
                             <dt>{aiLabel(part.name)}</dt>
                             <dd>
@@ -434,6 +432,7 @@ export function ConversationTriage({
                       {score.reasons.length > 0 && (
                         <ul className="ai-score-reasons">
                           {score.reasons.map((reason, index) => (
+                            // oxlint-disable-next-line react/no-array-index-key -- read-only reasons may repeat
                             <li key={index}>{reason}</li>
                           ))}
                         </ul>

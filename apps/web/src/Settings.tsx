@@ -115,7 +115,7 @@ const inlineToggles: Record<string, [string, boolean]> = {
   "Show Sender Full Names": ["showSenderFullNames", false],
 };
 
-export function Settings({
+function Settings({
   preferences,
   onChange,
   onClose,
@@ -664,7 +664,7 @@ export function Settings({
                   if (splitEditor) delete rules[splitEditor];
                   if (!category) rules[name] = splitRule.trim();
                   const aliases = {
-                    ...((preferences.splitAliases as Record<string, string>) || {}),
+                    ...(preferences.splitAliases as Record<string, string> | undefined),
                   };
                   if (splitEditor && splitEditor !== name) {
                     aliases[name] = aliases[splitEditor] || splitEditor;
@@ -827,7 +827,9 @@ export function Settings({
                                 const rules = { ...splitRules };
                                 delete rules[split];
                                 const aliases = {
-                                  ...((preferences.splitAliases as Record<string, string>) || {}),
+                                  ...(preferences.splitAliases as
+                                    | Record<string, string>
+                                    | undefined),
                                 };
                                 delete aliases[split];
                                 onChange({

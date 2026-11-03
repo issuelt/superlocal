@@ -36,7 +36,7 @@ export interface ProviderConfig {
   [setting: string]: unknown;
 }
 /** Every built-in SDK provider (plus the offline mock) is a key; unknown providers are rejected. */
-export const PROVIDER_IDS: readonly string[] = Object.freeze([
+const PROVIDER_IDS: readonly string[] = Object.freeze([
   "mock",
   ...builtInProviders.map((provider) => provider.id),
 ]);

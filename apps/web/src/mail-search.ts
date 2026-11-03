@@ -127,7 +127,7 @@ export function compileSearch(query: string, includeBodies = true): (mail: Mail)
         if (key === "to" && value.includes("@"))
           return [m.to, ...m.messages.map((message) => message.to)].some((to) =>
             Array.from(
-              to.toLowerCase().matchAll(/[^\s<>\",;]+@[^\s<>\",;]+/g),
+              to.toLowerCase().matchAll(/[^\s<>",;]+@[^\s<>",;]+/g),
               (match) => match[0],
             ).includes(value),
           );

@@ -386,7 +386,7 @@ export default function ProviderConnections({
       if (controller.current === operation) controller.current = null;
       resumed.current = "idle";
     };
-  }, [resume, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resume, ready]);
 
   if (!configuration)
     return (

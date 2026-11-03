@@ -32,7 +32,7 @@ const POLL_MS = 20_000;
 const MAX_POLL_MS = 60_000;
 
 /** Only actionable states and a genuine first-time import are worth a line; healthy or idle sync shows nothing. */
-export function syncNotice(row: SyncRow, source?: Account): SyncNotice | null {
+function syncNotice(row: SyncRow, source?: Account): SyncNotice | null {
   if (row.state === "paused") return { row, kind: "paused", text: "Sync paused" };
   if (reconnect.has(row.problemCode ?? ""))
     return { row, kind: "reconnect", text: "Reconnect to resume syncing" };

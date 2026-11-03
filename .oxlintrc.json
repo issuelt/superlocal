@@ -20,6 +20,7 @@
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }
     ],
     "eslint/no-control-regex": "off",
+    "eslint/no-unexpected-multiline": "off",
     "eslint/no-new": "error",
     "eslint/no-unneeded-ternary": "error",
     "oxc/no-accumulating-spread": "error",
@@ -46,7 +47,15 @@
     "import/no-named-as-default-member": "off",
     "react/no-object-type-as-default-prop": "off",
     "react/exhaustive-effect-dependencies": "off",
-    "react-hooks/exhaustive-deps": "warn",
+    // Effects use deliberate trigger lists and reset/sync state, and the app does not
+    // run React Compiler, so its effect and compiler diagnostics do not fit here.
+    "react-hooks/exhaustive-deps": "off",
+    "react/set-state-in-effect": "off",
+    "react/refs": "off",
+    "react/purity": "off",
+    "react/immutability": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/memo-dependencies": "off",
     "superlocal/require-suppression-reason": "error"
   },
   "overrides": [

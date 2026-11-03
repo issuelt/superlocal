@@ -1226,7 +1226,7 @@ async function httpHarness(id: Exclude<BuiltIn, "imap">): Promise<ContractHarnes
             text: body.text ?? "",
             html: body.html ?? "",
             attachments: files.map((file: Wire) => {
-              const { content, ...metadata } = file;
+              const { content: _content, ...metadata } = file;
               return { ...metadata, size: fileContents.get(file.filename)!.length };
             }),
           });
@@ -1778,9 +1778,7 @@ async function imapHarness(smtp: boolean): Promise<ContractHarness> {
         .get(this.account)!
         .get(destination)!
         .set(moved, { ...message, uid: moved });
-      return {
-        ...(behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), moved]]), uidValidity }),
-      };
+      return behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), moved]]), uidValidity };
     }
     async messageCopy(uid: string, destination: string) {
       commands.push({ method: "copy", uid });
@@ -1792,9 +1790,7 @@ async function imapHarness(smtp: boolean): Promise<ContractHarness> {
         .get(this.account)!
         .get(destination)!
         .set(copied, { ...message, uid: copied });
-      return {
-        ...(behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), copied]]), uidValidity }),
-      };
+      return behavior.noCopyUid ? {} : { uidMap: new Map([[Number(uid), copied]]), uidValidity };
     }
     async append(path: string, source: Buffer) {
       commands.push({ method: "append" });
@@ -2892,7 +2888,7 @@ async function liveProfile(): Promise<ContractProfile> {
         accountId: typeof second.accountId === "string" ? second.accountId : `${token}-secondary`,
       }
     : undefined;
-  let raw: InboxProvider;
+  let raw: InboxProvider | undefined;
   let rawOther: InboxProvider | undefined;
   let account: Awaited<ReturnType<InboxProvider["getAccount"]>>;
   let otherAccount: Awaited<ReturnType<InboxProvider["getAccount"]>> | undefined;
@@ -2905,7 +2901,7 @@ async function liveProfile(): Promise<ContractProfile> {
       otherAccount = await rawOther.getAccount();
     }
   } catch {
-    await Promise.allSettled([raw!?.disconnect(), rawOther?.disconnect()]);
+    await Promise.allSettled([raw?.disconnect(), rawOther?.disconnect()]);
     throw new Error(
       "Live preflight failed while creating or authenticating the registered adapter; no test mail was sent and credentials are redacted",
     );
@@ -3262,6 +3258,7 @@ async function liveProfile(): Promise<ContractProfile> {
         await fresh?.disconnect();
       }
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- snapshot: removeFolder mutates `folders` across awaits
     for (const { folder } of [...folders.values()]) {
       try {
         await removeFolder(folder);
@@ -3393,6 +3390,7 @@ async function liveProfile(): Promise<ContractProfile> {
         return h;
       } catch (error) {
         await close();
+        // oxlint-disable-next-line eslint/preserve-caught-error -- provider payloads stay redacted, so no cause
         throw new Error(
           `Live fixture setup failed after ${attempts} bounded send attempts; provider payloads are redacted. ${
             error instanceof Error &&
@@ -3697,9 +3695,9 @@ describe("imap capability boundaries and SDK integration", () => {
     ).toBe(true);
     expect(h.writes!()).toBe(0);
     await h.provider.mutate(h.rootId, { isStarred: true });
-    expect(
-      h.imapPeer!.commands.filter((command) => command.method === "open").at(-1)?.readOnly,
-    ).toBe(false);
+    expect(h.imapPeer!.commands.findLast((command) => command.method === "open")?.readOnly).toBe(
+      false,
+    );
   });
 
   for (const condstore of [true, false])

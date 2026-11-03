@@ -170,7 +170,7 @@ export async function readApplicationAccess(signal?: AbortSignal): Promise<Appli
     signal?.throwIfAborted();
     if (transientTransport(error)) throw new ApplicationAccessUnavailable();
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new Error("Invalid access response.");
+    throw new Error("Invalid access response.", { cause: error });
   }
   signal?.throwIfAborted();
   if (!value || typeof value !== "object" || !("method" in value))

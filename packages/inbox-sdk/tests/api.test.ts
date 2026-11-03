@@ -2022,9 +2022,10 @@ describe("Google application authentication", () => {
       "/host/providers/gmail/connect",
       "/v1/oauth/google/callback",
     ]) {
-      const response = await f.request(path, {
-        ...(path === "/session" || path.endsWith("/connect") ? { method: "POST", body: "{}" } : {}),
-      });
+      const response = await f.request(
+        path,
+        path === "/session" || path.endsWith("/connect") ? { method: "POST", body: "{}" } : {},
+      );
       expect(response.status).toBe(401);
       expect(response.headers.get("x-superlocal-auth")).toBe("required");
       expect(await response.text()).not.toContain("fictional-shared");
@@ -7443,7 +7444,7 @@ describe("bounded host inbox window", () => {
       "capture finishes independently of expired query",
     );
     expect(finished.selection.count).toBe(349);
-    const frozenIds = [...finished.entries.map((entry) => entry.id)];
+    const frozenIds = finished.entries.map((entry) => entry.id);
     let frozenCursor = finished.nextCursor;
     while (frozenCursor) {
       const page = await call("selectionPage", { selectionId: expiring.id, cursor: frozenCursor });
@@ -11634,7 +11635,7 @@ describe("live bounded mailbox reads", () => {
       inReplyTo: mail.rfcMessageId,
     }));
     await h.seed("alice", "batch-originals", originals);
-    const forwarded = await h.seed("alice", "batch-copies", copies);
+    await h.seed("alice", "batch-copies", copies);
     await h.seed(
       "alice",
       "batch-ordinary",
@@ -20031,7 +20032,7 @@ describe("worker leases, sync checkpoints, and delayed actions", () => {
 
   test("page-only latest polls stay complete and idle after durable backfill, without losing arrival reasons", async () => {
     const h = await fixture({ syncIntervalMs: 1000 });
-    const { account, box } = await h.connect("alice", "page-only-quiet");
+    const { box } = await h.connect("alice", "page-only-quiet");
     const mailbox = (await h.inbox.mailboxes("alice"))[0]!;
     const input = { mailboxIds: [mailbox.id] };
     box.nextSync(
@@ -32246,7 +32247,7 @@ describe("AI triage service", () => {
       note: "Actually these matter",
     });
     expect(
-      requests.filter((request) => request.schema === "triage_rule_v1").at(-1)!.content,
+      requests.findLast((request) => request.schema === "triage_rule_v1")!.content,
     ).toMatchObject({
       existingRules: [
         { id: "ai-taught-rule-1", text: "Fixture vendor account alerts are not important." },
