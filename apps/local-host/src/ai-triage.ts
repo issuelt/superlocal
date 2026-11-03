@@ -344,6 +344,17 @@ export function createAiTriageService({
   let started = false,
     closed = false,
     pumping = false;
+  /**
+   * Provider-wide backoff. A retryable failure (rate limit, overload, timeout, network) holds
+   * every dispatch until the cooldown ends, so a throttled window costs a few requests instead
+   * of an attempt from each queued conversation. Delays grow exponentially with consecutive
+   * failures, are jittered and never undercut the provider's Retry-After; adapted from
+   * opencode `packages/core/src/model-retry.ts` (MIT). Any non-retryable answer resets it.
+   */
+  let providerFailures = 0,
+    cooldownUntil = 0;
+  // Whole milliseconds: queue due times live in a STRICT INTEGER column.
+  const jitter = (milliseconds: number) => Math.round(milliseconds * (0.8 + Math.random() * 0.4));
   let timer: ReturnType<typeof setInterval> | undefined;
   const subscriptions = new Map<string, () => void>();
   const locks = new Map<string, Promise<unknown>>();
@@ -1860,7 +1871,8 @@ export function createAiTriageService({
       closed ||
       pumping ||
       !configuration ||
-      active.size >= (configuration.concurrency ?? 2)
+      active.size >= (configuration.concurrency ?? 2) ||
+      now() < cooldownUntil
     )
       return;
     pumping = true;
@@ -2310,6 +2322,17 @@ export function createAiTriageService({
         transaction(() => finishDecision(queue, context, null, "AI_REQUEST_FAILED"));
       return;
     }
+    if (result.retryable) {
+      providerFailures++;
+      cooldownUntil = Math.max(
+        cooldownUntil,
+        now() +
+          Math.max(
+            jitter(Math.min(60_000, 1000 * 2 ** (providerFailures - 1))),
+            result.retryAfterMs ?? 0,
+          ),
+      );
+    } else if (result.outcome !== "aborted") providerFailures = 0;
     let current: Context | null = null;
     if (permitted(queue) && !controller.signal.aborted) {
       try {
@@ -2372,7 +2395,7 @@ export function createAiTriageService({
       queue.attempts < 2
     ) {
       const delay = Math.max(
-        1000 * 2 ** queue.attempts,
+        jitter(1000 * 2 ** queue.attempts),
         Math.min(300_000, Math.max(0, result.retryAfterMs ?? 0)),
       );
       db.query(

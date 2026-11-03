@@ -20,7 +20,6 @@ import {
   taxonomyVersion,
   classificationSchema,
   validateClassification,
-  type Classification,
   type ClassificationInput,
 } from "./schema";
 
@@ -143,7 +142,7 @@ export type RunConfiguration = {
   schema: unknown;
   instructions: string;
 };
-export function runConfiguration(model: string): RunConfiguration {
+function runConfiguration(model: string): RunConfiguration {
   return {
     model,
     endpoint: "https://opencode.ai/inference/openai/v1/responses",

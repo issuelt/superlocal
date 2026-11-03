@@ -2,7 +2,7 @@ import { taxonomy, taxonomyVersion, type Classification } from "./schema";
 
 type EmailType = Classification["primaryType"];
 type Action = Classification["actions"][number];
-export const policyVersion = 1;
+const policyVersion = 1;
 const types = Object.keys(taxonomy.types) as EmailType[],
   actions = Object.keys(taxonomy.actions) as Action[];
 const maxRows = 50_000,
@@ -204,8 +204,7 @@ function select(candidates: Candidate[], rules: Criteria, reserved = false): Pol
     const midpoint = next ? current.score / 2 + next.score / 2 : NaN; // Avoid sum overflow.
     const between = Number.isFinite(midpoint) && midpoint > next!.score && midpoint < current.score;
     // Adjacent floating-point scores may have no representable midpoint; >= the upper score preserves the same set.
-    choice = {
-      ...choice,
+    Object.assign(choice, {
       threshold: between ? midpoint : current.score,
       method: between ? "midpoint" : "inclusive_score",
       status: "selected",
@@ -214,7 +213,7 @@ function select(candidates: Candidate[], rules: Criteria, reserved = false): Pol
       precision,
       lowerBound: bound,
       groups: groups.size,
-    };
+    } satisfies Partial<PolicySelection>);
   }
   return choice; // Last qualifying prefix maximizes coverage; no numeric fallback when none qualifies.
 }

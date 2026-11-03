@@ -7,7 +7,7 @@ import {
 } from "../../shared/ai-triage";
 
 /** Local matching only. Never turn interests or feedback into model instructions. */
-export function normalizeAiTopic(value: unknown): string {
+function normalizeAiTopic(value: unknown): string {
   if (typeof value !== "string" || value.length > 256) return "";
   const topic = value
     .normalize("NFKC")

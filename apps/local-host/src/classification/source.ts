@@ -33,10 +33,10 @@ export function hasCurrentText(
         break;
       if (body && line.startsWith(">")) continue;
       for (const token of line.split(/\s+/u)) {
-        const unwrapped = token.replace(/^[<(\[{'"“‘]+/u, "");
+        const unwrapped = token.replace(/^[<([{'"“‘]+/u, "");
         // Bounded token scans, not a backtracking address regex on a long near-match.
         if (unwrapped.includes("@") || /^(?:https?:\/\/|www\.)/iu.test(unwrapped)) continue;
-        const word = unwrapped.replace(/[<>\[\]{}()'"“”‘’.,;:!?]/gu, "");
+        const word = unwrapped.replace(/[<>[\]{}()'"“”‘’.,;:!?]/gu, "");
         if (!/^(?:email|url|link|date)$/i.test(word) && /\p{L}/u.test(word)) return true;
       }
     }
