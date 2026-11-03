@@ -50,6 +50,22 @@ app is newer; a newer checkout does not prove the running app serves that build.
 - The dev stack is managed by `scripts/dev.ts`; running services and their
   PIDs/logs are listed in `data/runtime/services.json`. Check it before
   starting servers; do not spawn duplicates.
+- Before handing off, run `bun --no-env-file run check:changed [ref]`. It
+  checks format and lint of the files changed since the merge base with
+  `origin/main` (or `ref`), runs knip, and typechecks and tests the affected
+  workspaces in parallel.
+- Repo-wide checks: `lint` (oxlint, `.oxlintrc.json`), `fmt` / `fmt:check`
+  (oxfmt, `.oxfmtrc.json`) and `knip` (`knip.jsonc`). The codebase predates
+  them and still has findings, so judge new code by `check:changed`; do not
+  mass-fix or reformat unrelated files.
+- Lint rules of our own live in `scripts/oxlint-plugin.ts`. A suppression must
+  say why: `// oxlint-disable-next-line <rule> -- reason`.
+- Workspace tsconfigs extend `tsconfig.base.json`; put shared compiler options
+  there.
+- Read-only reference clones (effect, t3code, executor, opencode) live in the
+  gitignored `/.reference/` at the main checkout root.
+  `bun --no-env-file run sync:repos` clones or updates them; effect is pinned
+  to the version we install. Read them, never edit them.
 
 ## Data and privacy
 
