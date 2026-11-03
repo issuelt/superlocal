@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Adapted from t3code's .coderabbit.config.ts. Rules live in AGENTS.md; these
+# instructions point the reviewer at the parts that apply to each path.
+reviews:
+  high_level_summary: false
+  review_status: false
+  request_changes_workflow: false
+  auto_review:
+    enabled: true
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+  path_filters:
+    - "!bun.lock"
+    - "!**/package-lock.json"
+    - "!docs/ui-prs/**"
+    - "!docs/qa/**"
+  path_instructions:
+    - path: "packages/inbox-sdk/server/sanitize.ts"
+      instructions: >-
+        Sanitization happens once, here. Hold changes to the email renderer
+        invariants in AGENTS.md and check the remote-image policy still matches
+        the Settings description.
+    - path: "apps/web/src/MessageBody.tsx"
+      instructions: >-
+        Email HTML renders only in the scriptless srcdoc iframe. Flag any path
+        that injects email HTML into the app DOM or re-sanitizes on the client.
+    - path: "{apps,packages}/**/*.{ts,tsx}"
+      instructions: >-
+        Hold changes to the performance contract in AGENTS.md: bounded deltas,
+        no full-mailbox scans on ordinary events, stable identities for
+        unaffected conversations, no weakened fences or retries.
+    - path: "**/tests/**"
+      instructions: >-
+        Tests extend the existing two SDK and four web test files only. Ask for
+        behavioral checks, not new files or frameworks.
+knowledge_base:
+  code_guidelines:
+    filePatterns:
+      - AGENTS.md
