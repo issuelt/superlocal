@@ -15,6 +15,9 @@ import { SaxesParser } from "saxes";
 import { isTrackingImage } from "../src/email-images.ts";
 
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp);base64,[a-z\d+/=\s]+$/i;
+// Email has no base URL. In the srcdoc frame a relative URL resolves against the app origin,
+// so image and link URLs must carry a scheme; resolved CIDs are the only app paths emitted.
+const URL_SCHEME = /^[a-z][a-z\d+.-]*:/i;
 const MAX_EMAIL_STYLE_INPUT_BYTES = 256 * 1024;
 const MAX_EMAIL_STYLE_OUTPUT_BYTES = 128 * 1024;
 const MAX_EMAIL_STYLE_RULES = 512;
@@ -1054,23 +1057,31 @@ function sanitizeEmailMarkup(
         bodyWrappers.add(attribs);
         return { tagName: "div", attribs };
       },
-      a: (_tagName, attributes) => ({
-        tagName: "a",
-        attribs: {
-          ...attributes,
-          ...(attributes.href ? { href: resolveCid(attributes.href) } : {}),
-          rel: "noopener noreferrer",
-          target: "_blank",
-        },
-      }),
+      a: (_tagName, { href, ...attributes }) => {
+        const resolved = href === undefined ? undefined : resolveCid(href);
+        return {
+          tagName: "a",
+          attribs: {
+            ...attributes,
+            ...(resolved !== undefined && (resolved !== href || URL_SCHEME.test(resolved.trim()))
+              ? { href: resolved }
+              : {}),
+            rel: "noopener noreferrer",
+            target: "_blank",
+          },
+        };
+      },
       img: (_tagName, attributes) => {
         const sanitized = { ...attributes };
         delete sanitized["data-openmail-src"];
         delete sanitized["data-inbox-tracking"];
         const source = sanitized.src?.trim() ?? "";
         // URL parsers also accept forms such as https:host/path. They must not escape image policy.
-        // Reject browser-normalized control/backslash forms while retaining valid wrapped data images.
-        const malformed = /[\\\u0000-\u001f\u007f]/.test(source) && !SAFE_DATA_IMAGE.test(source);
+        // Reject browser-normalized control/backslash forms while retaining valid wrapped data images,
+        // and relative URLs, which would request app-origin paths whatever the image policy.
+        const malformed =
+          (/[\\\u0000-\u001f\u007f]/.test(source) && !SAFE_DATA_IMAGE.test(source)) ||
+          !URL_SCHEME.test(source);
         const remote = /^https?:/i.test(source);
         let trackingSource = source;
         if (remote)

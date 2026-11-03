@@ -17485,6 +17485,47 @@ describe("blob privacy and draft editing", () => {
     expect((await h.inbox.message("alice", id)).isRead).toBe(false);
   });
 
+  test("relative image and link URLs cannot request app-origin paths, while CIDs still resolve", async () => {
+    const h = await fixture();
+    const inline: Attachment = {
+      id: "native-logo",
+      filename: "logo.png",
+      contentType: "image/png",
+      size: 4,
+      url: "https://upstream.invalid/logo",
+      inline: true,
+      contentId: "logo@example.test",
+    };
+    const { account, box } = await h.connect("alice", "relative-urls", [
+      native("relative", {
+        bodyHtml: `<p>Relative URLs resolve against the app origin inside the email frame.</p>
+          <img src="/v1/policy" alt="api"><img src="logo.png" alt="bare"><img src="cid:logo@example.test" alt="logo">
+          <a href="/v1/openapi.json">api</a><a href="#top">top</a><a href="?q=1">query</a>
+          <a href="cid:logo@example.test">logo</a><a href="https://example.test/a">site</a><a href="mailto:a@example.test">mail</a>`,
+        attachments: [inline],
+      }),
+    ]);
+    box.attachment("relative", inline, new Uint8Array([137, 80, 78, 71]));
+    await h.sync("alice", account.id);
+    const message = await h.inbox.message("alice", (await h.page()).items[0]!.id);
+    const blob = `/v1/blobs/${message.attachments[0]!.id}`;
+    for (const html of [message.bodyHtml, message.bodyDocument!.html]) {
+      const urls = (name: string, attribute: string) =>
+        DomUtils.findAll((node) => node.name === name, parseDocument(html).children).map(
+          (node): string | null => node.attribs[attribute] ?? null,
+        );
+      expect(urls("img", "src")).toEqual([null, null, blob]);
+      expect(urls("a", "href")).toEqual([
+        null,
+        null,
+        null,
+        blob,
+        "https://example.test/a",
+        "mailto:a@example.test",
+      ]);
+    }
+  });
+
   test("isolated email documents preserve sender roots and responsive CSS without weakening image privacy", async () => {
     const h = await fixture();
     const { account, box } = await h.connect("alice", "email-document", [

@@ -193,8 +193,8 @@ function emailDocument(html: string, styles: string, fontSize: string) {
     :where(img) { height: auto; }
     :where(pre) { white-space: pre-wrap; overflow-wrap: anywhere; }
     :where(pre, code) { font-family: "Berkeley Mono", monospace; }
-    :where(a) { color: #3859a7; }
-    :where(a:focus-visible) { outline: 2px solid currentColor; outline-offset: 2px; }
+    :where(a[href]) { color: #3859a7; }
+    :where(a[href]:focus-visible) { outline: 2px solid currentColor; outline-offset: 2px; }
     html { overflow-y: hidden; }
   `;
   const author = doc.createElement("style");
@@ -243,6 +243,12 @@ function emailDocument(html: string, styles: string, fontSize: string) {
   for (const image of doc.querySelectorAll('img[data-inbox-tracking="true"]')) image.remove();
   for (const image of doc.querySelectorAll<HTMLImageElement>('img[src^="cid:" i]')) {
     unavailableImage(image, "inline image unavailable");
+  }
+  // The SDK drops relative, malformed and unsafe sources; present them like failed loads.
+  for (const image of doc.querySelectorAll<HTMLImageElement>(
+    "img:not([src]):not([data-openmail-src])",
+  )) {
+    unavailableImage(image, "image unavailable");
   }
   let blockedImages = 0;
   for (const image of doc.querySelectorAll<HTMLImageElement>("img[data-openmail-src]:not([src])")) {
