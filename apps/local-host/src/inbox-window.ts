@@ -24,7 +24,10 @@ import type { createSenderDomainHost, SenderDomainInfo } from './sender-domains'
 const BATCH = 50, RAW_BATCH = 500, QUERY_TTL = 30 * 60_000, MAX_ACTIVE = 16
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value))
-const wait = () => new Promise<void>(resolve => setTimeout(resolve, 0))
+const wait = (ms = 0) => new Promise<void>(resolve => setTimeout(resolve, ms))
+// Counting walks every conversation of a view, so it runs in short synchronous
+// slices that defer to interactive requests (bounded, so it still progresses).
+const COUNT_PAGE = 25, COUNT_PAGES = 20, COUNT_YIELD_MS = 250, COUNT_REQUEST_MS = 1500
 const fail = (code: DTO.InboxWindowErrorCode, status = 400): never => { throw new InboxError(code, ({
   HOST_INBOX_INVALID: 'Invalid inbox request.', HOST_INBOX_TOO_LARGE: 'The selected context exceeds the bounded inbox response.',
   HOST_INBOX_QUERY_EXPIRED: 'Reopen the current inbox query.', HOST_INBOX_CURSOR_INVALID: 'The inbox cursor does not match this request.',
@@ -46,6 +49,8 @@ type Dependencies = {
   attentionOverrides: ReturnType<typeof createAttentionOverridesStore>
   ai: ReturnType<typeof createAiTriageService>
   senderDomains?: ReturnType<typeof createSenderDomainHost>
+  /** True while the host serves an interactive request; background counting waits for it. */
+  foreground?: () => boolean
 }
 type ScopeRow = { id: string; account: string; data: string; cursor: string | null; baseline: string | null; sdk_state: string | null; sdk_scope: string; raw_complete: number; revision: number; generation: number; reset: string | null; checked: number }
 type ReadBaseline = { sdkState: string | null; scopeState: string; revision: number; ai: number; category: number; at: number }
@@ -1443,33 +1448,40 @@ export function createInboxWindowService(deps: Dependencies) {
   }
   const receiptFailure = (error: unknown): 'pending' | 'rejected' => error === rejectedReceipt || error instanceof InboxError && error.status >= 400 && error.status < 500 ? 'rejected' : 'pending'
 
+  // Counting is background work. Resolved SDK promises alone do not let queued
+  // body/action HTTP requests run between synchronous SQLite pages, and a slice
+  // that starts while an open or Done is being served would delay its next await.
+  async function countTurn() {
+    await wait()
+    for (const until = Date.now() + COUNT_YIELD_MS; deps.foreground?.() && Date.now() < until;) await wait(5)
+  }
   async function requestedCounts(scope: Scope, query: QueryRow): Promise<DTO.InboxCountsResult> {
     let saved = readMetadata(query), count = saved.counts
     if (count?.complete && totals(scope, query).conversations !== null) return { state: state(scope, query), totals: count.totals }
     const empty = (): DTO.InboxTotals => ({ conversations: 0, messages: 0, inbox: 0, splits: Object.fromEntries(scope.preferences.splits.map(name => [name, 0])),
       folders: Object.fromEntries(['Inbox', 'Starred', 'Sent', 'Done', 'Auto Archived', 'Reminders', 'Spam', 'Trash', 'All Mail'].map(name => [name, 0])), holding: false })
-    const budget = readBudget(), view = json<DTO.InboxViewQuery>(query.data)
-    let firstPage: Awaited<ReturnType<Inbox['mailboxConversations']>> | undefined
+    // Count pages have their own allowance; the shared read budget still bounds
+    // participant searches made while evaluating rows.
+    const budget = readBudget(), view = json<DTO.InboxViewQuery>(query.data), deadline = Date.now() + COUNT_REQUEST_MS
+    let firstPage: Awaited<ReturnType<Inbox['mailboxConversations']>> | undefined, pages = COUNT_PAGES
     if (!count) {
       // The first bounded page supplies both the snapshot fence and emptiness.
       // A preliminary mailbox-wide count adds no information to this traversal.
       if (scope.boxes.length) {
-        await wait()
-        budget.pages--
-        firstPage = await inbox.mailboxConversations(owner, { mailboxIds: scope.boxes.map(box => box.id), limit: 100 })
+        await countTurn()
+        pages--
+        firstPage = await inbox.mailboxConversations(owner, { mailboxIds: scope.boxes.map(box => box.id), limit: COUNT_PAGE })
       }
       const read = observe(scope, firstPage?.state ?? null, firstPage?.scopeState ?? scope.row.id, query)
       count = { baseline: read, totals: empty(), complete: !firstPage || firstPage.items.length === 0 }
     }
-    while (!count.complete && (firstPage || budget.pages > 0)) {
+    while (!count.complete && (firstPage || pages > 0 && Date.now() < deadline)) {
       const position = count.position ?? {}
       if (!firstPage) {
-        // Counting is background work. Resolved SDK promises alone do not let
-        // queued body/action HTTP requests run between synchronous SQLite pages.
-        await wait()
-        budget.pages--
+        await countTurn()
+        pages--
       }
-      const page = firstPage ?? await inbox.mailboxConversations(owner, { mailboxIds: scope.boxes.map(box => box.id), limit: 100, ...(position.cursor ? { cursor: position.cursor } : {}) })
+      const page = firstPage ?? await inbox.mailboxConversations(owner, { mailboxIds: scope.boxes.map(box => box.id), limit: COUNT_PAGE, ...(position.cursor ? { cursor: position.cursor } : {}) })
       firstPage = undefined
       if (page.state !== count.baseline.sdkState || page.scopeState !== count.baseline.scopeState) {
         saved = readMetadata(query); delete saved.counts; saveReadMetadata(query, saved)

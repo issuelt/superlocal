@@ -2698,7 +2698,7 @@ describe('bounded host inbox window', () => {
     await h.sync('alice', account.id)
     const providerCalls = structuredClone(box.calls), database = new Database(':memory:')
     let bodyReads = 0, inference = 0, captureRequested = false, unscopedReads = 0, conversationReads = 0, inventoryCounts = 0
-    let correspondenceFailure: InboxError | undefined, countPageHook: (() => void) | undefined
+    let correspondenceFailure: InboxError | undefined, countPageHook: (() => void) | undefined, foreground = false
     const guarded: Inbox = { ...h.inbox,
       mailboxCounts: async () => { inventoryCounts++; throw new Error('Host counts must not scan the whole mailbox inventory') },
       mailboxCorrespondence: (...args) => correspondenceFailure ? Promise.reject(correspondenceFailure) : h.inbox.mailboxCorrespondence(...args),
@@ -2718,7 +2718,7 @@ describe('bounded host inbox window', () => {
     const preferences = createInboxViewPreferencesStore(database, guarded, 'alice')
     const splitPreferences = createSplitPreferencesStore(database, 'alice')
     const dependencies = { database, inbox: guarded, owner: 'alice', ai, sessionKey: KEY, allowProviderWrites: false,
-      inboxPreferences: preferences, splitPreferences, attentionOverrides: createAttentionOverridesStore(database, guarded, 'alice') }
+      inboxPreferences: preferences, splitPreferences, attentionOverrides: createAttentionOverridesStore(database, guarded, 'alice'), foreground: () => foreground }
     let service = createInboxWindowService(dependencies)
     cleanup.push(async () => { await service.close(); await ai.close(); database.close() })
     const call = async <K extends keyof WindowDTO.InboxWindowTransport>(name: K, input: Parameters<WindowDTO.InboxWindowTransport[K]>[0]): Promise<Awaited<ReturnType<WindowDTO.InboxWindowTransport[K]>>> =>
@@ -2753,11 +2753,14 @@ describe('bounded host inbox window', () => {
     const selectedBoxes = (await h.inbox.mailboxes('alice')).map(mailbox => mailbox.id)
     const target = ready.rows[0]!, targetScope = { mailboxIds: selectedBoxes, keys: [{ sourceId: target.sourceId, threadId: target.threadId }] }
     const scheduledDone = deferred<Awaited<ReturnType<Inbox['setMailboxStates']>>>()
-    let countPages = 0, doneCompleted = false, doneBeforeSecondPage = false, doneBeforeCountSettled = false
+    let countPages = 0, doneCompleted = false, doneBeforeSecondPage = false, doneBeforeCountSettled = false, secondPageWhileForeground = false
     countPageHook = () => {
       countPages++
-      if (countPages === 2) doneBeforeSecondPage = doneCompleted
+      if (countPages === 2) { doneBeforeSecondPage = doneCompleted; secondPageWhileForeground = foreground }
       if (countPages !== 1) return
+      // An interactive host request is in flight: the next background page waits for it.
+      foreground = true
+      setTimeout(() => { foreground = false }, 40)
       setImmediate(() => {
         void (async () => {
           const receipt = await h.inbox.setMailboxStates('alice', { id: randomUUID(), targets: target.targets, done: true })
@@ -2774,8 +2777,9 @@ describe('bounded host inbox window', () => {
       scheduledDone.promise,
     ]), 'scheduled Done and independent read between count pages')
     countPageHook = undefined
-    expect(countPages).toBeGreaterThanOrEqual(2); expect(countPages).toBeLessThanOrEqual(5)
-    expect(doneBeforeSecondPage).toBe(true); expect(doneBeforeCountSettled).toBe(true)
+    // One count request reads at most 20 short pages (500 conversations).
+    expect(countPages).toBeGreaterThanOrEqual(2); expect(countPages).toBeLessThanOrEqual(20)
+    expect(doneBeforeSecondPage).toBe(true); expect(doneBeforeCountSettled).toBe(true); expect(secondPageWhileForeground).toBe(false)
     expect(invalidatedCounts.totals.conversations).toBeNull(); expect(invalidatedCounts.totals.folders.Done).toBeUndefined()
     const changedCounts = await bounded((async () => {
       for (;;) { const value = await call('counts', { queryId: first.state.queryId }); if (value.totals.conversations !== null) return value; await Bun.sleep(10) }
