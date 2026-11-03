@@ -5,6 +5,8 @@ import { DomUtils, parseDocument } from 'htmlparser2'
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto'
 import { chmod, link, mkdir, mkdtemp, readFile, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
+import { realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { brotliCompressSync, deflateSync, gzipSync } from 'node:zlib'
 import { SaxesParser } from 'saxes'
 import { createInbox } from '../src/core'
@@ -58,7 +60,8 @@ import type {
   ProviderFolder, SendInput, SendResult, SyncContext, SyncCursor, SyncOptions, SyncResult,
 } from '../server/sdk/types'
 
-const TEMP_ROOT = '/private/var/folders/2j/6mslx1715gx8frsyn66sf1sh0000gn/T/opencode'
+// Resolved, so macOS /var -> /private/var symlinks don't trip path checks.
+const TEMP_ROOT = realpathSync(tmpdir())
 const FULL = 'reference-mail'
 const RESTRICTED = 'reference-read-only'
 const DYNAMIC = 'unanticipated-provider-2026'
