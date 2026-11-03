@@ -88,9 +88,9 @@ function canvasColor(doc: Document): MessageCanvasColor | null {
 function linkedText(text: string): ReactNode[] {
   const result: ReactNode[] = [];
   const pattern =
-    /\bhttps?:\/\/[^\s<>"']+|\bmailto:[^\s<>"]+|[^\s<>()\[\]{},;:"]+@[^\s<>()\[\]{},;:"]+/gi;
+    /\bhttps?:\/\/[^\s<>"']+|\bmailto:[^\s<>"]+|[^\s<>()[\]{},;:"]+@[^\s<>()[\]{},;:"]+/gi;
   const address =
-    /^[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[A-Z0-9!#$%&'*+\/=?^_`{|}~-]+)*@(?:[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}$/i;
+    /^[A-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?\.)+[A-Z]{2,}$/i;
   let start = 0;
   for (const match of text.matchAll(pattern)) {
     const quoted = match[0].startsWith("'") && match[0].endsWith("'");
@@ -284,7 +284,6 @@ export default function MessageBody({
   onCanvasColor,
 }: MessageBodyProps) {
   const frame = useRef<HTMLIFrameElement>(null);
-  const cleanup = useRef<() => void>(() => {});
   const activate = useEffectEvent(onActivate);
   const keyboard = useEffectEvent(onKeyboard);
   const reportCanvas = useEffectEvent(onCanvasColor);
@@ -297,10 +296,105 @@ export default function MessageBody({
 
   useLayoutEffect(() => {
     reportCanvas(null);
-    if (!document) return;
+    const element = frame.current;
+    if (!document || !element) return;
+    let release = () => {};
+    // Fits the frame to its current srcdoc document and forwards its input until released.
+    const loaded = () => {
+      const doc = element.contentDocument;
+      if (!doc?.body || doc.documentElement.dataset.inboxDocument !== document.id) return;
+      release();
+      let pending = 0;
+      let width = element.clientWidth;
+      let disposed = false;
+      const root = doc.documentElement;
+      const originalZoom = root.style.getPropertyValue("zoom"),
+        originalPriority = root.style.getPropertyPriority("zoom");
+      const restoreZoom = () => {
+        if (originalZoom) root.style.setProperty("zoom", originalZoom, originalPriority);
+        else root.style.removeProperty("zoom");
+      };
+      const measure = () => {
+        pending = 0;
+        if (disposed || !element.isConnected || width <= 0) return;
+        // Measure the authored canvas afresh, never an already-scaled width.
+        // Scale the whole document so rigid tables, padding, text and images keep
+        // their proportions; changing individual widths cannot fit those layouts.
+        restoreZoom();
+        // Measure at a small viewport so shorter content can shrink after a resize.
+        element.style.height = "1px";
+        const contentWidth = Math.max(doc.body.scrollWidth, root.scrollWidth, width);
+        const scale = Math.min(1, width / contentWidth);
+        if (scale < 1) root.style.setProperty("zoom", String(scale), "important");
+        // Body scroll dimensions remain in unscaled CSS pixels; the root's scroll
+        // height includes the scaled layout. Do not leave an unscaled blank tail.
+        const height = Math.ceil(
+          Math.max(
+            doc.body.scrollHeight * scale,
+            root.scrollHeight,
+            doc.body.getBoundingClientRect().bottom + (element.contentWindow?.scrollY ?? 0),
+            1,
+          ),
+        );
+        element.style.height = `${height}px`;
+        const scrollbar = Math.max(
+          0,
+          (element.contentWindow?.innerHeight ?? height) - doc.documentElement.clientHeight,
+        );
+        if (scrollbar) element.style.height = `${height + scrollbar}px`;
+        reportCanvas(canvasColor(doc));
+      };
+      const schedule = () => {
+        if (!pending && !disposed) pending = requestAnimationFrame(measure);
+      };
+      const bodySize = new ResizeObserver(schedule);
+      bodySize.observe(doc.body);
+      const frameSize = new ResizeObserver(() => {
+        if (element.clientWidth === width) return;
+        width = element.clientWidth;
+        schedule();
+      });
+      frameSize.observe(element);
+      const onKey = (event: KeyboardEvent) => {
+        activate();
+        keyboard(event);
+      };
+      const onFocus = () => activate();
+      const onError = (event: Event) => {
+        const image = event.target as HTMLImageElement | null;
+        if (image?.tagName === "IMG" && image.hasAttribute("src"))
+          unavailableImage(image, "image unavailable");
+        schedule();
+      };
+      doc.addEventListener("keydown", onKey, true);
+      doc.addEventListener("pointerdown", onFocus, true);
+      doc.addEventListener("focusin", onFocus, true);
+      doc.addEventListener("load", schedule, true);
+      doc.addEventListener("toggle", schedule, true);
+      doc.addEventListener("error", onError, true);
+      for (const image of Array.from(doc.images)) {
+        if (image.hasAttribute("src") && image.complete && !image.naturalWidth)
+          unavailableImage(image, "image unavailable");
+      }
+      void doc.fonts.ready.then(schedule);
+      measure();
+      release = () => {
+        disposed = true;
+        cancelAnimationFrame(pending);
+        bodySize.disconnect();
+        frameSize.disconnect();
+        restoreZoom();
+        doc.removeEventListener("keydown", onKey, true);
+        doc.removeEventListener("pointerdown", onFocus, true);
+        doc.removeEventListener("focusin", onFocus, true);
+        doc.removeEventListener("load", schedule, true);
+        doc.removeEventListener("toggle", schedule, true);
+        doc.removeEventListener("error", onError, true);
+      };
+    };
     let waiting = 0;
     const attach = () => {
-      const doc = frame.current?.contentDocument;
+      const doc = element.contentDocument;
       if (
         doc?.body &&
         doc.documentElement?.dataset.inboxDocument === document.id &&
@@ -310,106 +404,14 @@ export default function MessageBody({
       else waiting = requestAnimationFrame(attach);
     };
     waiting = requestAnimationFrame(attach);
+    // A reloaded srcdoc (e.g. after the iframe moves in the DOM) needs fresh listeners.
+    element.addEventListener("load", loaded);
     return () => {
       cancelAnimationFrame(waiting);
-      cleanup.current();
+      element.removeEventListener("load", loaded);
+      release();
     };
   }, [document]);
-
-  function loaded() {
-    const element = frame.current,
-      doc = element?.contentDocument;
-    if (!element || !doc?.body || doc.documentElement.dataset.inboxDocument !== document?.id)
-      return;
-    cleanup.current();
-    let pending = 0;
-    let width = element.clientWidth;
-    let disposed = false;
-    const root = doc.documentElement;
-    const originalZoom = root.style.getPropertyValue("zoom"),
-      originalPriority = root.style.getPropertyPriority("zoom");
-    const restoreZoom = () => {
-      if (originalZoom) root.style.setProperty("zoom", originalZoom, originalPriority);
-      else root.style.removeProperty("zoom");
-    };
-    const measure = () => {
-      pending = 0;
-      if (disposed || !element.isConnected || width <= 0) return;
-      // Measure the authored canvas afresh, never an already-scaled width.
-      // Scale the whole document so rigid tables, padding, text and images keep
-      // their proportions; changing individual widths cannot fit those layouts.
-      restoreZoom();
-      // Measure at a small viewport so shorter content can shrink after a resize.
-      element.style.height = "1px";
-      const contentWidth = Math.max(doc.body.scrollWidth, root.scrollWidth, width);
-      const scale = Math.min(1, width / contentWidth);
-      if (scale < 1) root.style.setProperty("zoom", String(scale), "important");
-      // Body scroll dimensions remain in unscaled CSS pixels; the root's scroll
-      // height includes the scaled layout. Do not leave an unscaled blank tail.
-      const height = Math.ceil(
-        Math.max(
-          doc.body.scrollHeight * scale,
-          root.scrollHeight,
-          doc.body.getBoundingClientRect().bottom + (element.contentWindow?.scrollY ?? 0),
-          1,
-        ),
-      );
-      element.style.height = `${height}px`;
-      const scrollbar = Math.max(
-        0,
-        (element.contentWindow?.innerHeight ?? height) - doc.documentElement.clientHeight,
-      );
-      if (scrollbar) element.style.height = `${height + scrollbar}px`;
-      reportCanvas(canvasColor(doc));
-    };
-    const schedule = () => {
-      if (!pending && !disposed) pending = requestAnimationFrame(measure);
-    };
-    const bodySize = new ResizeObserver(schedule);
-    bodySize.observe(doc.body);
-    const frameSize = new ResizeObserver(() => {
-      if (element.clientWidth === width) return;
-      width = element.clientWidth;
-      schedule();
-    });
-    frameSize.observe(element);
-    const onKey = (event: KeyboardEvent) => {
-      activate();
-      keyboard(event);
-    };
-    const onFocus = () => activate();
-    const onError = (event: Event) => {
-      const image = event.target as HTMLImageElement | null;
-      if (image?.tagName === "IMG" && image.hasAttribute("src"))
-        unavailableImage(image, "image unavailable");
-      schedule();
-    };
-    doc.addEventListener("keydown", onKey, true);
-    doc.addEventListener("pointerdown", onFocus, true);
-    doc.addEventListener("focusin", onFocus, true);
-    doc.addEventListener("load", schedule, true);
-    doc.addEventListener("toggle", schedule, true);
-    doc.addEventListener("error", onError, true);
-    for (const image of Array.from(doc.images)) {
-      if (image.hasAttribute("src") && image.complete && !image.naturalWidth)
-        unavailableImage(image, "image unavailable");
-    }
-    void doc.fonts.ready.then(schedule);
-    measure();
-    cleanup.current = () => {
-      disposed = true;
-      cancelAnimationFrame(pending);
-      bodySize.disconnect();
-      frameSize.disconnect();
-      restoreZoom();
-      doc.removeEventListener("keydown", onKey, true);
-      doc.removeEventListener("pointerdown", onFocus, true);
-      doc.removeEventListener("focusin", onFocus, true);
-      doc.removeEventListener("load", schedule, true);
-      doc.removeEventListener("toggle", schedule, true);
-      doc.removeEventListener("error", onError, true);
-    };
-  }
 
   const sizeClass =
     fontSize === "Large" ? "message-large-text" : fontSize === "Small" ? "message-small-text" : "";
@@ -436,7 +438,6 @@ export default function MessageBody({
             sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
             referrerPolicy="no-referrer"
             srcDoc={document?.html}
-            onLoad={loaded}
           />
         </>
       )}
