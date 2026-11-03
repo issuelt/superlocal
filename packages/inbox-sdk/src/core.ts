@@ -292,6 +292,10 @@ export function createInbox(options: InboxOptions): Inbox {
   const path = typeof options.database === "string" ? options.database : ":memory:";
   if (ownsDatabase && path !== ":memory:")
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  // db.query() caches prepared statements in a per-database LRU whose size is this process-wide
+  // static (20 by default). One mailbox page cycles through more distinct statements than that, so
+  // every call re-prepared its SQL. The raised bound still caps dynamically generated SQL.
+  Database.MAX_QUERY_CACHE_SIZE = Math.max(Database.MAX_QUERY_CACHE_SIZE, 512);
   const db =
     options.database instanceof Database ? options.database : new Database(path, { create: true });
   if (ownsDatabase && path !== ":memory:") chmodSync(path, 0o600);
